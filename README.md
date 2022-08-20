@@ -1,6 +1,6 @@
 # embe
 
-Embe compiles to [mBlock](https://makeblock.com) Scratch code.
+Embe is a programming language that compiles to [mBlock](https://makeblock.com) Scratch code.
 
 ## License
 

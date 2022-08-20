@@ -1,0 +1,22 @@
+program-> event*
+event-> '@' IDENTIFIER '(' LITERAL? ')' ':' statement*
+
+statement-> (funcCall|assignment|if|while|for)
+funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'
+assignment->identifier ('='|'+='|'-='|'*='|'/=') expression '\n'
+if-> 'if' expression ':' '\n' statement* (('else' ':' '\n' statement*)|('elif' expression ':' '\n' statement*))?
+while-> 'while' expression ':' '\n' statement*
+for-> 'for' expression ':' '\n' statement*
+
+expression->or
+or -> and ('||' and)*
+and -> equality ('&&' equality)*
+equality -> comparison (('=='|'!=') comparison)*
+comparison -> term (('>'|'>='|'<'|'<=') term)*
+term -> factor (('+'|'-') factor)*
+factor -> power ('*'|'/') power)*
+power -> unary (('**') unary)*
+unary -> ('-'|'!') unary | primary
+primary->identifier|LITERAL
+
+identifier-> IDENTIFIER ('.' IDENTIFIER)*

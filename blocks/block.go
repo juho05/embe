@@ -15,28 +15,28 @@ type Block struct {
 	Y        int            `json:"y"`
 }
 
-func NewBlock(blockType BlockType, parent *string) Block {
-	return Block{
+func NewBlock(blockType BlockType, parent string) *Block {
+	return &Block{
 		ID:     uuid.NewString(),
 		Type:   blockType,
-		Parent: parent,
+		Parent: &parent,
 		Inputs: make(map[string]any),
 		Fields: make(map[string]any),
-		Y:      40,
+		Y:      80,
 	}
 }
 
-var topLevelX = -400
+var topLevelX = -420
 
-func NewBlockTopLevel(blockType BlockType) Block {
-	topLevelX += 430
-	return Block{
+func NewBlockTopLevel(blockType BlockType) *Block {
+	topLevelX += 450
+	return &Block{
 		ID:       uuid.NewString(),
 		Type:     blockType,
 		Inputs:   make(map[string]any),
 		Fields:   make(map[string]any),
 		TopLevel: true,
 		X:        topLevelX,
-		Y:        40,
+		Y:        80,
 	}
 }

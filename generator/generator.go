@@ -5,9 +5,9 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]blocks.Block, []error) {
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, []error) {
 	g := &generator{
-		blocks: make(map[string]blocks.Block),
+		blocks: make(map[string]*blocks.Block),
 		lines:  lines,
 	}
 	errs := make([]error, 0)
@@ -21,7 +21,8 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]blocks
 }
 
 type generator struct {
-	blocks map[string]blocks.Block
+	blocks map[string]*blocks.Block
+	parent string
 	lines  [][]rune
 }
 
@@ -35,10 +36,27 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 		return err
 	}
 	g.blocks[block.ID] = block
+	g.parent = block.ID
+	for _, s := range stmt.Body {
+		err = s.Accept(g)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
+	fn, ok := funcCalls[stmt.Name.Lexeme]
+	if !ok {
+		return g.newError("Unknown function.", stmt.Name)
+	}
+	block, err := fn(g, stmt, g.parent)
+	if err != nil {
+		return err
+	}
+	g.blocks[block.ID] = block
+	g.parent = block.ID
 	return nil
 }
 

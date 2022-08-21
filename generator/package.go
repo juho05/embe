@@ -30,7 +30,7 @@ var wav []byte
 //go:embed assets/mscratch.json
 var mscratch []byte
 
-func Package(writer io.Writer, blocks map[string]blocks.Block) error {
+func Package(writer io.Writer, blocks map[string]*blocks.Block) error {
 	w := zip.NewWriter(writer)
 	defer w.Close()
 
@@ -57,7 +57,7 @@ func Package(writer io.Writer, blocks map[string]blocks.Block) error {
 	return nil
 }
 
-func createProject(zw *zip.Writer, blockMap map[string]blocks.Block) error {
+func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block) error {
 	w, err := zw.Create("project.json")
 	if err != nil {
 		return err

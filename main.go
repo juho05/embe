@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Bananenpro/embe/debug"
 	"github.com/Bananenpro/embe/parser"
 )
 
@@ -15,15 +16,20 @@ func main() {
 
 	file, err := os.Open(os.Args[1])
 	check(err)
-	defer file.Close()
 
-	tokens, _, err := parser.Scan(file)
+	tokens, lines, err := parser.Scan(file)
+	file.Close()
 	check(err)
 
-	fmt.Println(tokens)
+	statements, errs := parser.Parse(tokens, lines)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(1)
+	}
 
-	err = parser.Parse(tokens)
-	check(err)
+	debug.PrintAST(statements)
 }
 
 func check(err error) {

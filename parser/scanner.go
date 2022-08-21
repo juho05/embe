@@ -5,22 +5,23 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 var keywords = map[string]TokenType{
 	"if":    TkIf,
-	"elif":  TkElif,
 	"else":  TkElse,
 	"while": TkWhile,
 }
 
 type scanner struct {
-	inputScanner     *bufio.Scanner
-	lines            [][]rune
-	line             int
-	tokenStartColumn int
-	currentColumn    int
-	tokens           []Token
+	inputScanner      *bufio.Scanner
+	lines             [][]rune
+	line              int
+	tokenStartColumn  int
+	currentColumn     int
+	tokens            []Token
+	lineContainsToken bool
 }
 
 func Scan(source io.Reader) ([]Token, [][]rune, error) {
@@ -44,8 +45,6 @@ func (s *scanner) scan() error {
 
 	for c != '\000' {
 		switch c {
-		case '\n':
-			s.addToken(TkNewLine)
 		case '@':
 			s.addToken(TkAt)
 		case '(':
@@ -115,6 +114,17 @@ func (s *scanner) scan() error {
 				s.addToken(TkBang)
 			}
 
+		case '|':
+			if !s.match('|') {
+				return s.newError(fmt.Sprintf("Unexpected character '%c'.", c))
+			}
+			s.addToken(TkOr)
+		case '&':
+			if !s.match('&') {
+				return s.newError(fmt.Sprintf("Unexpected character '%c'.", c))
+			}
+			s.addToken(TkAnd)
+
 		case '"':
 			err = s.string()
 			if err != nil {
@@ -140,6 +150,10 @@ func (s *scanner) scan() error {
 		s.tokenStartColumn = s.currentColumn
 	}
 
+	if s.tokens[len(s.tokens)-1].Type != TkNewLine {
+		s.addToken(TkNewLine)
+	}
+
 	eof := Token{
 		Line: s.line,
 		Type: TkEOF,
@@ -154,7 +168,13 @@ func (s *scanner) scan() error {
 }
 
 func (s *scanner) identifier() {
-	for isAlphaNum(s.peek()) {
+	for {
+		for isAlphaNum(s.peek()) {
+			s.nextCharacter()
+		}
+		if s.peek() != '.' || !isAlphaNum(s.peekNext()) {
+			break
+		}
 		s.nextCharacter()
 	}
 
@@ -222,6 +242,10 @@ func (s *scanner) blockComment() error {
 }
 
 func (s *scanner) nextCharacter() (rune, error) {
+	if s.line != -1 && s.peek() == '\n' && s.lineContainsToken {
+		s.addToken(TkNewLine)
+		s.lineContainsToken = false
+	}
 	s.currentColumn++
 	for s.line == -1 || s.currentColumn >= len(s.lines[s.line]) {
 		notDone, err := s.nextLine()
@@ -261,7 +285,7 @@ func (s *scanner) nextLine() (bool, error) {
 	if !s.inputScanner.Scan() {
 		return false, s.inputScanner.Err()
 	}
-	s.lines = append(s.lines, []rune(s.inputScanner.Text()))
+	s.lines = append(s.lines, []rune(strings.ReplaceAll(s.inputScanner.Text(), "\t", "    ")))
 	s.line++
 	s.currentColumn = 0
 	s.tokenStartColumn = 0
@@ -270,12 +294,22 @@ func (s *scanner) nextLine() (bool, error) {
 }
 
 func (s *scanner) addToken(tokenType TokenType) {
+	lexeme := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
+	if tokenType == TkNewLine {
+		prev := s.tokens[len(s.tokens)-1]
+		s.tokenStartColumn = prev.Column + len(prev.Lexeme)
+		lexeme = "\\n"
+	}
 	s.tokens = append(s.tokens, Token{
 		Line:   s.line,
 		Column: s.tokenStartColumn,
 		Type:   tokenType,
-		Lexeme: string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1]),
+		Lexeme: lexeme,
+		Indent: getIndentation(s.lines[s.line]),
 	})
+	if tokenType != TkNewLine && tokenType != TkEOF {
+		s.lineContainsToken = true
+	}
 }
 
 func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, value any) {
@@ -286,7 +320,18 @@ func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, valu
 		Lexeme:   string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1]),
 		DataType: dataType,
 		Literal:  value,
+		Indent:   getIndentation(s.lines[s.line]),
 	})
+	if tokenType != TkNewLine && tokenType != TkEOF {
+		s.lineContainsToken = true
+	}
+}
+
+func getIndentation(line []rune) int {
+	level := 0
+	for ; level < len(line) && line[level] == ' '; level++ {
+	}
+	return level
 }
 
 func isDigit(char rune) bool {

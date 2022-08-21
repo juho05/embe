@@ -1,5 +1,7 @@
 package parser
 
+import "fmt"
+
 type TokenType int
 
 const (
@@ -11,7 +13,10 @@ const (
 	TkDot
 	TkSemicolon
 	TkComma
+
 	TkBang
+	TkOr
+	TkAnd
 
 	TkPlus
 	TkMinus
@@ -31,7 +36,6 @@ const (
 	TkGreaterEqual
 
 	TkIf
-	TkElif
 	TkElse
 	TkWhile
 	TkFor
@@ -55,7 +59,12 @@ type Token struct {
 	Lexeme string
 	Line   int
 	Column int
+	Indent int
 
 	DataType DataType
 	Literal  any
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("([%d:%d:%d]%s)", t.Line+1, t.Column+1, t.Indent, t.Lexeme)
 }

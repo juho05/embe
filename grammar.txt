@@ -1,6 +1,6 @@
 program-> topLevel*
 topLevel->event
-event-> '@' IDENTIFIER '(' LITERAL? ')' ':' statement*
+event-> '@' IDENTIFIER LITERAL? ':' statement*
 
 statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'

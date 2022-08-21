@@ -45,17 +45,9 @@ func (p *parser) event() (Stmt, error) {
 	}
 	name := p.previous()
 
-	if !p.match(TkOpenParen) {
-		return nil, p.newError("Expected '(' after event name.")
-	}
-
 	var parameter Token
 	if p.match(TkLiteral) {
 		parameter = p.previous()
-	}
-
-	if !p.match(TkCloseParen) {
-		return nil, p.newError("Expected ')' after parameter.")
 	}
 
 	if !p.match(TkColon) {

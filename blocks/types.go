@@ -4,9 +4,12 @@ type BlockType string
 
 // Events
 const (
-	WhenLaunch            BlockType = "cyberpi.cyberpi_when_launch"
-	WhenButtonPress       BlockType = "cyberpi.cyberpi_when_button_press"
-	WhenDirectionKeyPress BlockType = "cyberpi.cyberpi_when_direction_key_press"
+	WhenLaunch                     BlockType = "cyberpi.cyberpi_when_launch"
+	WhenButtonPress                BlockType = "cyberpi.cyberpi_when_button_press"
+	WhenDirectionKeyPress          BlockType = "cyberpi.cyberpi_when_direction_key_press"
+	WhenDetectAttitude             BlockType = "cyberpi.cyberpi_when_detect_attitude"
+	WhenDetectAction               BlockType = "cyberpi.cyberpi_when_detect_action"
+	WhenSensorValueBiggerOrSmaller BlockType = "cyberpi.cyberpi_when_sensor_value_bigger_or_smaller_than"
 )
 
 // Statements

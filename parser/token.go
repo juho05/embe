@@ -46,12 +46,12 @@ const (
 	TkEOF
 )
 
-type DataType int
+type DataType string
 
 const (
-	DTInt DataType = iota
-	DTBool
-	DTString
+	DTInt    DataType = "int"
+	DTBool   DataType = "bool"
+	DTString DataType = "string"
 )
 
 type Token struct {

@@ -150,8 +150,10 @@ func (s *scanner) scan() error {
 		s.tokenStartColumn = s.currentColumn
 	}
 
-	if s.tokens[len(s.tokens)-1].Type != TkNewLine {
-		s.addToken(TkNewLine)
+	if len(s.tokens) > 0 {
+		if s.tokens[len(s.tokens)-1].Type != TkNewLine {
+			s.addToken(TkNewLine)
+		}
 	}
 
 	eof := Token{

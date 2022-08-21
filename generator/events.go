@@ -1,8 +1,6 @@
 package generator
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
 )
@@ -15,6 +13,6 @@ func eventStart(g *generator, stmt *parser.StmtEvent) (blocks.Block, error) {
 	if (stmt.Parameter != parser.Token{}) {
 		return blocks.Block{}, g.newError("The 'start' event does not take any arguments.", stmt.Parameter)
 	}
-	block := blocks.NewBlock(uuid.NewString(), blocks.WhenLaunch, true, nil)
+	block := blocks.NewBlockTopLevel(blocks.WhenLaunch)
 	return block, nil
 }

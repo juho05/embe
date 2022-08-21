@@ -4,6 +4,7 @@ type BlockType string
 
 // Events
 const (
+	WhenLaunch            BlockType = "cyberpi.cyberpi_when_launch"
 	WhenButtonPress       BlockType = "cyberpi.cyberpi_when_button_press"
 	WhenDirectionKeyPress BlockType = "cyberpi.cyberpi_when_direction_key_press"
 )

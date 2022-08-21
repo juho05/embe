@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"github.com/Bananenpro/embe/debug"
+	"github.com/Bananenpro/embe/generator"
 	"github.com/Bananenpro/embe/parser"
 )
 
@@ -29,7 +31,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	debug.PrintAST(statements)
+	blocks, errs := generator.GenerateBlocks(statements, lines)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		os.Exit(1)
+	}
+
+	inFileNameBase := filepath.Base(file.Name())
+	outName := strings.TrimSuffix(inFileNameBase, filepath.Ext(inFileNameBase)) + ".mblock"
+	outFile, err := os.Create(outName)
+	check(err)
+	defer outFile.Close()
+	err = generator.Package(outFile, blocks)
+	check(err)
 }
 
 func check(err error) {

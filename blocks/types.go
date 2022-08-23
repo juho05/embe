@@ -12,20 +12,28 @@ const (
 	WhenSensorValueBiggerOrSmaller BlockType = "cyberpi.cyberpi_when_sensor_value_bigger_or_smaller_than"
 )
 
-// Statements
+// Audio
 const (
 	GetVolume BlockType = "cyberpi.cyberpi_get_volume"
 	SetVolume BlockType = "cyberpi.cyberpi_set_volume"
 	AddVolume BlockType = "cyberpi.cyberpi_add_volume"
 
-	PlayBuzzerTone BlockType = "cyberpi.cyberpi_play_buzzer_tone"
-	StopAudio      BlockType = "cyberpi.cyberpi_stop_audio"
+	StopAudio                     BlockType = "cyberpi.cyberpi_stop_audio"
+	PlayBuzzerTone                BlockType = "cyberpi.cyberpi_play_buzzer_tone"
+	PlayBuzzerToneWithTime        BlockType = "cyberpi.cyberpi_play_buzzer_tone_with_time"
+	PlayClip                      BlockType = "cyberpi.cyberpi_play_audio_3"
+	PlayClipFileNameMenu          BlockType = "cyberpi.cyberpi_play_audio_3_file_name_menu"
+	PlayClipUntilDone             BlockType = "cyberpi.cyberpi_play_audio_until_3"
+	PlayClipUntilDoneFileNameMenu BlockType = "cyberpi.cyberpi_play_audio_until_3_file_name_menu"
+	PlayNote                      BlockType = "cyberpi.cyberpi_play_music_with_tone_and_note_2"
+	Note                          BlockType = "note"
+	PlayMusicInstrument           BlockType = "cyberpi.cyberpi_play_music_with_note"
+	PlayMusicInstrumentMenu       BlockType = "cyberpi.cyberpi_play_music_with_note_fieldMenu_1_menu"
 
-	LEDShowSingleColor          BlockType = "cyberpi.cyberpi_led_show_single_with_color_2"
-	LEDShowSingleColorFieldMenu BlockType = "cyberpi.cyberpi_led_show_single_with_color_2_fieldMenu_1_menu"
-	MoveLED                     BlockType = "cyberpi.cyberpi_move_led"
-	LEDOff                      BlockType = "cyberpi.cyberpi_led_off_2"
-	LEDOffMenu                  BlockType = "cyberpi.cyberpi_led_off_2_fieldMenu_1_menu"
+	RecordStart         BlockType = "cyberpi.cyberpi_start_record"
+	RecordStop          BlockType = "cyberpi.cyberpi_stop_record"
+	PlayRecord          BlockType = "cyberpi.cyberpi_play_record"
+	PlayRecordUntilDone BlockType = "cyberpi.cyberpi_play_record_until"
 )
 
 // Control

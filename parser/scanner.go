@@ -190,6 +190,12 @@ func (s *scanner) identifier() {
 	name := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
 	if k, ok := keywords[name]; ok {
 		s.addToken(k)
+	} else if name == "true" || name == "false" {
+		v, err := strconv.ParseBool(name)
+		if err != nil {
+			panic(err)
+		}
+		s.addTokenWithValue(TkLiteral, DTBool, v)
 	} else {
 		s.addToken(TkIdentifier)
 	}

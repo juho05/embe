@@ -117,7 +117,7 @@ func (p *parser) funcCall() (Stmt, error) {
 			return nil, err
 		}
 		parameters = append(parameters, param)
-		if p.peek().Type != TkComma {
+		if !p.match(TkComma) {
 			break
 		}
 	}

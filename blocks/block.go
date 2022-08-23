@@ -11,8 +11,8 @@ type Block struct {
 	Fields   map[string]any `json:"fields"`
 	Shadow   bool           `json:"shadow"`
 	TopLevel bool           `json:"topLevel"`
-	X        int            `json:"x"`
-	Y        int            `json:"y"`
+	X        int            `json:"x,omitempty"`
+	Y        int            `json:"y,omitempty"`
 }
 
 func NewBlock(blockType BlockType, parent string) *Block {
@@ -27,7 +27,22 @@ func NewBlock(blockType BlockType, parent string) *Block {
 		Parent: p,
 		Inputs: make(map[string]any),
 		Fields: make(map[string]any),
-		Y:      80,
+	}
+}
+
+func NewShadowBlock(blockType BlockType, parent string) *Block {
+	var p *string
+	p = &parent
+	if parent == "" {
+		p = nil
+	}
+	return &Block{
+		ID:     uuid.NewString(),
+		Type:   blockType,
+		Parent: p,
+		Inputs: make(map[string]any),
+		Fields: make(map[string]any),
+		Shadow: true,
 	}
 }
 

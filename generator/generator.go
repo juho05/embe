@@ -263,6 +263,16 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 	}
 }
 
+func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parser.DataType) (any, error) {
+	if literal, ok := expr.(*parser.ExprLiteral); ok {
+		if literal.Token.DataType != dataType {
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
+		}
+		return literal.Token.Literal, nil
+	}
+	return nil, g.newError("Only literals are allowed in this location.", token)
+}
+
 type GenerateError struct {
 	Token   parser.Token
 	Message string

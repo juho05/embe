@@ -1,17 +1,29 @@
 package generator
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"golang.org/x/exp/slices"
+
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
 )
 
 var funcCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error){
-	"audio.stop":       funcAudioStop,
-	"audio.playBuzzer": funcAudioPlayBuzzer,
+	"audio.stop":            funcAudioStop,
+	"audio.playBuzzer":      funcAudioPlayBuzzer,
+	"audio.playNote":        funcAudioPlayNote,
+	"audio.playInstrument":  funcAudioPlayInstrument,
+	"audio.playClip":        funcAudioPlayClip,
+	"audio.recording.start": funcAudioRecordingStart,
+	"audio.recording.stop":  funcAudioRecordingStop,
+	"audio.recording.play":  funcAudioRecordingPlay,
 
 	"time.sleep": funcTimeSleep,
 
-	"mbot.restart": funcMbotRestart,
+	"mbot.restart": funcMBotRestart,
 
 	"program.exit": funcProgramExit,
 }
@@ -26,8 +38,8 @@ func funcAudioStop(g *generator, stmt *parser.StmtFuncCall, parent string) (*blo
 }
 
 func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The 'audio.playBuzzer' function takes 1 argument: audio.playBuzzer(frequency: number)", stmt.Name)
+	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'audio.playBuzzer' function takes 1-2 arguments: audio.playBuzzer(frequency: number, duration?: number)", stmt.Name)
 	}
 	block := blocks.NewBlock(blocks.PlayBuzzerTone, parent)
 	g.blocks[parent].Next = &block.ID
@@ -36,7 +48,194 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall, parent string)
 	if err != nil {
 		return nil, err
 	}
-	block.Inputs["number_2"] = number
+
+	if len(stmt.Parameters) == 2 {
+		block.Type = blocks.PlayBuzzerToneWithTime
+		block.Inputs["number_1"] = number
+		block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		block.Inputs["number_2"] = number
+	}
+
+	return block, nil
+}
+
+func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'audio.playClip' function takes 1-2 arguments: audio.playClip(name: string, untilDone?: boolean)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.PlayClip, parent)
+	g.blocks[parent].Next = &block.ID
+
+	menuBlock := blocks.NewShadowBlock(blocks.PlayClipFileNameMenu, block.ID)
+	g.blocks[menuBlock.ID] = menuBlock
+	block.Inputs["file_name"] = []any{1, menuBlock.ID}
+	if len(stmt.Parameters) == 2 {
+		untilDone, err := g.literal(stmt.Name, stmt.Parameters[1], parser.DTBool)
+		if err != nil {
+			return nil, err
+		}
+		if untilDone.(bool) {
+			block.Type = blocks.PlayClipUntilDone
+			menuBlock.Type = blocks.PlayClipUntilDoneFileNameMenu
+		}
+	}
+
+	fileName, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	names := []string{"hi", "bye", "yeah", "wow", "laugh", "hum", "sad", "sigh", "annoyed", "angry", "surprised", "yummy", "curious", "embarrassed", "ready", "sprint", "sleepy", "meow", "start", "switch", "beeps", "buzzing", "jump", "level-up", "low-energy", "prompt", "right", "wrong", "ring", "score", "wake", "warning", "metal-clash", "glass-clink", "inflator", "running-water", "clockwork", "click", "current", "wood-hit", "iron", "drop", "bubble", "wave", "magic", "spitfire", "heartbeat"}
+	if !slices.Contains(names, fileName.(string)) {
+		return nil, g.newError(fmt.Sprintf("Unknown clip name. Available options: %s", strings.Join(names, ", ")), stmt.Parameters[0].(*parser.ExprLiteral).Token)
+	}
+
+	menuBlock.Fields["CYBERPI_PLAY_AUDIO_UNTIL_3_FILE_NAME"] = []any{fileName, nil}
+
+	return block, nil
+}
+
+func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'audio.playInstrument' function takes 2 arguments: audio.playInstrument(name: string, duration: number)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.PlayMusicInstrument, parent)
+	g.blocks[parent].Next = &block.ID
+
+	menuBlock := blocks.NewShadowBlock(blocks.PlayMusicInstrumentMenu, block.ID)
+	g.blocks[menuBlock.ID] = menuBlock
+	block.Inputs["fieldMenu_1"] = []any{1, menuBlock.ID}
+
+	instrumentName, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	names := []string{"snare", "bass-drum", "side-stick", "crash-cymbal", "open-hi-hat", "closed-hi-hat", "tambourine", "hand-clap", "claves"}
+	if !slices.Contains(names, instrumentName.(string)) {
+		return nil, g.newError(fmt.Sprintf("Unknown instrument name. Available options: %s", strings.Join(names, ", ")), stmt.Parameters[0].(*parser.ExprLiteral).Token)
+	}
+
+	menuBlock.Fields["CYBERPI_PLAY_MUSIC_WITH_NOTE_FIELDMENU_1"] = []any{fmt.Sprintf("'%v'", instrumentName), nil}
+
+	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 2 && len(stmt.Parameters) != 3 {
+		return nil, g.newError("The 'audio.playNote' function takes 2-3 arguments: audio.playNote(note: number, duration: number) audio.playNote(name: string, octave: number, duration: number)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.PlayNote, parent)
+	g.blocks[parent].Next = &block.ID
+
+	noteBlock := blocks.NewShadowBlock(blocks.Note, block.ID)
+	g.blocks[noteBlock.ID] = noteBlock
+
+	durationParameter := 1
+	if len(stmt.Parameters) == 3 {
+		durationParameter = 2
+		noteName, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+		values := map[string]int{
+			"c":  0,
+			"c#": 1,
+			"db": 1,
+			"d":  2,
+			"d#": 3,
+			"eb": 3,
+			"e":  4,
+			"f":  5,
+			"f#": 6,
+			"gb": 6,
+			"g":  7,
+			"g#": 8,
+			"ab": 8,
+			"a":  9,
+			"a#": 10,
+			"bb": 10,
+			"b":  11,
+		}
+		value, ok := values[strings.ToLower(noteName.(string))]
+		if !ok {
+			return nil, g.newError("Invalid note name.", stmt.Parameters[0].(*parser.ExprLiteral).Token)
+		}
+		octave, err := g.literal(stmt.Name, stmt.Parameters[1], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+		noteValue := int(octave.(float64))*12 + value
+		noteBlock.Fields["NOTE"] = []any{strconv.Itoa(noteValue), nil}
+		block.Inputs["number_1"] = []any{1, noteBlock.ID}
+	} else if v, ok := stmt.Parameters[0].(*parser.ExprLiteral); ok {
+		if v.Token.DataType != parser.DTNumber {
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", parser.DTNumber), v.Token)
+		}
+		noteBlock.Fields["NOTE"] = []any{strconv.Itoa(int(v.Token.Literal.(float64))), nil}
+		block.Inputs["number_1"] = []any{1, noteBlock.ID}
+	} else {
+		note, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+		noteBlock.Parent = nil
+		noteBlock.Fields["NOTE"] = []any{"0", nil}
+		block.Inputs["number_1"] = []any{3, note[1].(string), noteBlock.ID}
+	}
+
+	var err error
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[durationParameter], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcAudioRecordingStart(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 0 {
+		return nil, g.newError("The 'audio.record.start' function does not take any arguments.", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.RecordStart, parent)
+	g.blocks[parent].Next = &block.ID
+	return block, nil
+}
+
+func funcAudioRecordingStop(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 0 {
+		return nil, g.newError("The 'audio.record.stop' function does not take any arguments.", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.RecordStop, parent)
+	g.blocks[parent].Next = &block.ID
+	return block, nil
+}
+
+func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 1 {
+		return nil, g.newError("The 'audio.record.play' function takes 0-1 arguments: audio.record.play(untilDone?: boolean)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.PlayRecord, parent)
+	g.blocks[parent].Next = &block.ID
+
+	if len(stmt.Parameters) == 1 {
+		untilDone, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTBool)
+		if err != nil {
+			return nil, err
+		}
+		if untilDone.(bool) {
+			block.Type = blocks.PlayRecordUntilDone
+		}
+	}
 
 	return block, nil
 }
@@ -64,7 +263,7 @@ func funcTimeSleep(g *generator, stmt *parser.StmtFuncCall, parent string) (*blo
 	return block, nil
 }
 
-func funcMbotRestart(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'mbot.restart' function does not take any arguments.", stmt.Name)
 	}

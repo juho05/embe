@@ -44,4 +44,9 @@ const (
 	OpLessThan    BlockType = "operator_lt"
 	OpGreaterThan BlockType = "operator_gt"
 	OpNot         BlockType = "operator_not"
+
+	OpAdd      BlockType = "operator_add"
+	OpSubtract BlockType = "operator_subtract"
+	OpMultiply BlockType = "operator_multiply"
+	OpDivide   BlockType = "operator_divide"
 )

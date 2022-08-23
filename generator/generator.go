@@ -134,7 +134,7 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 	}
 	g.blocks[block.ID] = block
 	g.parent = block.ID
-	input, err := g.value(g.parent, expr.Right, dataType)
+	input, err := g.value(g.parent, expr.Operator, expr.Right, dataType)
 	if err != nil {
 		return err
 	}
@@ -147,49 +147,61 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	var block *blocks.Block
 	var operandDataType parser.DataType
-	var retDataType parser.DataType
+	retDataType := parser.DTBool
+	operandName := "OPERAND"
 	switch expr.Operator.Type {
 	case parser.TkLess:
 		block = blocks.NewBlock(blocks.OpLessThan, g.parent)
-		retDataType = parser.DTBool
 		operandDataType = parser.DTNumber
 	case parser.TkGreater:
 		block = blocks.NewBlock(blocks.OpGreaterThan, g.parent)
-		retDataType = parser.DTBool
 		operandDataType = parser.DTNumber
 	case parser.TkEqual:
 		block = blocks.NewBlock(blocks.OpEquals, g.parent)
-		retDataType = parser.DTBool
 		operandDataType = parser.DTNumber
 	case parser.TkAnd:
 		block = blocks.NewBlock(blocks.OpAnd, g.parent)
-		retDataType = parser.DTBool
 		operandDataType = parser.DTBool
 	case parser.TkOr:
 		block = blocks.NewBlock(blocks.OpOr, g.parent)
-		retDataType = parser.DTBool
 		operandDataType = parser.DTBool
+	default:
+		retDataType = parser.DTNumber
+		operandDataType = parser.DTNumber
+		operandName = "NUM"
+		switch expr.Operator.Type {
+		case parser.TkPlus:
+			block = blocks.NewBlock(blocks.OpAdd, g.parent)
+		case parser.TkMinus:
+			block = blocks.NewBlock(blocks.OpSubtract, g.parent)
+		case parser.TkMultiply:
+			block = blocks.NewBlock(blocks.OpMultiply, g.parent)
+		case parser.TkDivide:
+			block = blocks.NewBlock(blocks.OpDivide, g.parent)
+		default:
+			return g.newError("Unknown binary operator.", expr.Operator)
+		}
 	}
 	g.blocks[block.ID] = block
 
-	left, err := g.value(block.ID, expr.Left, operandDataType)
+	left, err := g.value(block.ID, expr.Operator, expr.Left, operandDataType)
 	if err != nil {
 		return err
 	}
-	block.Inputs["OPERAND1"] = left
+	block.Inputs[operandName+"1"] = left
 
-	right, err := g.value(block.ID, expr.Right, operandDataType)
+	right, err := g.value(block.ID, expr.Operator, expr.Right, operandDataType)
 	if err != nil {
 		return err
 	}
-	block.Inputs["OPERAND2"] = right
+	block.Inputs[operandName+"2"] = right
 
 	g.dataType = retDataType
 	g.blockID = block.ID
 	return nil
 }
 
-func (g *generator) value(parent string, expr parser.Expr, dataType parser.DataType) ([]any, error) {
+func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
 	if literal, ok := expr.(*parser.ExprLiteral); ok {
 		if literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
@@ -202,7 +214,7 @@ func (g *generator) value(parent string, expr parser.Expr, dataType parser.DataT
 			return nil, err
 		}
 		if g.dataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
 		return []any{3, g.blockID, []any{4, "0"}}, nil
 	}

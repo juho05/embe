@@ -443,10 +443,34 @@ func (p *parser) unary() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ExprUnary{
-			Operator: operator,
-			Right:    right,
-		}, nil
+		if operator.Type == TkMinus {
+			return &ExprBinary{
+				Operator: Token{
+					Type:   TkMultiply,
+					Lexeme: "*",
+					Line:   operator.Line,
+					Column: operator.Column,
+					Indent: operator.Indent,
+				},
+				Left: &ExprLiteral{
+					Token: Token{
+						Type:     TkLiteral,
+						Lexeme:   "-1",
+						Line:     operator.Line,
+						Column:   operator.Column,
+						Indent:   operator.Indent,
+						DataType: DTNumber,
+						Literal:  -1,
+					},
+				},
+				Right: right,
+			}, nil
+		} else {
+			return &ExprUnary{
+				Operator: operator,
+				Right:    right,
+			}, nil
+		}
 	}
 
 	return p.primary()

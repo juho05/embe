@@ -30,7 +30,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall, parent string)
 		g.blocks[parent].Next = &block.ID
 	}
 
-	number, err := g.value(block.ID, stmt.Parameters[0], parser.DTNumber)
+	number, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
 	if err != nil {
 		return nil, err
 	}

@@ -69,7 +69,11 @@ func (s *scanner) scan() error {
 			if s.match('=') {
 				s.addToken(TkMinusAssign)
 			} else {
-				s.addToken(TkMinus)
+				if isDigit(s.peek()) {
+					s.number()
+				} else {
+					s.addToken(TkMinus)
+				}
 			}
 		case '*':
 			if s.match('=') {

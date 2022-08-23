@@ -90,12 +90,12 @@ func (p *astPrinter) VisitIdentifier(expr *parser.ExprIdentifier) error {
 }
 
 func (p *astPrinter) VisitLiteral(expr *parser.ExprLiteral) error {
-	fmt.Print(expr.Token.Literal)
+	fmt.Print("(", expr.Token.Literal, ")")
 	return nil
 }
 
 func (p *astPrinter) VisitUnary(expr *parser.ExprUnary) error {
-	fmt.Print("(-")
+	fmt.Print("(", expr.Operator.Lexeme)
 	expr.Right.Accept(p)
 	fmt.Print(")")
 	return nil

@@ -20,7 +20,7 @@ func (e *ExprIdentifier) Accept(visitor ExprVisitor) error {
 }
 
 type ExprLiteral struct {
-	Value any
+	Token Token
 }
 
 func (e *ExprLiteral) Accept(visitor ExprVisitor) error {

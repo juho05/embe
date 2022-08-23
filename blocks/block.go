@@ -16,10 +16,15 @@ type Block struct {
 }
 
 func NewBlock(blockType BlockType, parent string) *Block {
+	var p *string
+	p = &parent
+	if parent == "" {
+		p = nil
+	}
 	return &Block{
 		ID:     uuid.NewString(),
 		Type:   blockType,
-		Parent: &parent,
+		Parent: p,
 		Inputs: make(map[string]any),
 		Fields: make(map[string]any),
 		Y:      80,

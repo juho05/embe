@@ -201,7 +201,7 @@ func (s *scanner) number() {
 	}
 
 	value, _ := strconv.ParseFloat(string(s.lines[s.line][s.tokenStartColumn:s.currentColumn+1]), 64)
-	s.addTokenWithValue(TkLiteral, DTInt, value)
+	s.addTokenWithValue(TkLiteral, DTNumber, value)
 }
 
 func (s *scanner) comment() {

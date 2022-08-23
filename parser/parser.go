@@ -182,11 +182,18 @@ func (p *parser) ifStmt(indent int) (Stmt, error) {
 		return nil, p.newError("Expected '\\n' after ':'.")
 	}
 
-	body := p.statements(indent + 1)
+	body := p.statements(keyword.Indent + 1)
 
 	var elseBody []Stmt
 	if p.match(TkElse) {
-		elseBody = p.statements(indent + 1)
+		elseKeyword := p.previous()
+		if !p.match(TkColon) {
+			return nil, p.newError("Expected ':' after 'else'.")
+		}
+		if !p.match(TkNewLine) {
+			return nil, p.newError("Expected '\\n' after ':'.")
+		}
+		elseBody = p.statements(elseKeyword.Indent + 1)
 	}
 
 	return &StmtIf{
@@ -216,7 +223,7 @@ func (p *parser) whileLoop(indent int) (Stmt, error) {
 		return nil, p.newError("Expected '\\n' after ':'.")
 	}
 
-	body := p.statements(indent + 1)
+	body := p.statements(keyword.Indent + 1)
 
 	return &StmtLoop{
 		Keyword:   keyword,
@@ -244,7 +251,7 @@ func (p *parser) forLoop(indent int) (Stmt, error) {
 		return nil, p.newError("Expected '\\n' after ':'.")
 	}
 
-	body := p.statements(indent + 1)
+	body := p.statements(keyword.Indent + 1)
 
 	return &StmtLoop{
 		Keyword:   keyword,
@@ -414,7 +421,7 @@ func (p *parser) primary() (Expr, error) {
 
 	if p.match(TkLiteral) {
 		return &ExprLiteral{
-			Value: p.previous().Literal,
+			Token: p.previous(),
 		}, nil
 	}
 

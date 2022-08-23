@@ -49,8 +49,8 @@ const (
 type DataType string
 
 const (
-	DTInt    DataType = "int"
-	DTBool   DataType = "bool"
+	DTNumber DataType = "number"
+	DTBool   DataType = "boolean"
 	DTString DataType = "string"
 )
 

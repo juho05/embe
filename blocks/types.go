@@ -31,12 +31,17 @@ const (
 // Control
 const (
 	If          BlockType = "control_if"
+	IfElse      BlockType = "control_if_else"
 	Wait        BlockType = "control_wait"
 	RepeatUntil BlockType = "control_repeat_until"
 )
 
 // Operators
 const (
-	Equals   BlockType = "operator_equals"
-	LessThan BlockType = "operator_lt"
+	OpEquals      BlockType = "operator_equals"
+	OpOr          BlockType = "operator_or"
+	OpAnd         BlockType = "operator_and"
+	OpLessThan    BlockType = "operator_lt"
+	OpGreaterThan BlockType = "operator_gt"
+	OpNot         BlockType = "operator_not"
 )

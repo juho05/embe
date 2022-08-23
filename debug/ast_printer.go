@@ -90,7 +90,7 @@ func (p *astPrinter) VisitIdentifier(expr *parser.ExprIdentifier) error {
 }
 
 func (p *astPrinter) VisitLiteral(expr *parser.ExprLiteral) error {
-	fmt.Print(expr.Value)
+	fmt.Print(expr.Token.Literal)
 	return nil
 }
 

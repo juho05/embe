@@ -99,13 +99,15 @@ func (s *scanner) scan() error {
 		case '<':
 			if s.match('=') {
 				s.addToken(TkLessEqual)
+			} else {
+				s.addToken(TkLess)
 			}
-			s.addToken(TkLess)
 		case '>':
 			if s.match('=') {
 				s.addToken(TkGreaterEqual)
+			} else {
+				s.addToken(TkGreater)
 			}
-			s.addToken(TkGreater)
 
 		case '!':
 			if s.match('=') {

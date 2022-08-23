@@ -342,10 +342,50 @@ func (p *parser) comparison() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		expr = &ExprBinary{
-			Operator: operator,
-			Left:     expr,
-			Right:    right,
+		if operator.Type == TkLessEqual || operator.Type == TkGreaterEqual {
+			withoutEqual := TkLess
+			withoutEqualLexeme := "<"
+			if operator.Type == TkGreaterEqual {
+				withoutEqual = TkGreater
+				withoutEqualLexeme = ">"
+			}
+			expr = &ExprBinary{
+				Operator: Token{
+					Type:   TkOr,
+					Lexeme: "||",
+					Line:   operator.Line,
+					Indent: operator.Indent,
+					Column: operator.Column,
+				},
+				Left: &ExprBinary{
+					Operator: Token{
+						Type:   withoutEqual,
+						Lexeme: withoutEqualLexeme,
+						Line:   operator.Line,
+						Indent: operator.Indent,
+						Column: operator.Column,
+					},
+					Left:  expr,
+					Right: right,
+				},
+				Right: &ExprBinary{
+					Operator: Token{
+						Type:   TkEqual,
+						Lexeme: "==",
+						Line:   operator.Line,
+						Indent: operator.Indent,
+						Column: operator.Column,
+					},
+					Left:  expr,
+					Right: right,
+				},
+			}
+		} else {
+			expr = &ExprBinary{
+				Operator: operator,
+				Left:     expr,
+				Right:    right,
+			}
 		}
 	}
 

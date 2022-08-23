@@ -12,6 +12,7 @@ var keywords = map[string]TokenType{
 	"if":    TkIf,
 	"else":  TkElse,
 	"while": TkWhile,
+	"for":   TkFor,
 }
 
 type scanner struct {

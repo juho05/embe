@@ -6,8 +6,8 @@ statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'
 assignment->identifier ('='|'+='|'-='|'*='|'/=') expression '\n'
 if-> 'if' expression ':' '\n' statement* ('else' ':' '\n' statement*)?
-while-> 'while' expression ':' '\n' statement*
-for-> 'for' expression ':' '\n' statement*
+while-> 'while' expression? ':' '\n' statement*
+for-> 'for' expression? ':' '\n' statement*
 
 expression->or
 or -> and ('||' and)*

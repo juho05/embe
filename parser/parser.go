@@ -70,7 +70,7 @@ func (p *parser) event() (Stmt, error) {
 func (p *parser) statements(indent int) []Stmt {
 	statements := make([]Stmt, 0, 10)
 	for p.peek().Indent >= indent {
-		stmt, err := p.statement(indent)
+		stmt, err := p.statement()
 		if err == nil {
 			statements = append(statements, stmt)
 		} else {
@@ -81,14 +81,14 @@ func (p *parser) statements(indent int) []Stmt {
 	return statements
 }
 
-func (p *parser) statement(indent int) (Stmt, error) {
+func (p *parser) statement() (Stmt, error) {
 	switch p.peek().Type {
 	case TkIf:
-		return p.ifStmt(indent)
+		return p.ifStmt()
 	case TkWhile:
-		return p.whileLoop(indent)
+		return p.whileLoop()
 	case TkFor:
-		return p.forLoop(indent)
+		return p.forLoop()
 	}
 
 	if p.peekNext().Type == TkOpenParen {
@@ -163,7 +163,7 @@ func (p *parser) assignment() (Stmt, error) {
 	}, nil
 }
 
-func (p *parser) ifStmt(indent int) (Stmt, error) {
+func (p *parser) ifStmt() (Stmt, error) {
 	if !p.match(TkIf) {
 		return nil, p.newError("Expected 'if' keyword.")
 	}
@@ -204,19 +204,38 @@ func (p *parser) ifStmt(indent int) (Stmt, error) {
 	}, nil
 }
 
-func (p *parser) whileLoop(indent int) (Stmt, error) {
+func (p *parser) whileLoop() (Stmt, error) {
 	if !p.match(TkWhile) {
 		return nil, p.newError("Expected 'while' keyword.")
 	}
 	keyword := p.previous()
 
-	condition, err := p.expression()
-	if err != nil {
-		return nil, err
+	var condition Expr
+	var err error
+	if p.peek().Type != TkColon {
+		condition, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+		// invert 'while' to 'until'
+		if c, ok := condition.(*ExprUnary); ok && c.Operator.Type == TkBang {
+			condition = c.Right
+		} else {
+			condition = &ExprUnary{
+				Operator: Token{
+					Type:   TkBang,
+					Lexeme: "!",
+					Line:   keyword.Line,
+					Column: keyword.Column,
+					Indent: keyword.Indent,
+				},
+				Right: condition,
+			}
+		}
 	}
 
 	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' after while condition.")
+		return nil, p.newError("Expected ':' at the end of the while statement.")
 	}
 
 	if !p.match(TkNewLine) {
@@ -232,19 +251,23 @@ func (p *parser) whileLoop(indent int) (Stmt, error) {
 	}, nil
 }
 
-func (p *parser) forLoop(indent int) (Stmt, error) {
+func (p *parser) forLoop() (Stmt, error) {
 	if !p.match(TkFor) {
 		return nil, p.newError("Expected 'for' keyword.")
 	}
 	keyword := p.previous()
 
-	condition, err := p.expression()
-	if err != nil {
-		return nil, err
+	var condition Expr
+	var err error
+	if p.peek().Type != TkColon {
+		condition, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' after for condition.")
+		return nil, p.newError("Expected ':' at the end of the for statement.")
 	}
 
 	if !p.match(TkNewLine) {

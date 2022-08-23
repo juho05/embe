@@ -30,10 +30,13 @@ const (
 
 // Control
 const (
-	If          BlockType = "control_if"
-	IfElse      BlockType = "control_if_else"
-	Wait        BlockType = "control_wait"
-	RepeatUntil BlockType = "control_repeat_until"
+	If            BlockType = "control_if"
+	IfElse        BlockType = "control_if_else"
+	Wait          BlockType = "control_wait"
+	WaitUntil     BlockType = "control_wait_until"
+	Repeat        BlockType = "control_repeat"
+	RepeatUntil   BlockType = "control_repeat_until"
+	RepeatForever BlockType = "control_forever"
 )
 
 // Operators

@@ -15,9 +15,7 @@ func funcAudioStop(g *generator, stmt *parser.StmtFuncCall, parent string) (*blo
 		return nil, g.newError("The 'audio.stop' function does not take any arguments.", stmt.Name)
 	}
 	block := blocks.NewBlock(blocks.StopAudio, parent)
-	if parent != "" {
-		g.blocks[parent].Next = &block.ID
-	}
+	g.blocks[parent].Next = &block.ID
 	return block, nil
 }
 
@@ -26,9 +24,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall, parent string)
 		return nil, g.newError("The 'audio.playBuzzer' function takes 1 argument: audio.playBuzzer(frequency: number)", stmt.Name)
 	}
 	block := blocks.NewBlock(blocks.PlayBuzzerTone, parent)
-	if parent != "" {
-		g.blocks[parent].Next = &block.ID
-	}
+	g.blocks[parent].Next = &block.ID
 
 	number, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
 	if err != nil {

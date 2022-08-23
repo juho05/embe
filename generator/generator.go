@@ -47,6 +47,7 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 		if err != nil {
 			return err
 		}
+		g.parent = g.blockID
 	}
 	return nil
 }
@@ -61,7 +62,6 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		return err
 	}
 	g.blocks[block.ID] = block
-	g.parent = block.ID
 	g.blockID = block.ID
 	return nil
 }
@@ -90,27 +90,65 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	}
 	block.Inputs["CONDITION"] = []any{2, g.blockID}
 
-	g.parent = ""
 	for i, s := range stmt.Body {
 		s.Accept(g)
 		if i == 0 {
 			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
 		}
+		g.parent = g.blockID
 	}
 
-	g.parent = ""
 	for i, s := range stmt.ElseBody {
 		s.Accept(g)
 		if i == 0 {
 			block.Inputs["SUBSTACK2"] = []any{2, g.blockID}
 		}
+		g.parent = g.blockID
 	}
+
+	block.Next = nil
 	g.blockID = block.ID
-	g.parent = block.ID
 	return nil
 }
 
 func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
+	var block *blocks.Block
+	var err error
+	parent := g.parent
+	if stmt.Condition == nil {
+		block = blocks.NewBlock(blocks.RepeatForever, parent)
+	} else if stmt.Keyword.Type == parser.TkWhile {
+		block = blocks.NewBlock(blocks.RepeatUntil, parent)
+		g.blocks[block.ID] = block
+		g.parent = block.ID
+		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTBool)
+		if err != nil {
+			return err
+		}
+	} else if stmt.Keyword.Type == parser.TkFor {
+		block = blocks.NewBlock(blocks.Repeat, parent)
+		g.blocks[block.ID] = block
+		g.parent = block.ID
+		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTNumber)
+		if err != nil {
+			return err
+		}
+	} else {
+		return g.newError("Unknown loop type.", stmt.Keyword)
+	}
+	g.blocks[parent].Next = &block.ID
+	g.blocks[block.ID] = block
+	g.parent = block.ID
+	for i, s := range stmt.Body {
+		s.Accept(g)
+		if i == 0 {
+			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
+		}
+		g.parent = g.blockID
+	}
+	block.Next = nil
+
+	g.blockID = block.ID
 	return nil
 }
 
@@ -140,6 +178,7 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 	}
 	block.Inputs["OPERAND"] = input
 
+	block.Next = nil
 	g.blockID = block.ID
 	return nil
 }
@@ -196,6 +235,7 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	}
 	block.Inputs[operandName+"2"] = right
 
+	block.Next = nil
 	g.dataType = retDataType
 	g.blockID = block.ID
 	return nil
@@ -216,7 +256,10 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 		if g.dataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
-		return []any{3, g.blockID, []any{4, "0"}}, nil
+		if dataType == parser.DTBool {
+			return []any{2, g.blockID}, nil
+		}
+		return []any{3, g.blockID, []any{4, ""}}, nil
 	}
 }
 

@@ -37,6 +37,8 @@ const (
 	Repeat        BlockType = "control_repeat"
 	RepeatUntil   BlockType = "control_repeat_until"
 	RepeatForever BlockType = "control_forever"
+	Stop          BlockType = "control_stop"
+	Restart       BlockType = "cyberpi.cyberpi_restart"
 )
 
 // Operators

@@ -126,17 +126,19 @@ func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
 
 func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 	var block *blocks.Block
+	var dataType parser.DataType
 	switch expr.Operator.Type {
 	case parser.TkBang:
+		dataType = parser.DTBool
 		block = blocks.NewBlock(blocks.OpNot, g.parent)
 	}
 	g.blocks[block.ID] = block
 	g.parent = block.ID
-	err := expr.Right.Accept(g)
+	input, err := g.value(g.parent, expr.Right, dataType)
 	if err != nil {
 		return err
 	}
-	block.Inputs["OPERAND"] = []any{2, g.blockID}
+	block.Inputs["OPERAND"] = input
 
 	g.blockID = block.ID
 	return nil
@@ -170,13 +172,13 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	}
 	g.blocks[block.ID] = block
 
-	left, err := g.parameter(block.ID, expr.Left, operandDataType)
+	left, err := g.value(block.ID, expr.Left, operandDataType)
 	if err != nil {
 		return err
 	}
 	block.Inputs["OPERAND1"] = left
 
-	right, err := g.parameter(block.ID, expr.Right, operandDataType)
+	right, err := g.value(block.ID, expr.Right, operandDataType)
 	if err != nil {
 		return err
 	}
@@ -187,10 +189,10 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	return nil
 }
 
-func (g *generator) parameter(parent string, expr parser.Expr, dataType parser.DataType) ([]any, error) {
+func (g *generator) value(parent string, expr parser.Expr, dataType parser.DataType) ([]any, error) {
 	if literal, ok := expr.(*parser.ExprLiteral); ok {
 		if literal.Token.DataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The parameter must be of type %s.", dataType), literal.Token)
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		return []any{1, []any{4, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
@@ -200,7 +202,7 @@ func (g *generator) parameter(parent string, expr parser.Expr, dataType parser.D
 			return nil, err
 		}
 		if g.dataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The parameter must be of type %s.", dataType), literal.Token)
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		return []any{3, g.blockID, []any{4, "0"}}, nil
 	}

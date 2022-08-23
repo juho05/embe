@@ -17,6 +17,6 @@ comparison -> term (('>'|'>='|'<'|'<=') term)*
 term -> factor (('+'|'-') factor)*
 factor -> unary ('*'|'/') unary)*
 unary -> ('-'|'!') unary | primary
-primary->identifier|LITERAL
+primary->identifier | LITERAL | '(' expression ')'
 
 identifier-> IDENTIFIER ('.' IDENTIFIER)*

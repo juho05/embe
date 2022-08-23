@@ -465,6 +465,17 @@ func (p *parser) primary() (Expr, error) {
 		}, nil
 	}
 
+	if p.match(TkOpenParen) {
+		expr, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		if !p.match(TkCloseParen) {
+			return nil, p.newError("Expected ')' after expression.")
+		}
+		return expr, nil
+	}
+
 	return nil, p.newError(fmt.Sprintf("Unexpected token '%s'", p.peek().Lexeme))
 }
 

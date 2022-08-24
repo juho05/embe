@@ -36,6 +36,13 @@ const (
 	PlayRecordUntilDone BlockType = "cyberpi.cyberpi_play_record_until"
 )
 
+// LED
+const (
+	PlayLEDAnimation BlockType = "cyberpi.cyberpi_play_led_animation_until"
+	LEDDisplay       BlockType = "cyberpi.cyberpi_show_led"
+	LEDMove          BlockType = "cyberpi.cyberpi_move_led"
+)
+
 // Control
 const (
 	If            BlockType = "control_if"

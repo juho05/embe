@@ -21,6 +21,10 @@ var funcCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall, parent 
 	"audio.recording.stop":  funcAudioRecordingStop,
 	"audio.recording.play":  funcAudioRecordingPlay,
 
+	"led.display":       funcLEDDisplay,
+	"led.move":          funcLEDMove,
+	"led.playAnimation": funcLEDPlayAnimation,
+
 	"time.sleep": funcTimeSleep,
 
 	"mbot.restart": funcMBotRestart,
@@ -235,6 +239,70 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall, parent stri
 		if untilDone.(bool) {
 			block.Type = blocks.PlayRecordUntilDone
 		}
+	}
+
+	return block, nil
+}
+
+func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'led.playAnimation' function takes 1 argument: led.playAnimation(name: string)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.PlayLEDAnimation, parent)
+	g.blocks[parent].Next = &block.ID
+
+	name, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	names := []string{"rainbow", "spindrift", "meteor_blue", "meteor_green", "flash_red", "flash_orange", "firefly"}
+	if !slices.Contains(names, name.(string)) {
+		return nil, g.newError(fmt.Sprintf("Unknown animation name. Available options: %s", strings.Join(names, ", ")), stmt.Parameters[0].(*parser.ExprLiteral).Token)
+	}
+
+	block.Fields["LED_animation"] = []any{name.(string), nil}
+
+	return block, nil
+}
+
+func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 5 {
+		return nil, g.newError("The 'led.display' function takes 5 arguments: led.display(color1: string, color2: string, color3: string, color4: string, color5: string)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.LEDDisplay, parent)
+	g.blocks[parent].Next = &block.ID
+
+	names := make([]string, 5)
+	for i := range names {
+		n, err := g.literal(stmt.Name, stmt.Parameters[i], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+		colors := []string{"gray", "red", "orange", "yellow", "green", "cyan", "blue", "magenta"}
+		if index := slices.Index(colors, n.(string)); index >= 0 {
+			names[i] = strconv.Itoa(index)
+		} else {
+			return nil, g.newError(fmt.Sprintf("Unknown color name. Available options: %s", strings.Join(colors, ", ")), stmt.Parameters[i].(*parser.ExprLiteral).Token)
+		}
+	}
+
+	block.Fields["ledRing"] = []any{strings.Join(names, ""), nil}
+
+	return block, nil
+}
+
+func funcLEDMove(g *generator, stmt *parser.StmtFuncCall, parent string) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'led.move' function takes 1 argument: led.scroll(amount: number)", stmt.Name)
+	}
+	block := blocks.NewBlock(blocks.LEDMove, parent)
+	g.blocks[parent].Next = &block.ID
+
+	var err error
+	block.Inputs["led_number"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
 	}
 
 	return block, nil

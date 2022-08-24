@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type parser struct {
 	tokens  []Token
@@ -467,6 +470,12 @@ func (p *parser) unary() (Expr, error) {
 			return nil, err
 		}
 		if operator.Type == TkMinus {
+			if l, ok := right.(*ExprLiteral); ok && l.Token.DataType == DTNumber {
+				l.Token.Lexeme = "-" + strings.Repeat(" ", l.Token.Column-operator.Column-1) + l.Token.Lexeme
+				l.Token.Column -= l.Token.Column - operator.Column
+				l.Token.Literal = -l.Token.Literal.(float64)
+				return l, nil
+			}
 			return &ExprBinary{
 				Operator: Token{
 					Type:   TkMultiply,

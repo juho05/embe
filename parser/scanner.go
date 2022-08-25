@@ -10,6 +10,7 @@ import (
 
 var keywords = map[string]TokenType{
 	"if":    TkIf,
+	"elif":  TkElif,
 	"else":  TkElse,
 	"while": TkWhile,
 	"for":   TkFor,

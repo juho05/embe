@@ -187,7 +187,38 @@ func (p *parser) ifStmt() (Stmt, error) {
 
 	body := p.statements(keyword.Indent + 1)
 
-	var elseBody []Stmt
+	stmt := &StmtIf{
+		Keyword:   keyword,
+		Condition: condition,
+		Body:      body,
+	}
+
+	elifStmt := stmt
+	for p.match(TkElif) {
+		elifKeyword := p.previous()
+		elifCondition, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		if !p.match(TkColon) {
+			return nil, p.newError("Expected ':' after if condition.")
+		}
+
+		if !p.match(TkNewLine) {
+			return nil, p.newError("Expected '\\n' after ':'.")
+		}
+
+		elifBody := p.statements(elifKeyword.Indent + 1)
+		s := &StmtIf{
+			Keyword:   elifKeyword,
+			Condition: elifCondition,
+			Body:      elifBody,
+		}
+		elifStmt.ElseBody = []Stmt{s}
+		elifStmt = s
+	}
+
 	if p.match(TkElse) {
 		elseKeyword := p.previous()
 		if !p.match(TkColon) {
@@ -196,15 +227,10 @@ func (p *parser) ifStmt() (Stmt, error) {
 		if !p.match(TkNewLine) {
 			return nil, p.newError("Expected '\\n' after ':'.")
 		}
-		elseBody = p.statements(elseKeyword.Indent + 1)
+		elifStmt.ElseBody = p.statements(elseKeyword.Indent + 1)
 	}
 
-	return &StmtIf{
-		Keyword:   keyword,
-		Condition: condition,
-		Body:      body,
-		ElseBody:  elseBody,
-	}, nil
+	return stmt, nil
 }
 
 func (p *parser) whileLoop() (Stmt, error) {

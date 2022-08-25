@@ -36,6 +36,7 @@ const (
 	TkGreaterEqual
 
 	TkIf
+	TkElif
 	TkElse
 	TkWhile
 	TkFor

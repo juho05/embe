@@ -29,6 +29,8 @@ type generator struct {
 
 	blockID  string
 	dataType parser.DataType
+
+	noNext bool
 }
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
@@ -57,7 +59,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if !ok {
 		return g.newError("Unknown function.", stmt.Name)
 	}
-	block, err := fn(g, stmt, g.parent)
+	block, err := fn(g, stmt)
 	if err != nil {
 		return err
 	}
@@ -73,14 +75,13 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	var block *blocks.Block
 	if stmt.ElseBody == nil {
-		block = blocks.NewBlock(blocks.If, g.parent)
+		block = g.NewBlock(blocks.If, false)
 	} else {
-		block = blocks.NewBlock(blocks.IfElse, g.parent)
+		block = g.NewBlock(blocks.IfElse, false)
 	}
-	g.blocks[g.parent].Next = &block.ID
-	g.blocks[block.ID] = block
 	g.parent = block.ID
 
+	g.noNext = true
 	err := stmt.Condition.Accept(g)
 	if err != nil {
 		return err
@@ -90,6 +91,7 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	}
 	block.Inputs["CONDITION"] = []any{2, g.blockID}
 
+	g.noNext = true
 	for i, s := range stmt.Body {
 		s.Accept(g)
 		if i == 0 {
@@ -98,6 +100,7 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 		g.parent = g.blockID
 	}
 
+	g.noNext = true
 	for i, s := range stmt.ElseBody {
 		s.Accept(g)
 		if i == 0 {
@@ -105,8 +108,8 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 		}
 		g.parent = g.blockID
 	}
+	g.noNext = false
 
-	block.Next = nil
 	g.blockID = block.ID
 	return nil
 }
@@ -116,18 +119,16 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	var err error
 	parent := g.parent
 	if stmt.Condition == nil {
-		block = blocks.NewBlock(blocks.RepeatForever, parent)
+		block = g.NewBlock(blocks.RepeatForever, false)
 	} else if stmt.Keyword.Type == parser.TkWhile {
-		block = blocks.NewBlock(blocks.RepeatUntil, parent)
-		g.blocks[block.ID] = block
+		block = g.NewBlock(blocks.RepeatUntil, false)
 		g.parent = block.ID
 		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTBool)
 		if err != nil {
 			return err
 		}
 	} else if stmt.Keyword.Type == parser.TkFor {
-		block = blocks.NewBlock(blocks.Repeat, parent)
-		g.blocks[block.ID] = block
+		block = g.NewBlock(blocks.Repeat, false)
 		g.parent = block.ID
 		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTNumber)
 		if err != nil {
@@ -136,9 +137,8 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	} else {
 		return g.newError("Unknown loop type.", stmt.Keyword)
 	}
-	g.blocks[parent].Next = &block.ID
-	g.blocks[block.ID] = block
 	g.parent = block.ID
+	g.noNext = true
 	for i, s := range stmt.Body {
 		s.Accept(g)
 		if i == 0 {
@@ -146,13 +146,26 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 		}
 		g.parent = g.blockID
 	}
-	block.Next = nil
-
+	g.noNext = false
 	g.blockID = block.ID
 	return nil
 }
 
 func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
+	v, ok := variables[expr.Name.Lexeme]
+	if !ok {
+		// TODO: custom variables
+		return g.newError("Unknown identifier.", expr.Name)
+	}
+	block := g.NewBlock(v.blockType, false)
+	if v.fields != nil {
+		block.Fields = v.fields
+	}
+	if v.fn != nil {
+		v.fn(g, block)
+	}
+	g.dataType = v.dataType
+	g.blockID = block.ID
 	return nil
 }
 
@@ -168,7 +181,7 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 	switch expr.Operator.Type {
 	case parser.TkBang:
 		dataType = parser.DTBool
-		block = blocks.NewBlock(blocks.OpNot, g.parent)
+		block = g.NewBlock(blocks.OpNot, false)
 	}
 	g.blocks[block.ID] = block
 	g.parent = block.ID
@@ -190,19 +203,19 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	operandName := "OPERAND"
 	switch expr.Operator.Type {
 	case parser.TkLess:
-		block = blocks.NewBlock(blocks.OpLessThan, g.parent)
+		block = g.NewBlock(blocks.OpLessThan, false)
 		operandDataType = parser.DTNumber
 	case parser.TkGreater:
-		block = blocks.NewBlock(blocks.OpGreaterThan, g.parent)
+		block = g.NewBlock(blocks.OpGreaterThan, false)
 		operandDataType = parser.DTNumber
 	case parser.TkEqual:
-		block = blocks.NewBlock(blocks.OpEquals, g.parent)
+		block = g.NewBlock(blocks.OpEquals, false)
 		operandDataType = parser.DTNumber
 	case parser.TkAnd:
-		block = blocks.NewBlock(blocks.OpAnd, g.parent)
+		block = g.NewBlock(blocks.OpAnd, false)
 		operandDataType = parser.DTBool
 	case parser.TkOr:
-		block = blocks.NewBlock(blocks.OpOr, g.parent)
+		block = g.NewBlock(blocks.OpOr, false)
 		operandDataType = parser.DTBool
 	default:
 		retDataType = parser.DTNumber
@@ -210,13 +223,13 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 		operandName = "NUM"
 		switch expr.Operator.Type {
 		case parser.TkPlus:
-			block = blocks.NewBlock(blocks.OpAdd, g.parent)
+			block = g.NewBlock(blocks.OpAdd, false)
 		case parser.TkMinus:
-			block = blocks.NewBlock(blocks.OpSubtract, g.parent)
+			block = g.NewBlock(blocks.OpSubtract, false)
 		case parser.TkMultiply:
-			block = blocks.NewBlock(blocks.OpMultiply, g.parent)
+			block = g.NewBlock(blocks.OpMultiply, false)
 		case parser.TkDivide:
-			block = blocks.NewBlock(blocks.OpDivide, g.parent)
+			block = g.NewBlock(blocks.OpDivide, false)
 		default:
 			return g.newError("Unknown binary operator.", expr.Operator)
 		}
@@ -249,10 +262,12 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 		return []any{1, []any{4, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		g.parent = parent
+		g.noNext = true
 		err := expr.Accept(g)
 		if err != nil {
 			return nil, err
 		}
+		g.noNext = false
 		if g.dataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
@@ -271,6 +286,21 @@ func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parse
 		return literal.Token.Literal, nil
 	}
 	return nil, g.newError("Only literals are allowed in this location.", token)
+}
+
+func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Block {
+	var block *blocks.Block
+	if shadow {
+		block = blocks.NewShadowBlock(blockType, g.parent)
+	} else {
+		block = blocks.NewBlock(blockType, g.parent)
+	}
+	g.blocks[block.ID] = block
+	if !g.noNext {
+		g.blocks[g.parent].Next = &block.ID
+	}
+	g.noNext = false
+	return block
 }
 
 type GenerateError struct {

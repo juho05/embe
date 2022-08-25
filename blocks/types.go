@@ -12,11 +12,28 @@ const (
 	WhenSensorValueBiggerOrSmaller BlockType = "cyberpi.cyberpi_when_sensor_value_bigger_or_smaller_than"
 )
 
+// Sensors
+const (
+	DetectAttitude                BlockType = "cyberpi.cyberpi_detect_attitude"
+	BatteryLevelMacAddressAndSoOn BlockType = "cyberpi.cyberpi_battery_macaddress_blename_and_so_on"
+	Loudness                      BlockType = "cyberpi.cyberpi_loudness"
+	Brightness                    BlockType = "cyberpi.cyberpi_brightness"
+	UltrasonicDistance            BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_get_distance"
+	UltrasonicDistanceMenu        BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_get_distance_index_menu"
+	UltrasonicOutOfRange          BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range"
+	UltrasonicOutOfRangeMenu      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range_index_menu"
+
+	ButtonPress       BlockType = "cyberpi.cyberpi_button_press"
+	DirectionKeyPress BlockType = "cyberpi.cyberpi_direction_key_press"
+)
+
 // Audio
 const (
 	GetVolume BlockType = "cyberpi.cyberpi_get_volume"
 	SetVolume BlockType = "cyberpi.cyberpi_set_volume"
 	AddVolume BlockType = "cyberpi.cyberpi_add_volume"
+
+	GetSpeed BlockType = "cyberpi.cyberpi_get_audio_speed"
 
 	StopAudio                     BlockType = "cyberpi.cyberpi_stop_audio"
 	PlayBuzzerTone                BlockType = "cyberpi.cyberpi_play_buzzer_tone"

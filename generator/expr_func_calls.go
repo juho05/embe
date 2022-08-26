@@ -30,6 +30,23 @@ var exprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*b
 	"sensors.acceleration": exprFuncAcceleration,
 	"sensors.rotation":     exprFuncRotation,
 	"sensors.angleSpeed":   exprFuncAngleSpeed,
+
+	"math.random":     exprFuncMathRandom,
+	"math.round":      exprFuncMathRound,
+	"math.abs":        exprFuncMathOp("math.abs", "abs"),
+	"math.floor":      exprFuncMathOp("math.floor", "floor"),
+	"math.ceil":       exprFuncMathOp("math.ceil", "ceiling"),
+	"math.sqrt":       exprFuncMathOp("math.sqrt", "sqrt"),
+	"math.sin":        exprFuncMathOp("math.sin", "sin"),
+	"math.cos":        exprFuncMathOp("math.cos", "cos"),
+	"math.tan":        exprFuncMathOp("math.tan", "tan"),
+	"math.asin":       exprFuncMathOp("math.asin", "asin"),
+	"math.acos":       exprFuncMathOp("math.acos", "acos"),
+	"math.atan":       exprFuncMathOp("math.atan", "atan"),
+	"math.ln":         exprFuncMathOp("math.ln", "ln"),
+	"math.log":        exprFuncMathOp("math.log", "log"),
+	"math.ePowerOf":   exprFuncMathOp("math.ePowerOf", "e ^"),
+	"math.tenPowerOf": exprFuncMathOp("math.tenPowerOf", "10 ^"),
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
@@ -281,4 +298,58 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	block.Fields["axis"] = []any{axis.(string), nil}
 
 	return block, parser.DTNumber, nil
+}
+
+func exprFuncMathRound(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 1 {
+		return nil, parser.DTNumber, g.newError("The 'math.round' function takes 1 argument: math.round(n: number)", expr.Name)
+	}
+	block := g.NewBlock(blocks.OpRound, false)
+
+	var err error
+	block.Inputs["NUM"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+
+	return block, parser.DTNumber, nil
+}
+
+func exprFuncMathRandom(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 2 {
+		return nil, parser.DTNumber, g.newError("The 'math.random' function takes 2 arguments: math.random(from: number, to: number)", expr.Name)
+	}
+	block := g.NewBlock(blocks.OpRandom, false)
+
+	var err error
+	block.Inputs["FROM"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+
+	block.Inputs["TO"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+
+	return block, parser.DTNumber, nil
+}
+
+func exprFuncMathOp(name, operator string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+		if len(expr.Parameters) != 1 {
+			return nil, parser.DTNumber, g.newError(fmt.Sprintf("The '%s' function takes 1 argument: %s(n: number)", name, name), expr.Name)
+		}
+		block := g.NewBlock(blocks.MathOp, false)
+
+		block.Fields["OPERATOR"] = []any{operator, nil}
+
+		var err error
+		block.Inputs["NUM"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, parser.DTNumber, err
+		}
+
+		return block, parser.DTNumber, nil
+	}
 }

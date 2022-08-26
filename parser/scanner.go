@@ -92,6 +92,12 @@ func (s *scanner) scan() error {
 			} else {
 				s.addToken(TkDivide)
 			}
+		case '%':
+			if s.match('=') {
+				s.addToken(TkModulusAssign)
+			} else {
+				s.addToken(TkModulus)
+			}
 		case '=':
 			if s.match('=') {
 				s.addToken(TkEqual)

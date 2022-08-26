@@ -22,10 +22,12 @@ const (
 	TkMinus
 	TkMultiply
 	TkDivide
+	TkModulus
 	TkPlusAssign
 	TkMinusAssign
 	TkMultiplyAssign
 	TkDivideAssign
+	TkModulusAssign
 
 	TkAssign
 	TkEqual

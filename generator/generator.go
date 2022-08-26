@@ -251,6 +251,8 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			block = g.NewBlock(blocks.OpMultiply, false)
 		case parser.TkDivide:
 			block = g.NewBlock(blocks.OpDivide, false)
+		case parser.TkModulus:
+			block = g.NewBlock(blocks.OpMod, false)
 		default:
 			return g.newError("Unknown binary operator.", expr.Operator)
 		}
@@ -268,7 +270,6 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	}
 	block.Inputs[operandName+"2"] = right
 
-	block.Next = nil
 	g.dataType = retDataType
 	g.blockID = block.ID
 	return nil

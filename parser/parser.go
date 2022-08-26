@@ -96,7 +96,7 @@ func (p *parser) statement() (Stmt, error) {
 
 	if p.peekNext().Type == TkOpenParen {
 		return p.funcCall()
-	} else if p.peekNext().Type == TkAssign || p.peekNext().Type == TkPlusAssign || p.peekNext().Type == TkMinusAssign || p.peekNext().Type == TkMultiplyAssign || p.peekNext().Type == TkDivideAssign {
+	} else if p.peekNext().Type == TkAssign || p.peekNext().Type == TkPlusAssign || p.peekNext().Type == TkMinusAssign || p.peekNext().Type == TkMultiplyAssign || p.peekNext().Type == TkDivideAssign || p.peekNext().Type == TkModulusAssign {
 		return p.assignment()
 	}
 
@@ -145,7 +145,7 @@ func (p *parser) assignment() (Stmt, error) {
 	}
 	variable := p.previous()
 
-	if !p.match(TkAssign, TkPlusAssign, TkMinusAssign, TkMultiplyAssign, TkDivideAssign) {
+	if !p.match(TkAssign, TkPlusAssign, TkMinusAssign, TkMultiplyAssign, TkDivideAssign, TkModulusAssign) {
 		return nil, p.newError("Expected assignment operator after identifier.")
 	}
 	operator := p.previous()
@@ -472,7 +472,7 @@ func (p *parser) factor() (Expr, error) {
 		return nil, err
 	}
 
-	for p.match(TkMultiply, TkDivide) {
+	for p.match(TkMultiply, TkDivide, TkModulus) {
 		operator := p.previous()
 		right, err := p.unary()
 		if err != nil {

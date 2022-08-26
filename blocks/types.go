@@ -101,4 +101,9 @@ const (
 	OpSubtract BlockType = "operator_subtract"
 	OpMultiply BlockType = "operator_multiply"
 	OpDivide   BlockType = "operator_divide"
+	OpMod      BlockType = "operator_mod"
+
+	OpRound  BlockType = "operator_round"
+	OpRandom BlockType = "operator_random"
+	MathOp   BlockType = "operator_mathop"
 )

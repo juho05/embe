@@ -536,9 +536,33 @@ func (p *parser) unary() (Expr, error) {
 
 func (p *parser) primary() (Expr, error) {
 	if p.match(TkIdentifier) {
-		return &ExprIdentifier{
-			Name: p.previous(),
-		}, nil
+		name := p.previous()
+		if p.match(TkOpenParen) {
+			parameters := make([]Expr, 0, 1)
+			for p.peek().Type != TkCloseParen && p.peek().Type != TkEOF {
+				param, err := p.expression()
+				if err != nil {
+					return nil, err
+				}
+				parameters = append(parameters, param)
+				if !p.match(TkComma) {
+					break
+				}
+			}
+
+			if !p.match(TkCloseParen) {
+				return nil, p.newError("Expected ')' after parameter list.")
+			}
+
+			return &ExprFuncCall{
+				Name:       name,
+				Parameters: parameters,
+			}, nil
+		} else {
+			return &ExprIdentifier{
+				Name: name,
+			}, nil
+		}
 	}
 
 	if p.match(TkLiteral) {

@@ -17,6 +17,7 @@ comparison -> term (('>'|'>='|'<'|'<=') term)*
 term -> factor (('+'|'-') factor)*
 factor -> unary ('*'|'/') unary)*
 unary -> ('-'|'!') unary | primary
-primary->identifier | LITERAL | '(' expression ')'
+primary->identifier | LITERAL | '(' expression ')' | exprFuncCall
+exprFuncCall->identifier '(' ((expression) (',' (expression))*)? ')'
 
 identifier-> IDENTIFIER ('.' IDENTIFIER)*

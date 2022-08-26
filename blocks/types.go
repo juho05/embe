@@ -15,6 +15,7 @@ const (
 // Sensors
 const (
 	DetectAttitude                BlockType = "cyberpi.cyberpi_detect_attitude"
+	DetectAction                  BlockType = "cyberpi.cyberpi_detect_action"
 	BatteryLevelMacAddressAndSoOn BlockType = "cyberpi.cyberpi_battery_macaddress_blename_and_so_on"
 	Loudness                      BlockType = "cyberpi.cyberpi_loudness"
 	Brightness                    BlockType = "cyberpi.cyberpi_brightness"

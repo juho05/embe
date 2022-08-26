@@ -63,7 +63,6 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if err != nil {
 		return err
 	}
-	g.blocks[block.ID] = block
 	g.blockID = block.ID
 	return nil
 }
@@ -93,7 +92,10 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 
 	g.noNext = true
 	for i, s := range stmt.Body {
-		s.Accept(g)
+		err = s.Accept(g)
+		if err != nil {
+			return err
+		}
 		if i == 0 {
 			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
 		}
@@ -102,7 +104,10 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 
 	g.noNext = true
 	for i, s := range stmt.ElseBody {
-		s.Accept(g)
+		err = s.Accept(g)
+		if err != nil {
+			return err
+		}
 		if i == 0 {
 			block.Inputs["SUBSTACK2"] = []any{2, g.blockID}
 		}
@@ -140,7 +145,10 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	g.parent = block.ID
 	g.noNext = true
 	for i, s := range stmt.Body {
-		s.Accept(g)
+		err = s.Accept(g)
+		if err != nil {
+			return err
+		}
 		if i == 0 {
 			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
 		}
@@ -169,6 +177,20 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 	return nil
 }
 
+func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
+	fn, ok := exprFuncCalls[expr.Name.Lexeme]
+	if !ok {
+		return g.newError("Unknown function.", expr.Name)
+	}
+	block, dataType, err := fn(g, expr)
+	if err != nil {
+		return err
+	}
+	g.dataType = dataType
+	g.blockID = block.ID
+	return nil
+}
+
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
 	g.blockID = "literal"
 	g.dataType = expr.Token.DataType
@@ -183,7 +205,6 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 		dataType = parser.DTBool
 		block = g.NewBlock(blocks.OpNot, false)
 	}
-	g.blocks[block.ID] = block
 	g.parent = block.ID
 	input, err := g.value(g.parent, expr.Operator, expr.Right, dataType)
 	if err != nil {
@@ -234,7 +255,6 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			return g.newError("Unknown binary operator.", expr.Operator)
 		}
 	}
-	g.blocks[block.ID] = block
 
 	left, err := g.value(block.ID, expr.Operator, expr.Left, operandDataType)
 	if err != nil {

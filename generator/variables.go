@@ -16,17 +16,15 @@ var variables = map[string]Var{
 	"audio.volume": {blockType: blocks.GetVolume, dataType: parser.DTNumber},
 	"audio.speed":  {blockType: blocks.GetSpeed, dataType: parser.DTNumber},
 
-	"mbot.tiltedForward":  {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"tiltforward", nil}}},
-	"mbot.tiltedBackward": {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"tiltback", nil}}},
-	"mbot.tiltedLeft":     {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"tiltleft", nil}}},
-	"mbot.tiltedRight":    {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"tiltright", nil}}},
-	"mbot.faceUp":         {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"faceup", nil}}},
-	"mbot.faceDown":       {blockType: blocks.DetectAttitude, dataType: parser.DTBool, fields: map[string]any{"tilt": []any{"facedown", nil}}},
+	"led.brightness": {blockType: blocks.GetLEDBrightness, dataType: parser.DTNumber},
 
 	"mbot.battery": {blockType: blocks.BatteryLevelMacAddressAndSoOn, dataType: parser.DTNumber, fields: map[string]any{"fieldMenu_1": []any{"battery", nil}}},
 
-	"sensors.brightness": {blockType: blocks.Brightness, dataType: parser.DTNumber},
-	"sensors.loudness":   {blockType: blocks.Loudness, dataType: parser.DTNumber},
+	"sensors.wavingAngle":     {blockType: blocks.WaveAngle, dataType: parser.DTNumber},
+	"sensors.wavingSpeed":     {blockType: blocks.WaveSpeed, dataType: parser.DTNumber},
+	"sensors.shakingStrength": {blockType: blocks.ShakingStrength, dataType: parser.DTNumber},
+	"sensors.brightness":      {blockType: blocks.Brightness, dataType: parser.DTNumber},
+	"sensors.loudness":        {blockType: blocks.Loudness, dataType: parser.DTNumber},
 	"sensors.distance": {blockType: blocks.UltrasonicDistance, dataType: parser.DTNumber, fn: func(g *generator, parent *blocks.Block) {
 		g.noNext = true
 		block := g.NewBlock(blocks.UltrasonicDistanceMenu, true)

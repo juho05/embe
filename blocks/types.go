@@ -23,8 +23,21 @@ const (
 	UltrasonicOutOfRange          BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range"
 	UltrasonicOutOfRangeMenu      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range_index_menu"
 
-	ButtonPress       BlockType = "cyberpi.cyberpi_button_press"
-	DirectionKeyPress BlockType = "cyberpi.cyberpi_direction_key_press"
+	ShakingStrength BlockType = "cyberpi.cyberpi_shaked_value"
+
+	WaveAngle BlockType = "cyberpi.cyberpi_wave_angle"
+	WaveSpeed BlockType = "cyberpi.cyberpi_wave_speed"
+
+	TiltDegree BlockType = "cyberpi.cyberpi_tilt_degree"
+
+	Acceleration  BlockType = "cyberpi.cyberpi_axis_acceleration"
+	AngleSpeed    BlockType = "cyberpi.cyberpi_axis_angle_speed"
+	RotationAngle BlockType = "cyberpi.cyberpi_axis_rotation_angle"
+
+	ButtonPress            BlockType = "cyberpi.cyberpi_button_press"
+	ButtonPressCount       BlockType = "cyberpi.cyberpi_button_count"
+	DirectionKeyPress      BlockType = "cyberpi.cyberpi_direction_key_press"
+	DirectionKeyPressCount BlockType = "cyberpi.cyberpi_direction_key_count"
 )
 
 // Audio
@@ -58,6 +71,7 @@ const (
 	PlayLEDAnimation BlockType = "cyberpi.cyberpi_play_led_animation_until"
 	LEDDisplay       BlockType = "cyberpi.cyberpi_show_led"
 	LEDMove          BlockType = "cyberpi.cyberpi_move_led"
+	GetLEDBrightness BlockType = "cyberpi.cyberpi_get_led_brightness"
 )
 
 // Control

@@ -276,7 +276,7 @@ func (s *scanner) nextCharacter() (rune, error) {
 }
 
 func (s *scanner) peek() rune {
-	if s.currentColumn+1 == len(s.lines[s.line]) {
+	if s.currentColumn+1 >= len(s.lines[s.line]) {
 		return '\n'
 	}
 
@@ -284,7 +284,7 @@ func (s *scanner) peek() rune {
 }
 
 func (s *scanner) peekNext() rune {
-	if s.currentColumn+2 == len(s.lines[s.line]) {
+	if s.currentColumn+2 >= len(s.lines[s.line]) {
 		return '\n'
 	}
 

@@ -30,12 +30,63 @@ func (p *parser) parse() ([]Stmt, []error) {
 }
 
 func (p *parser) topLevel() Stmt {
-	stmt, err := p.event()
+	var err error
+	var stmt Stmt
+	switch p.peek().Type {
+	case TkVar:
+		stmt, err = p.varDecl()
+	case TkAt:
+		stmt, err = p.event()
+	default:
+		err = p.newError("Expected event or variable declaration.")
+	}
 	if err != nil {
 		p.errors = append(p.errors, err)
 		p.synchronize()
 	}
 	return stmt
+}
+
+func (p *parser) varDecl() (Stmt, error) {
+	if !p.match(TkVar) {
+		return nil, p.newError("Expected 'var' keyword.")
+	}
+
+	if !p.match(TkIdentifier) {
+		return nil, p.newError("Expected variable name.")
+	}
+	name := p.previous()
+	if strings.Contains(name.Lexeme, ".") {
+		return nil, p.newErrorAt("Variable names cannot contain a dot.", name)
+	}
+
+	var dataType DataType
+	if p.match(TkColon) {
+		if !p.match(TkType) {
+			return nil, p.newError("Expected type after ':'.")
+		}
+		dataType = types[p.previous().Lexeme]
+	}
+
+	var value Expr
+	var err error
+	if p.match(TkAssign) {
+		value, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_ = value
+
+	if !p.match(TkNewLine) {
+		return nil, p.newError("Expected '\n' after variable declaration.")
+	}
+
+	return &StmtVarDecl{
+		Name:        name,
+		DataType:    dataType,
+		Initializer: nil,
+	}, nil
 }
 
 func (p *parser) event() (Stmt, error) {

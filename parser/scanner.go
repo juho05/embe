@@ -14,6 +14,12 @@ var keywords = map[string]TokenType{
 	"else":  TkElse,
 	"while": TkWhile,
 	"for":   TkFor,
+	"var":   TkVar,
+}
+
+var types = map[string]DataType{
+	"number": DTNumber,
+	"string": DTString,
 }
 
 type scanner struct {
@@ -189,7 +195,9 @@ func (s *scanner) identifier() {
 	}
 
 	name := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
-	if k, ok := keywords[name]; ok {
+	if _, ok := types[name]; ok {
+		s.addToken(TkType)
+	} else if k, ok := keywords[name]; ok {
 		s.addToken(k)
 	} else if name == "true" || name == "false" {
 		v, err := strconv.ParseBool(name)

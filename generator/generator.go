@@ -3,14 +3,17 @@ package generator
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
 )
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, []error) {
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, []error) {
 	g := &generator{
-		blocks: make(map[string]*blocks.Block),
-		lines:  lines,
+		blocks:    make(map[string]*blocks.Block),
+		variables: make(map[string]*blocks.Variable),
+		lines:     lines,
 	}
 	errs := make([]error, 0)
 	for _, stmt := range statements {
@@ -19,7 +22,7 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*block
 			errs = append(errs, err)
 		}
 	}
-	return g.blocks, errs
+	return g.blocks, g.variables, errs
 }
 
 type generator struct {
@@ -30,7 +33,41 @@ type generator struct {
 	blockID  string
 	dataType parser.DataType
 
-	noNext bool
+	variableInitializer *blocks.Block
+	variables           map[string]*blocks.Variable
+
+	noNext       bool
+	variableName string
+}
+
+func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
+	if g.variableInitializer == nil {
+		fn := Events["start"]
+		block, _ := fn(g, &parser.StmtEvent{})
+		g.variableInitializer = block
+		g.blocks[block.ID] = block
+	}
+
+	parent := g.parent
+	defer func() { g.parent = parent }()
+	blockID := g.blockID
+	defer func() { g.blockID = blockID }()
+
+	if stmt.Initializer != nil {
+		return g.newError("Initializers are currently not supported.", stmt.Name)
+	}
+
+	if stmt.DataType == "" {
+		return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
+	}
+
+	g.variables[stmt.Name.Lexeme] = &blocks.Variable{
+		ID:       uuid.NewString(),
+		Name:     stmt.Name,
+		DataType: stmt.DataType,
+	}
+
+	return nil
 }
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
@@ -160,21 +197,26 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 }
 
 func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
-	v, ok := Variables[expr.Name.Lexeme]
-	if !ok {
-		// TODO: custom variables
-		return g.newError("Unknown identifier.", expr.Name)
+	if v, ok := Variables[expr.Name.Lexeme]; ok {
+		block := g.NewBlock(v.blockType, false)
+		if v.fields != nil {
+			block.Fields = v.fields
+		}
+		if v.fn != nil {
+			v.fn(g, block)
+		}
+		g.dataType = v.dataType
+		g.blockID = block.ID
+		return nil
 	}
-	block := g.NewBlock(v.blockType, false)
-	if v.fields != nil {
-		block.Fields = v.fields
+
+	if variable, ok := g.variables[expr.Name.Lexeme]; ok {
+		g.variableName = variable.Name.Lexeme
+		g.dataType = variable.DataType
+		return nil
 	}
-	if v.fn != nil {
-		v.fn(g, block)
-	}
-	g.dataType = v.dataType
-	g.blockID = block.ID
-	return nil
+
+	return g.newError("Unknown identifier.", expr.Name)
 }
 
 func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
@@ -285,6 +327,7 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 	} else {
 		g.parent = parent
 		g.noNext = true
+		defer func() { g.variableName = "" }()
 		err := expr.Accept(g)
 		if err != nil {
 			return nil, err
@@ -295,6 +338,10 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 		}
 		if dataType == parser.DTBool {
 			return []any{2, g.blockID}, nil
+		}
+		if g.variableName != "" {
+			variable := g.variables[g.variableName]
+			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{4, ""}}, nil
 		}
 		return []any{3, g.blockID, []any{4, ""}}, nil
 	}

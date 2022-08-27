@@ -41,9 +41,11 @@ const (
 	TkElse
 	TkWhile
 	TkFor
+	TkVar
 
 	TkIdentifier
 	TkLiteral
+	TkType
 
 	TkEOF
 )

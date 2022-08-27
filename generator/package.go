@@ -30,11 +30,16 @@ var wav []byte
 //go:embed assets/mscratch.json
 var mscratch []byte
 
-func Package(writer io.Writer, blocks map[string]*blocks.Block) error {
+func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[string]*blocks.Variable) error {
 	w := zip.NewWriter(writer)
 	defer w.Close()
 
-	err := createProject(w, blocks)
+	variableMap := make(map[string][]any, len(variables))
+	for _, v := range variables {
+		variableMap[v.ID] = []any{v.Name.Lexeme, 0}
+	}
+
+	err := createProject(w, blocks, variableMap)
 	if err != nil {
 		return err
 	}
@@ -57,7 +62,7 @@ func Package(writer io.Writer, blocks map[string]*blocks.Block) error {
 	return nil
 }
 
-func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block) error {
+func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block, variableMap map[string][]any) error {
 	w, err := zw.Create("project.json")
 	if err != nil {
 		return err
@@ -73,10 +78,17 @@ func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block) error {
 		return err
 	}
 
+	variableJSON, err := json.Marshal(variableMap)
+	if err != nil {
+		return err
+	}
+
 	tmpl.Execute(w, struct {
-		Blocks string
+		Blocks    string
+		Variables string
 	}{
-		Blocks: string(blockJSON),
+		Blocks:    string(blockJSON),
+		Variables: string(variableJSON),
 	})
 	return nil
 }

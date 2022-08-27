@@ -1,6 +1,9 @@
 program-> topLevel*
 topLevel->event
+
 event-> '@' IDENTIFIER LITERAL? ':' statement*
+
+variableDecl-> 'var' IDENTIFIER (':' TYPE) ('=' expression)?
 
 statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'
@@ -15,7 +18,7 @@ and -> equality ('&&' equality)*
 equality -> comparison (('=='|'!=') comparison)*
 comparison -> term (('>'|'>='|'<'|'<=') term)*
 term -> factor (('+'|'-') factor)*
-factor -> unary ('*'|'/') unary)*
+factor -> unary ('*'|'/'|'%') unary)*
 unary -> ('-'|'!') unary | primary
 primary->identifier | LITERAL | '(' expression ')' | exprFuncCall
 exprFuncCall->identifier '(' ((expression) (',' (expression))*)? ')'

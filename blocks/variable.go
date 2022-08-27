@@ -6,4 +6,5 @@ type Variable struct {
 	ID       string
 	Name     parser.Token
 	DataType parser.DataType
+	Declared bool
 }

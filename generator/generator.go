@@ -111,6 +111,8 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 	}
 
+	variable.Declared = true
+
 	return nil
 }
 
@@ -279,6 +281,9 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 	}
 
 	if variable, ok := g.variables[expr.Name.Lexeme]; ok {
+		if !variable.Declared {
+			return g.newError("Cannot use variable in its own initializer.", expr.Name)
+		}
 		g.variableName = variable.Name.Lexeme
 		g.dataType = variable.DataType
 		return nil

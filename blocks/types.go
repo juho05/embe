@@ -107,3 +107,9 @@ const (
 	OpRandom BlockType = "operator_random"
 	MathOp   BlockType = "operator_mathop"
 )
+
+// Variables
+const (
+	SetVariableTo    BlockType = "data_setvariableto"
+	ChangeVariableBy BlockType = "data_changevariableby"
+)

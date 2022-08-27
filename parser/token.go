@@ -18,14 +18,14 @@ const (
 	TkAnd
 
 	TkPlus
-	TkMinus
-	TkMultiply
-	TkDivide
-	TkModulus
 	TkPlusAssign
+	TkMinus
 	TkMinusAssign
+	TkMultiply
 	TkMultiplyAssign
+	TkDivide
 	TkDivideAssign
+	TkModulus
 	TkModulusAssign
 
 	TkAssign

@@ -63,20 +63,28 @@ func (p *parser) varDecl() (Stmt, error) {
 	var dataType DataType
 	if p.match(TkColon) {
 		if !p.match(TkType) {
+			if p.peek().Type == TkIdentifier && p.peek().Lexeme == "boolean" {
+				return nil, p.newError("Boolean variables are not supported.")
+			}
 			return nil, p.newError("Expected type after ':'.")
 		}
-		dataType = types[p.previous().Lexeme]
+		var ok bool
+		dataType, ok = types[p.previous().Lexeme]
+		if !ok {
+			return nil, p.newError("Unknown data type.")
+		}
 	}
 
 	var value Expr
 	var err error
+	var assignToken Token
 	if p.match(TkAssign) {
+		assignToken = p.previous()
 		value, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
 	}
-	_ = value
 
 	if !p.match(TkNewLine) {
 		return nil, p.newError("Expected '\n' after variable declaration.")
@@ -85,7 +93,8 @@ func (p *parser) varDecl() (Stmt, error) {
 	return &StmtVarDecl{
 		Name:        name,
 		DataType:    dataType,
-		Initializer: nil,
+		AssignToken: assignToken,
+		Value:       value,
 	}, nil
 }
 
@@ -113,6 +122,28 @@ func (p *parser) event() (Stmt, error) {
 	}
 
 	body := p.statements(1)
+	if name.Lexeme == "start" {
+		newBody := make([]Stmt, 0, len(body)+1)
+		newBody = append(newBody, &StmtFuncCall{
+			Name: Token{
+				Type:   TkIdentifier,
+				Lexeme: "time.sleep",
+				Line:   name.Line,
+			},
+			Parameters: []Expr{
+				&ExprLiteral{
+					Token: Token{
+						Type:     TkLiteral,
+						Lexeme:   "1",
+						Literal:  1,
+						DataType: DTNumber,
+						Line:     name.Line,
+					},
+				},
+			},
+		})
+		body = append(newBody, body...)
+	}
 
 	return &StmtEvent{
 		Name:      name,
@@ -210,6 +241,64 @@ func (p *parser) assignment() (Stmt, error) {
 		return nil, p.newError("Expected '\n' after statement.")
 	}
 
+	if operator.Type == TkMultiplyAssign || operator.Type == TkDivideAssign || operator.Type == TkModulusAssign {
+		assignOp := operator
+		assignOp.Type = TkAssign
+
+		binOp := operator
+		binOp.Type--
+
+		return &StmtAssignment{
+			Variable: variable,
+			Operator: assignOp,
+			Value: &ExprBinary{
+				Left: &ExprIdentifier{
+					Name: variable,
+				},
+				Operator: binOp,
+				Right:    value,
+			},
+		}, nil
+	}
+
+	if operator.Type == TkMinusAssign {
+		operator.Type = TkPlusAssign
+		if v, ok := value.(*ExprLiteral); ok && v.Token.DataType == DTNumber {
+			v.Token.Literal = -v.Token.Literal.(float64)
+			return &StmtAssignment{
+				Variable: variable,
+				Operator: operator,
+				Value:    v,
+			}, nil
+		} else {
+			return &StmtAssignment{
+				Variable: variable,
+				Operator: operator,
+				Value: &ExprBinary{
+					Operator: Token{
+						Type:   TkMultiply,
+						Lexeme: operator.Lexeme,
+						Line:   operator.Line,
+						Column: operator.Column,
+						Indent: operator.Indent,
+					},
+					Left: &ExprLiteral{
+						Token: Token{
+							Type:     TkLiteral,
+							Lexeme:   operator.Lexeme,
+							Line:     operator.Line,
+							Column:   operator.Column,
+							Indent:   operator.Indent,
+							DataType: DTNumber,
+							Literal:  -1,
+						},
+					},
+					Right: value,
+				},
+			}, nil
+		}
+	}
+
 	return &StmtAssignment{
 		Variable: variable,
 		Operator: operator,
@@ -304,7 +393,7 @@ func (p *parser) whileLoop() (Stmt, error) {
 			condition = &ExprUnary{
 				Operator: Token{
 					Type:   TkBang,
-					Lexeme: "!",
+					Lexeme: keyword.Lexeme,
 					Line:   keyword.Line,
 					Column: keyword.Column,
 					Indent: keyword.Indent,
@@ -447,15 +536,13 @@ func (p *parser) comparison() (Expr, error) {
 		}
 		if operator.Type == TkLessEqual || operator.Type == TkGreaterEqual {
 			withoutEqual := TkLess
-			withoutEqualLexeme := "<"
 			if operator.Type == TkGreaterEqual {
 				withoutEqual = TkGreater
-				withoutEqualLexeme = ">"
 			}
 			expr = &ExprBinary{
 				Operator: Token{
 					Type:   TkOr,
-					Lexeme: "||",
+					Lexeme: operator.Lexeme,
 					Line:   operator.Line,
 					Indent: operator.Indent,
 					Column: operator.Column,
@@ -463,7 +550,7 @@ func (p *parser) comparison() (Expr, error) {
 				Left: &ExprBinary{
 					Operator: Token{
 						Type:   withoutEqual,
-						Lexeme: withoutEqualLexeme,
+						Lexeme: operator.Lexeme,
 						Line:   operator.Line,
 						Indent: operator.Indent,
 						Column: operator.Column,
@@ -474,7 +561,7 @@ func (p *parser) comparison() (Expr, error) {
 				Right: &ExprBinary{
 					Operator: Token{
 						Type:   TkEqual,
-						Lexeme: "==",
+						Lexeme: operator.Lexeme,
 						Line:   operator.Line,
 						Indent: operator.Indent,
 						Column: operator.Column,
@@ -548,15 +635,13 @@ func (p *parser) unary() (Expr, error) {
 		}
 		if operator.Type == TkMinus {
 			if l, ok := right.(*ExprLiteral); ok && l.Token.DataType == DTNumber {
-				l.Token.Lexeme = "-" + strings.Repeat(" ", l.Token.Column-operator.Column-1) + l.Token.Lexeme
-				l.Token.Column -= l.Token.Column - operator.Column
 				l.Token.Literal = -l.Token.Literal.(float64)
 				return l, nil
 			}
 			return &ExprBinary{
 				Operator: Token{
 					Type:   TkMultiply,
-					Lexeme: "*",
+					Lexeme: operator.Lexeme,
 					Line:   operator.Line,
 					Column: operator.Column,
 					Indent: operator.Indent,
@@ -564,7 +649,7 @@ func (p *parser) unary() (Expr, error) {
 				Left: &ExprLiteral{
 					Token: Token{
 						Type:     TkLiteral,
-						Lexeme:   "-1",
+						Lexeme:   operator.Lexeme,
 						Line:     operator.Line,
 						Column:   operator.Column,
 						Indent:   operator.Indent,

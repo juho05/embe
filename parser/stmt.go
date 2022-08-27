@@ -16,7 +16,8 @@ type Stmt interface {
 type StmtVarDecl struct {
 	Name        Token
 	DataType    DataType
-	Initializer *StmtAssignment
+	AssignToken Token
+	Value       Expr
 }
 
 func (s *StmtVarDecl) Accept(visitor StmtVisitor) error {

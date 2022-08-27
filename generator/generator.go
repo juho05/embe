@@ -41,6 +41,10 @@ type generator struct {
 }
 
 func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
+	if v, ok := g.variables[stmt.Name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	}
+
 	if g.variableInitializer == nil {
 		fn := Events["start"]
 		block, _ := fn(g, &parser.StmtEvent{})
@@ -48,23 +52,63 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		g.blocks[block.ID] = block
 	}
 
-	parent := g.parent
-	defer func() { g.parent = parent }()
-	blockID := g.blockID
-	defer func() { g.blockID = blockID }()
-
-	if stmt.Initializer != nil {
-		return g.newError("Initializers are currently not supported.", stmt.Name)
-	}
-
-	if stmt.DataType == "" {
-		return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
-	}
-
-	g.variables[stmt.Name.Lexeme] = &blocks.Variable{
+	variable := &blocks.Variable{
 		ID:       uuid.NewString(),
 		Name:     stmt.Name,
 		DataType: stmt.DataType,
+	}
+
+	if variable.DataType != "" && stmt.Value == nil {
+		stmt.AssignToken = parser.Token{
+			Type: parser.TkAssign,
+			Line: stmt.Name.Line,
+		}
+		switch variable.DataType {
+		case parser.DTNumber:
+			stmt.Value = &parser.ExprLiteral{
+				Token: parser.Token{
+					Type:     parser.TkLiteral,
+					Lexeme:   "0",
+					Literal:  0,
+					Line:     stmt.Name.Line,
+					DataType: parser.DTNumber,
+				},
+			}
+		case parser.DTString:
+			stmt.Value = &parser.ExprLiteral{
+				Token: parser.Token{
+					Type:     parser.TkLiteral,
+					Lexeme:   "",
+					Literal:  "",
+					Line:     stmt.Name.Line,
+					DataType: parser.DTString,
+				},
+			}
+		default:
+			return g.newError("Unknown type.", stmt.Name)
+		}
+	}
+
+	g.variables[stmt.Name.Lexeme] = variable
+	if stmt.Value != nil {
+		g.parent = g.variableInitializer.ID
+		assign := &parser.StmtAssignment{
+			Variable: stmt.Name,
+			Operator: stmt.AssignToken,
+			Value:    stmt.Value,
+		}
+		err := assign.Accept(g)
+		if err != nil {
+			delete(g.variables, stmt.Name.Lexeme)
+			return err
+		}
+		variable.DataType = g.dataType
+		g.variableInitializer = g.blocks[g.blockID]
+	}
+
+	if variable.DataType == "" {
+		delete(g.variables, stmt.Name.Lexeme)
+		return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 	}
 
 	return nil
@@ -105,6 +149,30 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 }
 
 func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
+	variable, ok := g.variables[stmt.Variable.Lexeme]
+	if !ok {
+		return g.newError("Unknown variable.", stmt.Variable)
+	}
+	block := g.NewBlock(blocks.ChangeVariableBy, false)
+
+	value, err := g.value(block.ID, stmt.Operator, stmt.Value, variable.DataType)
+	if err != nil {
+		return err
+	}
+
+	if stmt.Operator.Type == parser.TkAssign {
+		block.Type = blocks.SetVariableTo
+		index := 2
+		if value[0].(int) == 1 {
+			index = 1
+		}
+		value[index].([]any)[0] = 10
+	}
+
+	block.Inputs["VALUE"] = value
+	block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
+
+	g.blockID = block.ID
 	return nil
 }
 
@@ -317,12 +385,13 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 
 func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
 	if literal, ok := expr.(*parser.ExprLiteral); ok {
-		if literal.Token.DataType != dataType {
+		if dataType != "" && literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		if literal.Token.DataType == parser.DTBool {
 			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
 		}
+		g.dataType = literal.Token.DataType
 		return []any{1, []any{4, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		g.parent = parent
@@ -333,10 +402,10 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 			return nil, err
 		}
 		g.noNext = false
-		if g.dataType != dataType {
+		if dataType != "" && g.dataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
-		if dataType == parser.DTBool {
+		if g.dataType == parser.DTBool {
 			return []any{2, g.blockID}, nil
 		}
 		if g.variableName != "" {

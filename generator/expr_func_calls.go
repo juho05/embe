@@ -10,7 +10,7 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var exprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error){
+var ExprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error){
 	"mbot.isButtonPressed":   exprFuncIsButtonPressed,
 	"mbot.buttonPressCount":  exprFuncButtonPressCount,
 	"mbot.isJoystickPulled":  exprFuncIsJoystickPulled,

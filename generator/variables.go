@@ -12,7 +12,7 @@ type Var struct {
 	fn        func(g *generator, parent *blocks.Block)
 }
 
-var variables = map[string]Var{
+var Variables = map[string]Var{
 	"audio.volume": {blockType: blocks.GetVolume, dataType: parser.DTNumber},
 	"audio.speed":  {blockType: blocks.GetSpeed, dataType: parser.DTNumber},
 

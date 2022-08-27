@@ -11,7 +11,7 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var funcCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error){
+var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error){
 	"audio.stop":            funcAudioStop,
 	"audio.playBuzzer":      funcAudioPlayBuzzer,
 	"audio.playNote":        funcAudioPlayNote,

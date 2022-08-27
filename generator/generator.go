@@ -34,7 +34,7 @@ type generator struct {
 }
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
-	fn, ok := events[stmt.Name.Lexeme]
+	fn, ok := Events[stmt.Name.Lexeme]
 	if !ok {
 		return g.newError("Unknown event.", stmt.Name)
 	}
@@ -55,7 +55,7 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 }
 
 func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
-	fn, ok := funcCalls[stmt.Name.Lexeme]
+	fn, ok := FuncCalls[stmt.Name.Lexeme]
 	if !ok {
 		return g.newError("Unknown function.", stmt.Name)
 	}
@@ -160,7 +160,7 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 }
 
 func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
-	v, ok := variables[expr.Name.Lexeme]
+	v, ok := Variables[expr.Name.Lexeme]
 	if !ok {
 		// TODO: custom variables
 		return g.newError("Unknown identifier.", expr.Name)
@@ -178,7 +178,7 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 }
 
 func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
-	fn, ok := exprFuncCalls[expr.Name.Lexeme]
+	fn, ok := ExprFuncCalls[expr.Name.Lexeme]
 	if !ok {
 		return g.newError("Unknown function.", expr.Name)
 	}

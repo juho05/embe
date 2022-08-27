@@ -9,7 +9,7 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){
+var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){
 	"start":    eventStart,
 	"button":   eventButton,
 	"joystick": eventDirectionKey,

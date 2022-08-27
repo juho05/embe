@@ -192,9 +192,7 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 }
 
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
-	g.blockID = "literal"
-	g.dataType = expr.Token.DataType
-	return nil
+	return g.newError("Literals are not allowed in this context.", expr.Token)
 }
 
 func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
@@ -280,6 +278,9 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 		if literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
+		if literal.Token.DataType == parser.DTBool {
+			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
+		}
 		return []any{1, []any{4, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		g.parent = parent
@@ -306,7 +307,7 @@ func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parse
 		}
 		return literal.Token.Literal, nil
 	}
-	return nil, g.newError("Only literals are allowed in this location.", token)
+	return nil, g.newError("Only literals are allowed in this context.", token)
 }
 
 func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Block {

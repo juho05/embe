@@ -57,8 +57,6 @@ func (s *scanner) scan() error {
 			s.addToken(TkColon)
 		case '.':
 			s.addToken(TkDot)
-		case ';':
-			s.addToken(TkSemicolon)
 		case ',':
 			s.addToken(TkComma)
 		case '+':

@@ -11,7 +11,6 @@ const (
 	TkCloseParen
 	TkColon
 	TkDot
-	TkSemicolon
 	TkComma
 
 	TkBang

@@ -151,28 +151,43 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 }
 
 func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
-	variable, ok := g.variables[stmt.Variable.Lexeme]
-	if !ok {
-		return g.newError("Unknown variable.", stmt.Variable)
-	}
-	block := g.NewBlock(blocks.ChangeVariableBy, false)
-
-	value, err := g.value(block.ID, stmt.Operator, stmt.Value, variable.DataType)
-	if err != nil {
-		return err
-	}
-
-	if stmt.Operator.Type == parser.TkAssign {
-		block.Type = blocks.SetVariableTo
-		index := 2
-		if value[0].(int) == 1 {
-			index = 1
+	var block *blocks.Block
+	if assignment, ok := Assignments[stmt.Variable.Lexeme]; ok {
+		blockType := assignment.AssignType
+		if stmt.Operator.Type == parser.TkPlusAssign {
+			blockType = assignment.IncreaseType
 		}
-		value[index].([]any)[0] = 10
-	}
 
-	block.Inputs["VALUE"] = value
-	block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
+		block = g.NewBlock(blockType, false)
+		value, err := g.value(block.ID, stmt.Operator, stmt.Value, assignment.DataType)
+		if err != nil {
+			return err
+		}
+		block.Inputs[assignment.InputName] = value
+	} else {
+		variable, ok := g.variables[stmt.Variable.Lexeme]
+		if !ok {
+			return g.newError("Unknown variable.", stmt.Variable)
+		}
+		block = g.NewBlock(blocks.VariableChangeBy, false)
+
+		value, err := g.value(block.ID, stmt.Operator, stmt.Value, variable.DataType)
+		if err != nil {
+			return err
+		}
+
+		if stmt.Operator.Type == parser.TkAssign {
+			block.Type = blocks.VariableSetTo
+			index := 2
+			if value[0].(int) == 1 {
+				index = 1
+			}
+			value[index].([]any)[0] = 10
+		}
+
+		block.Inputs["VALUE"] = value
+		block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
+	}
 
 	g.blockID = block.ID
 	return nil
@@ -181,9 +196,9 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	var block *blocks.Block
 	if stmt.ElseBody == nil {
-		block = g.NewBlock(blocks.If, false)
+		block = g.NewBlock(blocks.ControlIf, false)
 	} else {
-		block = g.NewBlock(blocks.IfElse, false)
+		block = g.NewBlock(blocks.ControlIfElse, false)
 	}
 	g.parent = block.ID
 
@@ -231,16 +246,16 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	var err error
 	parent := g.parent
 	if stmt.Condition == nil {
-		block = g.NewBlock(blocks.RepeatForever, false)
+		block = g.NewBlock(blocks.ControlRepeatForever, false)
 	} else if stmt.Keyword.Type == parser.TkWhile {
-		block = g.NewBlock(blocks.RepeatUntil, false)
+		block = g.NewBlock(blocks.ControlRepeatUntil, false)
 		g.parent = block.ID
 		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTBool)
 		if err != nil {
 			return err
 		}
 	} else if stmt.Keyword.Type == parser.TkFor {
-		block = g.NewBlock(blocks.Repeat, false)
+		block = g.NewBlock(blocks.ControlRepeat, false)
 		g.parent = block.ID
 		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTNumber)
 		if err != nil {

@@ -36,7 +36,7 @@ func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, erro
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'audio.stop' function does not take any arguments.", stmt.Name)
 	}
-	block := g.NewBlock(blocks.StopAudio, false)
+	block := g.NewBlock(blocks.AudioStop, false)
 	return block, nil
 }
 
@@ -44,7 +44,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
 		return nil, g.newError("The 'audio.playBuzzer' function takes 1-2 arguments: audio.playBuzzer(frequency: number, duration?: number)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayBuzzerTone, false)
+	block := g.NewBlock(blocks.AudioPlayBuzzerTone, false)
 
 	number, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
 	if err != nil {
@@ -52,7 +52,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	}
 
 	if len(stmt.Parameters) == 2 {
-		block.Type = blocks.PlayBuzzerToneWithTime
+		block.Type = blocks.AudioPlayBuzzerToneWithTime
 		block.Inputs["number_1"] = number
 		block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
 		if err != nil {
@@ -69,9 +69,9 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
 		return nil, g.newError("The 'audio.playClip' function takes 1-2 arguments: audio.playClip(name: string, untilDone?: boolean)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayClip, false)
+	block := g.NewBlock(blocks.AudioPlayClip, false)
 
-	menuBlock := blocks.NewShadowBlock(blocks.PlayClipFileNameMenu, block.ID)
+	menuBlock := blocks.NewShadowBlock(blocks.AudioPlayClipFileNameMenu, block.ID)
 	g.blocks[menuBlock.ID] = menuBlock
 	block.Inputs["file_name"] = []any{1, menuBlock.ID}
 	if len(stmt.Parameters) == 2 {
@@ -80,8 +80,8 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 			return nil, err
 		}
 		if untilDone.(bool) {
-			block.Type = blocks.PlayClipUntilDone
-			menuBlock.Type = blocks.PlayClipUntilDoneFileNameMenu
+			block.Type = blocks.AudioPlayClipUntilDone
+			menuBlock.Type = blocks.AudioPlayClipUntilDoneFileNameMenu
 		}
 	}
 
@@ -104,9 +104,9 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	if len(stmt.Parameters) != 2 {
 		return nil, g.newError("The 'audio.playInstrument' function takes 2 arguments: audio.playInstrument(name: string, duration: number)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayMusicInstrument, false)
+	block := g.NewBlock(blocks.AudioPlayMusicInstrument, false)
 
-	menuBlock := blocks.NewShadowBlock(blocks.PlayMusicInstrumentMenu, block.ID)
+	menuBlock := blocks.NewShadowBlock(blocks.AudioPlayMusicInstrumentMenu, block.ID)
 	g.blocks[menuBlock.ID] = menuBlock
 	block.Inputs["fieldMenu_1"] = []any{1, menuBlock.ID}
 
@@ -134,9 +134,9 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	if len(stmt.Parameters) != 2 && len(stmt.Parameters) != 3 {
 		return nil, g.newError("The 'audio.playNote' function takes 2-3 arguments: audio.playNote(note: number, duration: number) audio.playNote(name: string, octave: number, duration: number)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayNote, false)
+	block := g.NewBlock(blocks.AudioPlayNote, false)
 
-	noteBlock := blocks.NewShadowBlock(blocks.Note, block.ID)
+	noteBlock := blocks.NewShadowBlock(blocks.AudioNote, block.ID)
 	g.blocks[noteBlock.ID] = noteBlock
 
 	durationParameter := 1
@@ -205,7 +205,7 @@ func funcAudioRecordingStart(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'audio.record.start' function does not take any arguments.", stmt.Name)
 	}
-	block := g.NewBlock(blocks.RecordStart, false)
+	block := g.NewBlock(blocks.AudioRecordStart, false)
 	return block, nil
 }
 
@@ -213,7 +213,7 @@ func funcAudioRecordingStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'audio.record.stop' function does not take any arguments.", stmt.Name)
 	}
-	block := g.NewBlock(blocks.RecordStop, false)
+	block := g.NewBlock(blocks.AudioRecordStop, false)
 	return block, nil
 }
 
@@ -221,7 +221,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	if len(stmt.Parameters) > 1 {
 		return nil, g.newError("The 'audio.record.play' function takes 0-1 arguments: audio.record.play(untilDone?: boolean)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayRecord, false)
+	block := g.NewBlock(blocks.AudioRecordPlay, false)
 
 	if len(stmt.Parameters) == 1 {
 		untilDone, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTBool)
@@ -229,7 +229,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 			return nil, err
 		}
 		if untilDone.(bool) {
-			block.Type = blocks.PlayRecordUntilDone
+			block.Type = blocks.AudioRecordPlayUntilDone
 		}
 	}
 
@@ -240,7 +240,7 @@ func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	if len(stmt.Parameters) != 1 {
 		return nil, g.newError("The 'led.playAnimation' function takes 1 argument: led.playAnimation(name: string)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.PlayLEDAnimation, false)
+	block := g.NewBlock(blocks.LEDPlayAnimation, false)
 
 	name, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
 	if err != nil {
@@ -301,14 +301,14 @@ func funcTimeSleep(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, erro
 	if len(stmt.Parameters) != 1 {
 		return nil, g.newError("The 'time.sleep' function takes 1 argument: time.sleep(seconds: number) or time.sleep(continueCondition: boolean)", stmt.Name)
 	}
-	block := g.NewBlock(blocks.WaitUntil, false)
+	block := g.NewBlock(blocks.ControlWaitUntil, false)
 
 	condition, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTBool)
 	if err == nil {
 		block.Inputs["CONDITION"] = condition
 		return block, nil
 	} else {
-		block.Type = blocks.Wait
+		block.Type = blocks.ControlWait
 		seconds, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
 		if err != nil {
 			return nil, err
@@ -323,7 +323,7 @@ func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'mbot.restart' function does not take any arguments.", stmt.Name)
 	}
-	block := g.NewBlock(blocks.Restart, false)
+	block := g.NewBlock(blocks.ControlRestart, false)
 	return block, nil
 }
 
@@ -331,6 +331,6 @@ func funcProgramExit(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	if len(stmt.Parameters) != 0 {
 		return nil, g.newError("The 'program.exit' function does not take any arguments.", stmt.Name)
 	}
-	block := g.NewBlock(blocks.Stop, false)
+	block := g.NewBlock(blocks.ControlStop, false)
 	return block, nil
 }

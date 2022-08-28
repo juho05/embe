@@ -13,12 +13,12 @@ var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Bloc
 	"start":    eventStart,
 	"button":   eventButton,
 	"joystick": eventDirectionKey,
-	"tilt":     eventAction(blocks.WhenDetectAttitude, "tilt", "left", "right", "forward", "backward"),
-	"face":     eventAction(blocks.WhenDetectAttitude, "face", "up", "down"),
-	"wave":     eventAction(blocks.WhenDetectAction, "wave", "left", "right", "up", "down"),
-	"rotate":   eventAction(blocks.WhenDetectAction, "", "clockwise", "anticlockwise"),
-	"fall":     eventActionSingle(blocks.WhenDetectAction, "freefall"),
-	"shake":    eventActionSingle(blocks.WhenDetectAction, "shake"),
+	"tilt":     eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"),
+	"face":     eventAction(blocks.EventDetectAttitude, "face", "up", "down"),
+	"wave":     eventAction(blocks.EventDetectAction, "wave", "left", "right", "up", "down"),
+	"rotate":   eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"),
+	"fall":     eventActionSingle(blocks.EventDetectAction, "freefall"),
+	"shake":    eventActionSingle(blocks.EventDetectAction, "shake"),
 	"light":    eventSensor("light_sensor"),
 	"sound":    eventSensor("microphone"),
 	"shakeval": eventSensor("shake_val"),
@@ -29,7 +29,7 @@ func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	if err := assertNoEventParameter(g, stmt); err != nil {
 		return nil, err
 	}
-	return blocks.NewBlockTopLevel(blocks.WhenLaunch), nil
+	return blocks.NewBlockTopLevel(blocks.EventLaunch), nil
 }
 
 func eventButton(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
@@ -40,7 +40,7 @@ func eventButton(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	if param != "a" && param != "b" {
 		return nil, g.newError(`Unknown button. Available options: "a", "b".`, stmt.Parameter)
 	}
-	block := blocks.NewBlockTopLevel(blocks.WhenButtonPress)
+	block := blocks.NewBlockTopLevel(blocks.EventButtonPress)
 	block.Fields["fieldMenu_2"] = []any{param, nil}
 	return block, nil
 }
@@ -53,7 +53,7 @@ func eventDirectionKey(g *generator, stmt *parser.StmtEvent) (*blocks.Block, err
 	if param != "left" && param != "right" && param != "up" && param != "down" && param != "middle" {
 		return nil, g.newError(`Unknown button. Available options: "left", "right", "up", "down", "middle".`, stmt.Parameter)
 	}
-	block := blocks.NewBlockTopLevel(blocks.WhenDirectionKeyPress)
+	block := blocks.NewBlockTopLevel(blocks.EventDirectionKeyPress)
 	block.Fields["fieldMenu_2"] = []any{param, nil}
 	return block, nil
 }
@@ -117,7 +117,7 @@ func eventSensor(sensor string) func(g *generator, stmt *parser.StmtEvent) (*blo
 			return nil, g.newError(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
 		}
 
-		block := blocks.NewBlockTopLevel(blocks.WhenSensorValueBiggerOrSmaller)
+		block := blocks.NewBlockTopLevel(blocks.EventSensorValueBiggerOrSmaller)
 		block.Inputs["number_3"] = []any{1, []any{4, fmt.Sprintf("%v", num)}}
 		block.Fields["fieldMenu_2"] = []any{sensor, nil}
 

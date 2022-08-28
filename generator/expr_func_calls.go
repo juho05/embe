@@ -53,7 +53,7 @@ func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTBool, g.newError("The 'mbot.isButtonPressed' function takes 1 argument: mbot.isButtonPressed(button: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.ButtonPress, false)
+	block := g.NewBlock(blocks.SensorButtonPress, false)
 
 	btn, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -74,7 +74,7 @@ func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTNumber, g.newError("The 'mbot.buttonPressCount' function takes 1 argument: mbot.buttonPressCount(button: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.ButtonPressCount, false)
+	block := g.NewBlock(blocks.SensorButtonPressCount, false)
 
 	btn, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -95,7 +95,7 @@ func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTBool, g.newError("The 'mbot.isJoystickPulled' function takes 1 argument: mbot.isJoystickPulled(direction: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.DirectionKeyPress, false)
+	block := g.NewBlock(blocks.SensorDirectionKeyPress, false)
 
 	direction, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -119,7 +119,7 @@ func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTNumber, g.newError("The 'mbot.joystickPullCount' function takes 1 argument: mbot.joystickPullCount(direction: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.DirectionKeyPressCount, false)
+	block := g.NewBlock(blocks.SensorDirectionKeyPressCount, false)
 
 	direction, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -140,7 +140,7 @@ func exprFuncIsTilted(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTBool, g.newError("The 'sensors.isTilted' function takes 1 argument: sensors.isTilted(direction: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.DetectAttitude, false)
+	block := g.NewBlock(blocks.SensorDetectAttitude, false)
 
 	param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -165,7 +165,7 @@ func exprFuncIsFaceUp(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 	if len(expr.Parameters) > 0 {
 		return nil, parser.DTBool, g.newError("The 'sensors.isFaceUp' function takes no arguments.", expr.Name)
 	}
-	block := g.NewBlock(blocks.DetectAttitude, false)
+	block := g.NewBlock(blocks.SensorDetectAttitude, false)
 
 	block.Fields["tilt"] = []any{"faceup", nil}
 
@@ -177,7 +177,7 @@ func exprFuncDetectAction(name string, options []string, prefix string) func(g *
 		if len(expr.Parameters) != 1 {
 			return nil, parser.DTBool, g.newError(fmt.Sprintf("The '%s' function takes 1 argument: %s(direction: string)", name, name), expr.Name)
 		}
-		block := g.NewBlock(blocks.DetectAction, false)
+		block := g.NewBlock(blocks.SensorDetectAction, false)
 
 		param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 		if err != nil {
@@ -199,7 +199,7 @@ func exprFuncDetectSingleAction(name, actionName string) func(g *generator, expr
 		if len(expr.Parameters) > 0 {
 			return nil, parser.DTBool, g.newError(fmt.Sprintf("The '%s' function takes no arguments.", name), expr.Name)
 		}
-		block := g.NewBlock(blocks.DetectAction, false)
+		block := g.NewBlock(blocks.SensorDetectAction, false)
 
 		block.Fields["tilt"] = []any{actionName, nil}
 
@@ -212,7 +212,7 @@ func exprFuncTiltAngle(name string, options []string) func(g *generator, expr *p
 		if len(expr.Parameters) != 1 {
 			return nil, parser.DTNumber, g.newError(fmt.Sprintf("The '%s' function takes 1 argument: %s(direction: string)", name, name), expr.Name)
 		}
-		block := g.NewBlock(blocks.TiltDegree, false)
+		block := g.NewBlock(blocks.SensorTiltDegree, false)
 
 		param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 		if err != nil {
@@ -241,7 +241,7 @@ func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTNumber, g.newError("The 'sensors.acceleration' function takes 1 argument: sensors.acceleration(axis: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.Acceleration, false)
+	block := g.NewBlock(blocks.SensorAcceleration, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -262,7 +262,7 @@ func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTNumber, g.newError("The 'sensors.rotation' function takes 1 argument: sensors.rotation(axis: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.RotationAngle, false)
+	block := g.NewBlock(blocks.SensorRotationAngle, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -283,7 +283,7 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	if len(expr.Parameters) != 1 {
 		return nil, parser.DTNumber, g.newError("The 'sensors.angleSpeed' function takes 1 argument: sensors.angleSpeed(axis: string)", expr.Name)
 	}
-	block := g.NewBlock(blocks.AngleSpeed, false)
+	block := g.NewBlock(blocks.SensorAngleSpeed, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
 	if err != nil {
@@ -340,7 +340,7 @@ func exprFuncMathOp(name, operator string) func(g *generator, expr *parser.ExprF
 		if len(expr.Parameters) != 1 {
 			return nil, parser.DTNumber, g.newError(fmt.Sprintf("The '%s' function takes 1 argument: %s(n: number)", name, name), expr.Name)
 		}
-		block := g.NewBlock(blocks.MathOp, false)
+		block := g.NewBlock(blocks.OpMath, false)
 
 		block.Fields["OPERATOR"] = []any{operator, nil}
 

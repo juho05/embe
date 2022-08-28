@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/google/uuid"
 
@@ -403,7 +404,38 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	return nil
 }
 
+var matchAllRegex = regexp.MustCompile(".*")
+
 func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
+	return g.valueWithRegex(parent, token, expr, dataType, 4, matchAllRegex, "")
+}
+
+func (g *generator) valueWithValueInt(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int) ([]any, error) {
+	return g.valueWithRegex(parent, token, expr, dataType, valueInt, matchAllRegex, "")
+}
+
+func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate *regexp.Regexp, errorMessage string) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, dataType, valueInt, func(v any) bool {
+		return validate.MatchString(fmt.Sprintf("%v", v))
+	}, errorMessage)
+}
+
+func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, min any, max any) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, dataType, valueInt, func(v any) bool {
+		switch value := v.(type) {
+		case string:
+			return value >= min.(string) && value <= max.(string)
+		case float64:
+			if _, ok := min.(int); ok {
+				return int(value) >= min.(int) && int(value) <= max.(int)
+			}
+			return value >= min.(float64) && value <= max.(float64)
+		}
+		return false
+	}, fmt.Sprintf("The value must lie between %v and %v.", min, max))
+}
+
+func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate func(v any) bool, errorMessage string) ([]any, error) {
 	if literal, ok := expr.(*parser.ExprLiteral); ok {
 		if dataType != "" && literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
@@ -411,8 +443,11 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 		if literal.Token.DataType == parser.DTBool {
 			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
 		}
+		if !validate(literal.Token.Literal) {
+			return nil, g.newError(errorMessage, literal.Token)
+		}
 		g.dataType = literal.Token.DataType
-		return []any{1, []any{4, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
+		return []any{1, []any{valueInt, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		g.parent = parent
 		g.noNext = true
@@ -432,7 +467,54 @@ func (g *generator) value(parent string, token parser.Token, expr parser.Expr, d
 			variable := g.variables[g.variableName]
 			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{4, ""}}, nil
 		}
-		return []any{3, g.blockID, []any{4, ""}}, nil
+		return []any{3, g.blockID, []any{valueInt, ""}}, nil
+	}
+}
+
+func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v parser.Token) error) ([]any, error) {
+	gparent := g.parent
+	defer func() { g.parent = gparent }()
+	g.parent = parent
+	g.noNext = true
+	defer func() { g.variableName = ""; g.noNext = false }()
+	if literal, ok := expr.(*parser.ExprLiteral); ok {
+		if dataType != "" && literal.Token.DataType != dataType {
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
+		}
+		if literal.Token.DataType == parser.DTBool {
+			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
+		}
+
+		if err := validateValue(literal.Token); err != nil {
+			return nil, err
+		}
+
+		block := g.NewBlock(blockType, true)
+
+		value := fmt.Sprintf("%v", literal.Token.Literal)
+		if _, ok := literal.Token.Literal.(string); ok {
+			value = fmt.Sprintf("%s%s%s", surroundStringsWith, literal.Token.Literal, surroundStringsWith)
+		}
+
+		block.Fields[menuFieldKey] = []any{value, nil}
+		g.dataType = literal.Token.DataType
+		return []any{1, block.ID}, nil
+	} else {
+		block := g.NewBlock(blockType, true)
+		block.Fields[menuFieldKey] = []any{"", nil}
+		g.noNext = true
+		err := expr.Accept(g)
+		if err != nil {
+			return nil, err
+		}
+		if dataType != "" && g.dataType != dataType {
+			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
+		}
+		if g.variableName != "" {
+			variable := g.variables[g.variableName]
+			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, block.ID}, nil
+		}
+		return []any{3, g.blockID, block.ID}, nil
 	}
 }
 

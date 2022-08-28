@@ -71,12 +71,22 @@ const (
 
 // LED
 const (
-	LEDPlayAnimation BlockType = "cyberpi.cyberpi_play_led_animation_until"
-	LEDDisplay       BlockType = "cyberpi.cyberpi_show_led"
-	LEDMove          BlockType = "cyberpi.cyberpi_move_led"
-	LEDGetBrightness BlockType = "cyberpi.cyberpi_get_led_brightness"
-	LEDSetBrightness BlockType = "cyberpi.cyberpi_set_led_brightness"
-	LEDAddBrightness BlockType = "cyberpi.cyberpi_add_led_brightness"
+	LEDPlayAnimation                             BlockType = "cyberpi.cyberpi_play_led_animation_until"
+	LEDDisplay                                   BlockType = "cyberpi.cyberpi_show_led"
+	LEDDisplaySingleColor                        BlockType = "cyberpi.cyberpi_led_show_single_with_color_2"
+	LEDDisplaySingleColorFieldMenu               BlockType = "cyberpi.cyberpi_led_show_single_with_color_2_fieldMenu_1_menu"
+	LEDDisplaySingleColorWithTime                BlockType = "cyberpi.cyberpi_led_show_single_with_color_and_time_2"
+	LEDDisplaySingleColorWithTimeFieldMenu       BlockType = "cyberpi.cyberpi_led_show_single_with_color_and_time_2_fieldMenu_1_menu"
+	LEDDisplaySingleColorWithRGB                 BlockType = "cyberpi.cyberpi_led_show_single_with_rgb_2"
+	LEDDisplaySingleColorWithRGBFieldMenu        BlockType = "cyberpi.cyberpi_led_show_single_with_rgb_2_fieldMenu_1_menu"
+	LEDDisplaySingleColorWithRGBAndTime          BlockType = "cyberpi.cyberpi_led_show_single_with_rgb_and_time"
+	LEDDisplaySingleColorWithRGBAndTimeFieldMenu BlockType = "cyberpi.cyberpi_led_show_single_with_rgb_and_time_fieldMenu_1_menu"
+	LEDOff                                       BlockType = "cyberpi.cyberpi_led_off_2"
+	LEDOffFieldMenu                              BlockType = "cyberpi.cyberpi_led_off_2_fieldMenu_1_menu"
+	LEDMove                                      BlockType = "cyberpi.cyberpi_move_led"
+	LEDGetBrightness                             BlockType = "cyberpi.cyberpi_get_led_brightness"
+	LEDSetBrightness                             BlockType = "cyberpi.cyberpi_set_led_brightness"
+	LEDAddBrightness                             BlockType = "cyberpi.cyberpi_add_led_brightness"
 )
 
 // Control

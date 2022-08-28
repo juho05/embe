@@ -1,7 +1,9 @@
 package generator
 
 import (
+	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,9 +23,12 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"audio.recording.stop":  funcAudioRecordingStop,
 	"audio.recording.play":  funcAudioRecordingPlay,
 
-	"led.display":       funcLEDDisplay,
-	"led.move":          funcLEDMove,
-	"led.playAnimation": funcLEDPlayAnimation,
+	"led.display":         funcLEDDisplay,
+	"led.displayColor":    funcLEDDisplayColor,
+	"led.displayColorFor": funcLEDDisplayColorFor,
+	"led.deactivate":      funcLEDDeactivate,
+	"led.move":            funcLEDMove,
+	"led.playAnimation":   funcLEDPlayAnimation,
 
 	"time.sleep": funcTimeSleep,
 
@@ -71,9 +76,7 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	}
 	block := g.NewBlock(blocks.AudioPlayClip, false)
 
-	menuBlock := blocks.NewShadowBlock(blocks.AudioPlayClipFileNameMenu, block.ID)
-	g.blocks[menuBlock.ID] = menuBlock
-	block.Inputs["file_name"] = []any{1, menuBlock.ID}
+	menuBlockType := blocks.AudioPlayClipFileNameMenu
 	if len(stmt.Parameters) == 2 {
 		untilDone, err := g.literal(stmt.Name, stmt.Parameters[1], parser.DTBool)
 		if err != nil {
@@ -81,23 +84,19 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 		}
 		if untilDone.(bool) {
 			block.Type = blocks.AudioPlayClipUntilDone
-			menuBlock.Type = blocks.AudioPlayClipUntilDoneFileNameMenu
+			menuBlockType = blocks.AudioPlayClipUntilDoneFileNameMenu
 		}
 	}
 
-	fileName, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
-	if err != nil {
-		return nil, err
-	}
-
-	names := []string{"hi", "bye", "yeah", "wow", "laugh", "hum", "sad", "sigh", "annoyed", "angry", "surprised", "yummy", "curious", "embarrassed", "ready", "sprint", "sleepy", "meow", "start", "switch", "beeps", "buzzing", "jump", "level-up", "low-energy", "prompt", "right", "wrong", "ring", "score", "wake", "warning", "metal-clash", "glass-clink", "inflator", "running-water", "clockwork", "click", "current", "wood-hit", "iron", "drop", "bubble", "wave", "magic", "spitfire", "heartbeat"}
-	if !slices.Contains(names, fileName.(string)) {
-		return nil, g.newError(fmt.Sprintf("Unknown clip name. Available options: %s", strings.Join(names, ", ")), stmt.Parameters[0].(*parser.ExprLiteral).Token)
-	}
-
-	menuBlock.Fields["CYBERPI_PLAY_AUDIO_UNTIL_3_FILE_NAME"] = []any{fileName, nil}
-
-	return block, nil
+	var err error
+	block.Inputs["file_name"], err = g.fieldMenu(menuBlockType, "", "CYBERPI_PLAY_AUDIO_UNTIL_3_FILE_NAME", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v parser.Token) error {
+		names := []string{"hi", "bye", "yeah", "wow", "laugh", "hum", "sad", "sigh", "annoyed", "angry", "surprised", "yummy", "curious", "embarrassed", "ready", "sprint", "sleepy", "meow", "start", "switch", "beeps", "buzzing", "jump", "level-up", "low-energy", "prompt", "right", "wrong", "ring", "score", "wake", "warning", "metal-clash", "glass-clink", "inflator", "running-water", "clockwork", "click", "current", "wood-hit", "iron", "drop", "bubble", "wave", "magic", "spitfire", "heartbeat"}
+		if !slices.Contains(names, v.Literal.(string)) {
+			return g.newError(fmt.Sprintf("Unknown clip name. Available options: %s", strings.Join(names, ", ")), v)
+		}
+		return nil
+	})
+	return block, err
 }
 
 func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
@@ -106,21 +105,17 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	}
 	block := g.NewBlock(blocks.AudioPlayMusicInstrument, false)
 
-	menuBlock := blocks.NewShadowBlock(blocks.AudioPlayMusicInstrumentMenu, block.ID)
-	g.blocks[menuBlock.ID] = menuBlock
-	block.Inputs["fieldMenu_1"] = []any{1, menuBlock.ID}
-
-	instrumentName, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+	var err error
+	names := []string{"snare", "bass-drum", "side-stick", "crash-cymbal", "open-hi-hat", "closed-hi-hat", "tambourine", "hand-clap", "claves"}
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.AudioPlayMusicInstrumentMenu, "'", "CYBERPI_PLAY_MUSIC_WITH_NOTE_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v parser.Token) error {
+		if !slices.Contains(names, v.Literal.(string)) {
+			return g.newError(fmt.Sprintf("Unknown instrument name. Available options: %s", strings.Join(names, ", ")), v)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	names := []string{"snare", "bass-drum", "side-stick", "crash-cymbal", "open-hi-hat", "closed-hi-hat", "tambourine", "hand-clap", "claves"}
-	if !slices.Contains(names, instrumentName.(string)) {
-		return nil, g.newError(fmt.Sprintf("Unknown instrument name. Available options: %s", strings.Join(names, ", ")), stmt.Parameters[0].(*parser.ExprLiteral).Token)
-	}
-
-	menuBlock.Fields["CYBERPI_PLAY_MUSIC_WITH_NOTE_FIELDMENU_1"] = []any{fmt.Sprintf("'%v'", instrumentName), nil}
 
 	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
 	if err != nil {
@@ -280,6 +275,138 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	block.Fields["ledRing"] = []any{strings.Join(names, ""), nil}
 
 	return block, nil
+}
+
+var hexColorRegex = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
+
+func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) < 1 || len(stmt.Parameters) > 4 {
+		return nil, g.newError("The 'led.displayColor' function takes 1-4 arguments: led.displayColor(led?: number, color: string) or led.displayColor(led?: number, r: number, g: number, b: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.LEDDisplaySingleColor, false)
+	if len(stmt.Parameters) > 2 {
+		block.Type = blocks.LEDDisplaySingleColorWithRGB
+		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithRGBFieldMenu, stmt, 3, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := selectLED(g, block, blocks.LEDDisplaySingleColorFieldMenu, stmt, 1, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) < 2 || len(stmt.Parameters) > 5 {
+		return nil, g.newError("The 'led.displayColorFor' function takes 2-5 arguments: led.displayColorFor(led?: number, color: string, duration: number) or led.displayColor(led?: number, r: number, g: number, b: number, duration: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.LEDDisplaySingleColorWithTime, false)
+	if len(stmt.Parameters) > 3 {
+		block.Type = blocks.LEDDisplaySingleColorWithRGBAndTime
+		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithRGBAndTimeFieldMenu, stmt, 4, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_5"], err = g.value(block.ID, stmt.Name, stmt.Parameters[4], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithTime, stmt, 2, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcLEDDeactivate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 1 {
+		return nil, g.newError("The 'led.deactivate' function takes 0-1 arguments: led.deactivate(led?: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.LEDOff, false)
+
+	err := selectLED(g, block, blocks.LEDOffFieldMenu, stmt, 0, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+
+	return block, err
+}
+
+func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType, stmt *parser.StmtFuncCall, paramCountWithoutLED int, menuFieldKey string) error {
+	if len(stmt.Parameters) == paramCountWithoutLED {
+		stmt.Parameters = append([]parser.Expr{&parser.ExprLiteral{
+			Token: parser.Token{
+				Type:     parser.TkLiteral,
+				Literal:  "all",
+				DataType: parser.DTString,
+			},
+		}}, stmt.Parameters...)
+	}
+
+	errWrongType := errors.New("wrong-type")
+	var err error
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], "", func(v parser.Token) error {
+		if str, ok := v.Literal.(string); !ok {
+			return errWrongType
+		} else {
+			if str != "all" {
+				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", v)
+			}
+		}
+		return nil
+	})
+	if err == errWrongType {
+		block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
+			nr := int(v.Literal.(float64))
+			if nr != 1 && nr != 2 && nr != 3 && nr != 4 && nr != 5 {
+				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", v)
+			}
+			return nil
+		})
+	}
+	return err
 }
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

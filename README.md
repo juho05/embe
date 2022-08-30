@@ -2,6 +2,28 @@
 
 Embe is a programming language that compiles to [mBlock](https://makeblock.com) Scratch code.
 
+## Installation
+
+[Build](#building) the `embe` binary and place it somewhere in your PATH.
+
+## Editor support
+
+- LSP: [embe-ls](https://github.com/Bananenpro/embe-ls)
+- VS Code: [vscode-embe](https://github.com/Bananenpro/vscode-embe)
+- Vim: [vim-embe](https://github.com/Bananenpro/vim-embe)
+
+## Building
+
+### Prerequisites
+
+- [Go](https://go.dev) 1.19+
+
+```
+git clone https://github.com/Bananenpro/embe
+cd embe
+go build
+```
+
 ## License
 
 Copyright (c) 2022 Julian Hofmann

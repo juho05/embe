@@ -144,6 +144,14 @@ const (
 	OpMath   BlockType = "operator_mathop"
 )
 
+// Strings
+const (
+	OpJoin     BlockType = "operator_join"
+	OpLetterOf BlockType = "operator_letter_of"
+	OpContains BlockType = "operator_contains"
+	OpLength   BlockType = "operator_length"
+)
+
 // Variables
 const (
 	VariableSetTo    BlockType = "data_setvariableto"

@@ -47,6 +47,10 @@ var ExprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*b
 	"math.log":        exprFuncMathOp("math.log", "log"),
 	"math.ePowerOf":   exprFuncMathOp("math.ePowerOf", "e ^"),
 	"math.tenPowerOf": exprFuncMathOp("math.tenPowerOf", "10 ^"),
+
+	"strings.letter":   exprFuncStringsLetter,
+	"strings.length":   exprFuncStringsLength,
+	"strings.contains": exprFuncStringsContains,
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
@@ -352,4 +356,42 @@ func exprFuncMathOp(name, operator string) func(g *generator, expr *parser.ExprF
 
 		return block, parser.DTNumber, nil
 	}
+}
+
+func exprFuncStringsLength(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 1 {
+		return nil, parser.DTNumber, g.newError("The 'strings.length' function takes 1 argument: strings.length(str: string)", expr.Name)
+	}
+	block := g.NewBlock(blocks.OpLength, false)
+	var err error
+	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
+	return block, parser.DTNumber, err
+}
+
+func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 2 {
+		return nil, parser.DTString, g.newError("The 'strings.letter' function takes 2 arguments: strings.letter(str: string, index: number)", expr.Name)
+	}
+	block := g.NewBlock(blocks.OpLetterOf, false)
+	var err error
+	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, "", err
+	}
+	block.Inputs["LETTER"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTNumber)
+	return block, parser.DTString, err
+}
+
+func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 2 {
+		return nil, parser.DTBool, g.newError("The 'strings.contains' function takes 2 arguments: strings.contains(str: string, substr: string)", expr.Name)
+	}
+	block := g.NewBlock(blocks.OpContains, false)
+	var err error
+	block.Inputs["STRING1"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, "", err
+	}
+	block.Inputs["STRING2"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTString)
+	return block, parser.DTBool, err
 }

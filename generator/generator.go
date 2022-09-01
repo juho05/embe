@@ -348,56 +348,85 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 
 func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	var block *blocks.Block
-	var operandDataType parser.DataType
 	retDataType := parser.DTBool
-	operandName := "OPERAND"
-	switch expr.Operator.Type {
-	case parser.TkLess:
-		block = g.NewBlock(blocks.OpLessThan, false)
-		operandDataType = parser.DTNumber
-	case parser.TkGreater:
-		block = g.NewBlock(blocks.OpGreaterThan, false)
-		operandDataType = parser.DTNumber
-	case parser.TkEqual:
-		block = g.NewBlock(blocks.OpEquals, false)
-		operandDataType = parser.DTNumber
-	case parser.TkAnd:
-		block = g.NewBlock(blocks.OpAnd, false)
-		operandDataType = parser.DTBool
-	case parser.TkOr:
-		block = g.NewBlock(blocks.OpOr, false)
-		operandDataType = parser.DTBool
-	default:
-		retDataType = parser.DTNumber
-		operandDataType = parser.DTNumber
-		operandName = "NUM"
-		switch expr.Operator.Type {
-		case parser.TkPlus:
-			block = g.NewBlock(blocks.OpAdd, false)
-		case parser.TkMinus:
-			block = g.NewBlock(blocks.OpSubtract, false)
-		case parser.TkMultiply:
-			block = g.NewBlock(blocks.OpMultiply, false)
-		case parser.TkDivide:
-			block = g.NewBlock(blocks.OpDivide, false)
-		case parser.TkModulus:
-			block = g.NewBlock(blocks.OpMod, false)
-		default:
-			return g.newError("Unknown binary operator.", expr.Operator)
+	if expr.Operator.Type == parser.TkPlus {
+		block = g.NewBlock(blocks.OpAdd, false)
+
+		left, err := g.value(block.ID, expr.Operator, expr.Left, "")
+		if err != nil {
+			return err
 		}
-	}
+		leftType := g.dataType
 
-	left, err := g.value(block.ID, expr.Operator, expr.Left, operandDataType)
-	if err != nil {
-		return err
-	}
-	block.Inputs[operandName+"1"] = left
+		right, err := g.value(block.ID, expr.Operator, expr.Right, "")
+		if err != nil {
+			return err
+		}
+		rightType := g.dataType
 
-	right, err := g.value(block.ID, expr.Operator, expr.Right, operandDataType)
-	if err != nil {
-		return err
+		if leftType == parser.DTBool || rightType == parser.DTBool {
+			return g.newError("Expected number or string operands.", expr.Operator)
+		}
+
+		if leftType == parser.DTString || rightType == parser.DTString {
+			block.Type = blocks.OpJoin
+			block.Inputs["STRING1"] = left
+			block.Inputs["STRING2"] = right
+			retDataType = parser.DTString
+		} else {
+			block.Inputs["NUM1"] = left
+			block.Inputs["NUM2"] = right
+			retDataType = parser.DTNumber
+		}
+	} else {
+		var operandDataType parser.DataType
+		operandName := "OPERAND"
+		switch expr.Operator.Type {
+		case parser.TkLess:
+			block = g.NewBlock(blocks.OpLessThan, false)
+			operandDataType = parser.DTNumber
+		case parser.TkGreater:
+			block = g.NewBlock(blocks.OpGreaterThan, false)
+			operandDataType = parser.DTNumber
+		case parser.TkEqual:
+			block = g.NewBlock(blocks.OpEquals, false)
+			operandDataType = parser.DTNumber
+		case parser.TkAnd:
+			block = g.NewBlock(blocks.OpAnd, false)
+			operandDataType = parser.DTBool
+		case parser.TkOr:
+			block = g.NewBlock(blocks.OpOr, false)
+			operandDataType = parser.DTBool
+		default:
+			retDataType = parser.DTNumber
+			operandDataType = parser.DTNumber
+			operandName = "NUM"
+			switch expr.Operator.Type {
+			case parser.TkMinus:
+				block = g.NewBlock(blocks.OpSubtract, false)
+			case parser.TkMultiply:
+				block = g.NewBlock(blocks.OpMultiply, false)
+			case parser.TkDivide:
+				block = g.NewBlock(blocks.OpDivide, false)
+			case parser.TkModulus:
+				block = g.NewBlock(blocks.OpMod, false)
+			default:
+				return g.newError("Unknown binary operator.", expr.Operator)
+			}
+		}
+
+		left, err := g.value(block.ID, expr.Operator, expr.Left, operandDataType)
+		if err != nil {
+			return err
+		}
+		block.Inputs[operandName+"1"] = left
+
+		right, err := g.value(block.ID, expr.Operator, expr.Right, operandDataType)
+		if err != nil {
+			return err
+		}
+		block.Inputs[operandName+"2"] = right
 	}
-	block.Inputs[operandName+"2"] = right
 
 	g.dataType = retDataType
 	g.blockID = block.ID

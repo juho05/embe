@@ -470,6 +470,10 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 
 func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate func(v any) bool, errorMessage string) ([]any, error) {
 	if literal, ok := expr.(*parser.ExprLiteral); ok {
+		if dataType == parser.DTString && literal.Token.DataType == parser.DTNumber {
+			literal.Token.DataType = parser.DTString
+			literal.Token.Literal = fmt.Sprintf("%v", literal.Token.Literal)
+		}
 		if dataType != "" && literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
@@ -490,6 +494,9 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			return nil, err
 		}
 		g.noNext = false
+		if dataType == parser.DTString && g.dataType == parser.DTNumber {
+			g.dataType = parser.DTString
+		}
 		if dataType != "" && g.dataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}

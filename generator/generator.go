@@ -407,7 +407,11 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 var matchAllRegex = regexp.MustCompile(".*")
 
 func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
-	return g.valueWithRegex(parent, token, expr, dataType, 4, matchAllRegex, "")
+	valueInt := 4
+	if dataType == parser.DTString {
+		valueInt = 10
+	}
+	return g.valueWithRegex(parent, token, expr, dataType, valueInt, matchAllRegex, "")
 }
 
 func (g *generator) valueWithValueInt(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int) ([]any, error) {

@@ -3,6 +3,7 @@ package generator
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,6 +30,18 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"led.deactivate":      funcLEDDeactivate,
 	"led.move":            funcLEDMove,
 	"led.playAnimation":   funcLEDPlayAnimation,
+
+	"display.print":                 funcDisplayPrint(false),
+	"display.println":               funcDisplayPrint(true),
+	"display.setFontSize":           funcDisplaySetFontSize,
+	"display.setColor":              funcDisplaySetColor,
+	"display.showLabel":             funcDisplayShowLabel,
+	"display.lineChart.addData":     funcDisplayLineChartAddData,
+	"display.lineChart.setInterval": funcDisplayLineChartSetInterval,
+	"display.barChart.addData":      funcDisplayBarChartAddData,
+	"display.table.addData":         funcDisplayTableAddData,
+	"display.clear":                 funcDisplayClear,
+	"display.setOrientation":        funcDisplaySetOrientation,
 
 	"time.sleep": funcTimeSleep,
 
@@ -407,6 +420,256 @@ func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType
 		})
 	}
 	return err
+}
+
+func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 1 {
+			return nil, g.newError(fmt.Sprintf("The '%s' function takes 1 argument: %s(text: string)", stmt.Name.Lexeme, stmt.Name.Lexeme), stmt.Name)
+		}
+		block := g.NewBlock(blocks.DisplayPrint, false)
+		if newLine {
+			block.Type = blocks.DisplayPrintln
+		}
+
+		var err error
+		block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+
+		return block, nil
+	}
+}
+
+func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'display.setFontSize' function takes 1 argument: display.setFontSize(size: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplaySetFont, false)
+
+	var err error
+	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.DisplaySetFontMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
+		sizes := []int{12, 16, 24, 32}
+		if math.Mod(v.Literal.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.Literal.(float64))) {
+			options := ""
+			for _, s := range sizes {
+				options = fmt.Sprintf("%s, %d", options, s)
+			}
+			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 3 {
+		return nil, g.newError("The 'display.setColor' function takes 1 or 3 arguments: display.setColor(color: string) or display.setColor(r: number, g: number, b: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplaySetBrushColor, false)
+	var err error
+	if len(stmt.Parameters) == 3 {
+		block.Type = blocks.DisplaySetBrushColorRGB
+		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 4 && len(stmt.Parameters) != 5 {
+		return nil, g.newError("The 'display.showLabel' function takes 3 or 4 arguments: display.showLabel(label: number, text: string, location: string, size: number) or display.showLabel(label: number, text: string, x: number, y: number, size: number)", stmt.Name)
+	}
+
+	block := g.NewBlock(blocks.DisplayLabelShowSomewhereWithSize, false)
+	number, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+	if math.Mod(number.(float64), 1.0) != 0 || number.(float64) < 0 || number.(float64) > 8 {
+		return nil, g.newError("The label number must lie between 0 and 8.", stmt.Parameters[0].(*parser.ExprLiteral).Token)
+	}
+	block.Fields["fieldMenu_1"] = []any{fmt.Sprintf("%d", int(number.(float64))-1), nil}
+
+	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	sizeIndex := 3
+	if len(stmt.Parameters) == 5 {
+		sizeIndex = 4
+		block.Type = blocks.DisplayLabelShowXYWithSize
+
+		block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		location, err := g.literal(stmt.Name, stmt.Parameters[2], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+		locations := []string{"top_left", "top_mid", "top_right", "mid_left", "center", "mid_right", "bottom_left", "bottom_mid", "bottom_right"}
+		if !slices.Contains(locations, location.(string)) {
+			return nil, g.newError(fmt.Sprintf("Unknown label location. Available options: %s", strings.Join(locations, ", ")), stmt.Parameters[2].(*parser.ExprLiteral).Token)
+		}
+		block.Fields["fieldMenu_2"] = []any{location, nil}
+	}
+
+	block.Inputs["inputMenu_4"], err = g.fieldMenu(blocks.DisplayLabelShowSomewhereWithSizeMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[sizeIndex], parser.DTNumber, func(v parser.Token) error {
+		sizes := []int{12, 16, 24, 32}
+		if math.Mod(v.Literal.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.Literal.(float64))) {
+			options := ""
+			for _, s := range sizes {
+				options = fmt.Sprintf("%s, %d", options, s)
+			}
+			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'display.lineChart.addData' function takes 1 argument: display.lineChart.addData(value: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplayLineChartAddData, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'display.lineChart.setInterval' function takes 1 argument: display.lineChart.setInterval(interval: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplayLineChartSetInterval, false)
+
+	var err error
+	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'display.barChart.addData' function takes 1 argument: display.barChart.addData(value: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplayBarChartAddData, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 3 {
+		return nil, g.newError("The 'display.table.addData' function takes 3 arguments: display.table.addData(text: string, row: number, column: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplayTableAddDataAtRowColumn, false)
+
+	var err error
+	block.Inputs["string_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, func(v parser.Token) error {
+		if math.Mod(v.Literal.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["fieldMenu_2"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_2", block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, func(v parser.Token) error {
+		if math.Mod(v.Literal.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'display.setOrientation' function takes 1 argument: display.setOrientation(orientation: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplaySetOrientation, false)
+
+	var err error
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplaySetOrientationMenu, "", "CYBERPI_DISPLAY_ROTATE_TO_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
+		if math.Mod(v.Literal.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", v)
+		}
+		value := int(v.Literal.(float64))
+		if value != -90 && value != 0 && value != 90 && value != 180 {
+			return g.newError("The orientation must be either -90, 0, 90 or 180 degrees.", v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 0 {
+		return nil, g.newError("The 'display.clear' function takes no arguments.", stmt.Name)
+	}
+	block := g.NewBlock(blocks.DisplayClear, false)
+	return block, nil
 }
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

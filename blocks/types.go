@@ -89,6 +89,28 @@ const (
 	LEDAddBrightness                             BlockType = "cyberpi.cyberpi_add_led_brightness"
 )
 
+// Display
+const (
+	DisplayPrintln                        BlockType = "cyberpi.cyberpi_display_println"
+	DisplayPrint                          BlockType = "cyberpi.cyberpi_display_print"
+	DisplaySetFont                        BlockType = "cyberpi.cyberpi_console_set_font"
+	DisplaySetFontMenu                    BlockType = "cyberpi.cyberpi_console_set_font_inputMenu_1_menu"
+	DisplayLabelShowSomewhereWithSize     BlockType = "cyberpi.cyberpi_display_label_show_at_somewhere_with_size"
+	DisplayLabelShowSomewhereWithSizeMenu BlockType = "cyberpi.cyberpi_display_label_show_at_somewhere_with_size_inputMenu_4_menu"
+	DisplayLabelShowXYWithSize            BlockType = "cyberpi.cyberpi_display_label_show_label_xy_with_size"
+	DisplayLabelShowXYWithSizeMenu        BlockType = "cyberpi.cyberpi_display_label_show_label_xy_with_size_inputMenu_4_menu"
+	DisplayLineChartAddData               BlockType = "cyberpi.cyberpi_display_line_chart_add_data"
+	DisplayLineChartSetInterval           BlockType = "cyberpi.cyberpi_display_bar_chart_set_interval" // not a typo
+	DisplayBarChartAddData                BlockType = "cyberpi.cyberpi_display_bar_chart_add_data"
+	DisplayTableAddDataAtRowColumn        BlockType = "cyberpi.cyberpi_display_table_add_data_at_row_column_2"
+	DisplayTableAddDataAtRowColumnMenu    BlockType = "cyberpi.cyberpi_display_table_add_data_at_row_column_2_fieldMenu_1_menu"
+	DisplaySetBrushColor                  BlockType = "cyberpi.cyberpi_display_set_brush_with_color"
+	DisplaySetBrushColorRGB               BlockType = "cyberpi.cyberpi_display_set_brush_with_r_g_b"
+	DisplayClear                          BlockType = "cyberpi.cyberpi_display_clear"
+	DisplaySetOrientation                 BlockType = "cyberpi.cyberpi_display_rotate_to_2"
+	DisplaySetOrientationMenu             BlockType = "cyberpi.cyberpi_display_rotate_to_2_fieldMenu_1_menu"
+)
+
 // Control
 const (
 	ControlIf            BlockType = "control_if"

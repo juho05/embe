@@ -23,6 +23,7 @@ var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Bloc
 	"sound":    eventSensor("microphone"),
 	"shakeval": eventSensor("shake_val"),
 	"timer":    eventSensor("timer"),
+	"receive":  eventReceive,
 }
 
 func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
@@ -112,6 +113,16 @@ func eventSensor(sensor string) func(g *generator, stmt *parser.StmtEvent) (*blo
 		block.Fields["fieldMenu_3"] = []any{operator, nil}
 		return block, nil
 	}
+}
+
+func eventReceive(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
+	param, err := getParameter[string](g, stmt, parser.DTString, nil)
+	if err != nil {
+		return nil, err
+	}
+	block := blocks.NewBlockTopLevel(blocks.EventReceivedMessage)
+	block.Inputs["message"] = []any{1, []any{10, param}}
+	return block, nil
 }
 
 func assertNoEventParameter(g *generator, stmt *parser.StmtEvent) error {

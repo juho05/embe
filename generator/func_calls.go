@@ -43,6 +43,12 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"display.clear":                 funcDisplayClear,
 	"display.setOrientation":        funcDisplaySetOrientation,
 
+	"net.broadcast":  funcNetBroadcast,
+	"net.setChannel": funcNetSetChannel,
+	"net.connect":    funcNetConnect,
+	"net.reconnect":  funcNetReconnect,
+	"net.disconnect": funcNetDisconnect,
+
 	"time.sleep": funcTimeSleep,
 
 	"mbot.restart": funcMBotRestart,
@@ -684,6 +690,83 @@ func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
 		return nil, err
 	}
 
+	return block, nil
+}
+
+func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'net.broadcast' function takes 1-2 arguments: net.broadcast(message: string, value?: string)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.NetSetWifiBroadcast, false)
+
+	var err error
+	block.Inputs["message"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stmt.Parameters) == 2 {
+		block.Type = blocks.NetSetWifiBroadcastWithValue
+		block.Inputs["value"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'net.setChannel' function takes 1 argument: net.setChannel(channel: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.NetSetWifiChannel, false)
+
+	channel, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+	if int(channel.(float64)) != 1 && int(channel.(float64)) != 6 && int(channel.(float64)) != 11 {
+		return nil, g.newError("Invalid channel. Allowed options: 1, 6, 11", parameterToken(stmt.Parameters[0]))
+	}
+	block.Fields["channel"] = []any{fmt.Sprintf("%d", int(channel.(float64))), nil}
+
+	return block, nil
+}
+
+func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 2 {
+		return nil, g.newError("The 'net.connect' function takes 2 arguments: net.connect(ssid: string, password: string)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.NetConnectWifi, false)
+
+	var err error
+	block.Inputs["ssid"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["wifipassword"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcNetReconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 0 {
+		return nil, g.newError("The 'net.reconnect' function takes no arguments.", stmt.Name)
+	}
+	block := g.NewBlock(blocks.NetWifiReconnect, false)
+	return block, nil
+}
+
+func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 0 {
+		return nil, g.newError("The 'net.disconnect' function takes no arguments.", stmt.Name)
+	}
+	block := g.NewBlock(blocks.NetWifiDisconnect, false)
 	return block, nil
 }
 

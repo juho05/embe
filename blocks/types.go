@@ -10,6 +10,7 @@ const (
 	EventDetectAttitude             BlockType = "cyberpi.cyberpi_when_detect_attitude"
 	EventDetectAction               BlockType = "cyberpi.cyberpi_when_detect_action"
 	EventSensorValueBiggerOrSmaller BlockType = "cyberpi.cyberpi_when_sensor_value_bigger_or_smaller_than"
+	EventReceivedMessage            BlockType = "cyberpi.cyberpi_wifi_broadcast_when_received_message"
 )
 
 // Sensors
@@ -87,6 +88,18 @@ const (
 	LEDGetBrightness                             BlockType = "cyberpi.cyberpi_get_led_brightness"
 	LEDSetBrightness                             BlockType = "cyberpi.cyberpi_set_led_brightness"
 	LEDAddBrightness                             BlockType = "cyberpi.cyberpi_add_led_brightness"
+)
+
+// Net
+const (
+	NetSetWifiBroadcast          BlockType = "cyberpi.cyberpi_set_wifi_broadcast"
+	NetSetWifiBroadcastWithValue BlockType = "cyberpi.cyberpi_set_wifi_broadcast_with_value"
+	NetSetWifiChannel            BlockType = "cyberpi.cyberpi_set_wifi_channels"
+	NetConnectWifi               BlockType = "cyberpi.cyberpi_wifi_set"
+	NetWifiIsConnected           BlockType = "cyberpi.cyberpi_wifi_is_connect"
+	NetWifiReconnect             BlockType = "cyberpi.cyberpi_wifi_reconnect"
+	NetWifiDisconnect            BlockType = "cyberpi.cyberpi_wifi_disconnect"
+	NetWifiGetValue              BlockType = "cyberpi.cyberpi_wifi_broadcast_get_value"
 )
 
 // Display

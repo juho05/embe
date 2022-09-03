@@ -31,6 +31,9 @@ var ExprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*b
 	"sensors.rotation":     exprFuncRotation,
 	"sensors.angleSpeed":   exprFuncAngleSpeed,
 
+	"net.isConnected": exprFuncNetIsConnected,
+	"net.receive":     exprFuncNetReceive,
+
 	"math.random":     exprFuncMathRandom,
 	"math.round":      exprFuncMathRound,
 	"math.abs":        exprFuncMathOp("math.abs", "abs"),
@@ -302,6 +305,29 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	block.Fields["axis"] = []any{axis.(string), nil}
 
 	return block, parser.DTNumber, nil
+}
+
+func exprFuncNetIsConnected(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) > 0 {
+		return nil, parser.DTBool, g.newError("The 'net.isConnected' function takes no arguments.", expr.Name)
+	}
+	block := g.NewBlock(blocks.NetWifiIsConnected, false)
+	return block, parser.DTBool, nil
+}
+
+func exprFuncNetReceive(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) != 1 {
+		return nil, parser.DTString, g.newError("The 'net.receive' function takes 1 argument: net.receive(message: string).", expr.Name)
+	}
+	block := g.NewBlock(blocks.NetWifiGetValue, false)
+
+	var err error
+	block.Inputs["message"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
+	if err != nil {
+		return nil, parser.DTString, err
+	}
+
+	return block, parser.DTString, nil
 }
 
 func exprFuncMathRound(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {

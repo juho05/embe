@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+type Constant struct {
+	Token Token
+}
+
 type parser struct {
 	tokens  []Token
 	current int
@@ -35,6 +39,8 @@ func (p *parser) topLevel() Stmt {
 	switch p.peek().Type {
 	case TkVar:
 		stmt, err = p.varDecl()
+	case TkConst:
+		stmt, err = p.constDecl()
 	case TkAt:
 		stmt, err = p.event()
 	default:
@@ -63,15 +69,15 @@ func (p *parser) varDecl() (Stmt, error) {
 	var dataType DataType
 	if p.match(TkColon) {
 		if !p.match(TkType) {
-			if p.peek().Type == TkIdentifier && p.peek().Lexeme == "boolean" {
-				return nil, p.newError("Boolean variables are not supported.")
-			}
 			return nil, p.newError("Expected type after ':'.")
 		}
 		var ok bool
 		dataType, ok = types[p.previous().Lexeme]
 		if !ok {
 			return nil, p.newError("Unknown data type.")
+		}
+		if dataType == DTBool {
+			return nil, p.newError("Boolean variables are not supported.")
 		}
 	}
 
@@ -98,6 +104,55 @@ func (p *parser) varDecl() (Stmt, error) {
 	}, nil
 }
 
+func (p *parser) constDecl() (Stmt, error) {
+	if !p.match(TkConst) {
+		return nil, p.newError("Expected 'const' keyword.")
+	}
+
+	if !p.match(TkIdentifier) {
+		return nil, p.newError("Expected constant name.")
+	}
+	name := p.previous()
+	if strings.Contains(name.Lexeme, ".") {
+		return nil, p.newErrorAt("Constant names cannot contain a dot.", name)
+	}
+
+	var dataType DataType
+	if p.match(TkColon) {
+		if !p.match(TkType) {
+			return nil, p.newError("Expected type after ':'.")
+		}
+		var ok bool
+		dataType, ok = types[p.previous().Lexeme]
+		if !ok {
+			return nil, p.newError("Unknown data type.")
+		}
+	}
+
+	if !p.match(TkAssign) {
+		return nil, p.newError("Expected '=' after constant name.")
+	}
+	assignToken := p.previous()
+
+	if !p.match(TkLiteral) {
+		return nil, p.newError("Expected literal as constant value.")
+	}
+	value := p.previous()
+	if dataType != "" && value.DataType != dataType {
+		return nil, p.newErrorAt(fmt.Sprintf("Expected %s.", dataType), value)
+	}
+
+	if !p.match(TkNewLine) {
+		return nil, p.newError("Expected '\n' after constant declaration.")
+	}
+
+	return &StmtConstDecl{
+		Name:        name,
+		AssignToken: assignToken,
+		Value:       value,
+	}, nil
+}
+
 func (p *parser) event() (Stmt, error) {
 	if !p.match(TkAt) {
 		return nil, p.newError("Expected event.")
@@ -109,7 +164,7 @@ func (p *parser) event() (Stmt, error) {
 	name := p.previous()
 
 	var parameter Token
-	if p.match(TkLiteral) {
+	if p.match(TkLiteral, TkIdentifier) {
 		parameter = p.previous()
 	}
 

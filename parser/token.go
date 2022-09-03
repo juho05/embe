@@ -42,6 +42,7 @@ const (
 	TkWhile
 	TkFor
 	TkVar
+	TkConst
 
 	TkIdentifier
 	TkLiteral

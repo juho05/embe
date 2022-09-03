@@ -102,10 +102,10 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	}
 
 	var err error
-	block.Inputs["file_name"], err = g.fieldMenu(menuBlockType, "", "CYBERPI_PLAY_AUDIO_UNTIL_3_FILE_NAME", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v parser.Token) error {
+	block.Inputs["file_name"], err = g.fieldMenu(menuBlockType, "", "CYBERPI_PLAY_AUDIO_UNTIL_3_FILE_NAME", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v any, token parser.Token) error {
 		names := []string{"hi", "bye", "yeah", "wow", "laugh", "hum", "sad", "sigh", "annoyed", "angry", "surprised", "yummy", "curious", "embarrassed", "ready", "sprint", "sleepy", "meow", "start", "switch", "beeps", "buzzing", "jump", "level-up", "low-energy", "prompt", "right", "wrong", "ring", "score", "wake", "warning", "metal-clash", "glass-clink", "inflator", "running-water", "clockwork", "click", "current", "wood-hit", "iron", "drop", "bubble", "wave", "magic", "spitfire", "heartbeat"}
-		if !slices.Contains(names, v.Literal.(string)) {
-			return g.newError(fmt.Sprintf("Unknown clip name. Available options: %s", strings.Join(names, ", ")), v)
+		if !slices.Contains(names, v.(string)) {
+			return g.newError(fmt.Sprintf("Unknown clip name. Available options: %s", strings.Join(names, ", ")), token)
 		}
 		return nil
 	})
@@ -120,9 +120,9 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 
 	var err error
 	names := []string{"snare", "bass-drum", "side-stick", "crash-cymbal", "open-hi-hat", "closed-hi-hat", "tambourine", "hand-clap", "claves"}
-	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.AudioPlayMusicInstrumentMenu, "'", "CYBERPI_PLAY_MUSIC_WITH_NOTE_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v parser.Token) error {
-		if !slices.Contains(names, v.Literal.(string)) {
-			return g.newError(fmt.Sprintf("Unknown instrument name. Available options: %s", strings.Join(names, ", ")), v)
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.AudioPlayMusicInstrumentMenu, "'", "CYBERPI_PLAY_MUSIC_WITH_NOTE_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v any, token parser.Token) error {
+		if !slices.Contains(names, v.(string)) {
+			return g.newError(fmt.Sprintf("Unknown instrument name. Available options: %s", strings.Join(names, ", ")), token)
 		}
 		return nil
 	})
@@ -400,21 +400,21 @@ func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType
 
 	errWrongType := errors.New("wrong-type")
 	var err error
-	block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], "", func(v parser.Token) error {
-		if str, ok := v.Literal.(string); !ok {
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], "", func(v any, token parser.Token) error {
+		if str, ok := v.(string); !ok {
 			return errWrongType
 		} else {
 			if str != "all" {
-				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", v)
+				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", token)
 			}
 		}
 		return nil
 	})
 	if err == errWrongType {
-		block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
-			nr := int(v.Literal.(float64))
+		block.Inputs["fieldMenu_1"], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v any, token parser.Token) error {
+			nr := int(v.(float64))
 			if nr != 1 && nr != 2 && nr != 3 && nr != 4 && nr != 5 {
-				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", v)
+				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", token)
 			}
 			return nil
 		})
@@ -449,14 +449,14 @@ func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	block := g.NewBlock(blocks.DisplaySetFont, false)
 
 	var err error
-	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.DisplaySetFontMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
+	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.DisplaySetFontMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v any, token parser.Token) error {
 		sizes := []int{12, 16, 24, 32}
-		if math.Mod(v.Literal.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.Literal.(float64))) {
+		if math.Mod(v.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.(float64))) {
 			options := ""
 			for _, s := range sizes {
 				options = fmt.Sprintf("%s, %d", options, s)
 			}
-			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), v)
+			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), token)
 		}
 		return nil
 	})
@@ -542,14 +542,14 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 		block.Fields["fieldMenu_2"] = []any{location, nil}
 	}
 
-	block.Inputs["inputMenu_4"], err = g.fieldMenu(blocks.DisplayLabelShowSomewhereWithSizeMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[sizeIndex], parser.DTNumber, func(v parser.Token) error {
+	block.Inputs["inputMenu_4"], err = g.fieldMenu(blocks.DisplayLabelShowSomewhereWithSizeMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[sizeIndex], parser.DTNumber, func(v any, token parser.Token) error {
 		sizes := []int{12, 16, 24, 32}
-		if math.Mod(v.Literal.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.Literal.(float64))) {
+		if math.Mod(v.(float64), 1.0) != 0 || !slices.Contains(sizes, int(v.(float64))) {
 			options := ""
 			for _, s := range sizes {
 				options = fmt.Sprintf("%s, %d", options, s)
 			}
-			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), v)
+			return g.newError(fmt.Sprintf("Unknown size. Available options: %s", options), token)
 		}
 		return nil
 	})
@@ -617,9 +617,9 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 		return nil, err
 	}
 
-	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, func(v parser.Token) error {
-		if math.Mod(v.Literal.(float64), 1) != 0 {
-			return g.newError("The value must be an integer.", v)
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, func(v any, token parser.Token) error {
+		if math.Mod(v.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", token)
 		}
 		return nil
 	})
@@ -627,9 +627,9 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 		return nil, err
 	}
 
-	block.Inputs["fieldMenu_2"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_2", block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, func(v parser.Token) error {
-		if math.Mod(v.Literal.(float64), 1) != 0 {
-			return g.newError("The value must be an integer.", v)
+	block.Inputs["fieldMenu_2"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_2", block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, func(v any, token parser.Token) error {
+		if math.Mod(v.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", token)
 		}
 		return nil
 	})
@@ -647,13 +647,13 @@ func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks
 	block := g.NewBlock(blocks.DisplaySetOrientation, false)
 
 	var err error
-	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplaySetOrientationMenu, "", "CYBERPI_DISPLAY_ROTATE_TO_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v parser.Token) error {
-		if math.Mod(v.Literal.(float64), 1) != 0 {
-			return g.newError("The value must be an integer.", v)
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplaySetOrientationMenu, "", "CYBERPI_DISPLAY_ROTATE_TO_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, func(v any, token parser.Token) error {
+		if math.Mod(v.(float64), 1) != 0 {
+			return g.newError("The value must be an integer.", token)
 		}
-		value := int(v.Literal.(float64))
+		value := int(v.(float64))
 		if value != -90 && value != 0 && value != 90 && value != 180 {
-			return g.newError("The orientation must be either -90, 0, 90 or 180 degrees.", v)
+			return g.newError("The orientation must be either -90, 0, 90 or 180 degrees.", token)
 		}
 		return nil
 	})

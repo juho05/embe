@@ -66,7 +66,7 @@ func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 
 	buttons := []string{"a", "b"}
 	if !slices.Contains(buttons, btn.(string)) {
-		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown button. Available options: %s", strings.Join(buttons, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown button. Available options: %s", strings.Join(buttons, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["fieldMenu_1"] = []any{btn.(string), nil}
@@ -87,7 +87,7 @@ func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.
 
 	buttons := []string{"a", "b"}
 	if !slices.Contains(buttons, btn.(string)) {
-		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown button. Available options: %s", strings.Join(buttons, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown button. Available options: %s", strings.Join(buttons, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["fieldMenu_1"] = []any{btn.(string), nil}
@@ -108,7 +108,7 @@ func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.
 
 	directions := []string{"up", "down", "left", "right", "middle", "any"}
 	if !slices.Contains(directions, direction.(string)) {
-		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(directions, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(directions, ", ")), parameterToken(expr.Parameters[0]))
 	}
 	if direction == "any" {
 		direction = "any_direction"
@@ -132,7 +132,7 @@ func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks
 
 	directions := []string{"up", "down", "left", "right", "middle"}
 	if !slices.Contains(directions, direction.(string)) {
-		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(directions, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(directions, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["fieldMenu_1"] = []any{direction.(string), nil}
@@ -153,7 +153,7 @@ func exprFuncIsTilted(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 
 	options := []string{"forward", "backward", "left", "right"}
 	if !slices.Contains(options, param.(string)) {
-		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	if param == "backward" {
@@ -189,7 +189,7 @@ func exprFuncDetectAction(name string, options []string, prefix string) func(g *
 		}
 
 		if !slices.Contains(options, param.(string)) {
-			return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+			return nil, parser.DTBool, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 		}
 
 		block.Fields["tilt"] = []any{prefix + param.(string), nil}
@@ -224,7 +224,7 @@ func exprFuncTiltAngle(name string, options []string) func(g *generator, expr *p
 		}
 
 		if !slices.Contains(options, param.(string)) {
-			return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+			return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown direction. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 		}
 
 		switch param.(string) {
@@ -254,7 +254,7 @@ func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 
 	options := []string{"x", "y", "z"}
 	if !slices.Contains(options, axis.(string)) {
-		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["axis"] = []any{axis.(string), nil}
@@ -275,7 +275,7 @@ func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 
 	options := []string{"x", "y", "z"}
 	if !slices.Contains(options, axis.(string)) {
-		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["axis"] = []any{axis.(string), nil}
@@ -296,7 +296,7 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 
 	options := []string{"x", "y", "z"}
 	if !slices.Contains(options, axis.(string)) {
-		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0].(*parser.ExprLiteral).Token)
+		return nil, parser.DTNumber, g.newError(fmt.Sprintf("Unknown axis. Available options: %s", strings.Join(options, ", ")), parameterToken(expr.Parameters[0]))
 	}
 
 	block.Fields["axis"] = []any{axis.(string), nil}
@@ -394,4 +394,14 @@ func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 	}
 	block.Inputs["STRING2"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTString)
 	return block, parser.DTBool, err
+}
+
+func parameterToken(expr parser.Expr) parser.Token {
+	if l, ok := expr.(*parser.ExprLiteral); ok {
+		return l.Token
+	}
+	if c, ok := expr.(*parser.ExprIdentifier); ok {
+		return c.Name
+	}
+	panic("expr must be of type *parser.ExprLiteral or *parser.ExprIdentifier.")
 }

@@ -15,11 +15,13 @@ var keywords = map[string]TokenType{
 	"while": TkWhile,
 	"for":   TkFor,
 	"var":   TkVar,
+	"const": TkConst,
 }
 
 var types = map[string]DataType{
-	"number": DTNumber,
-	"string": DTString,
+	"boolean": DTBool,
+	"number":  DTNumber,
+	"string":  DTString,
 }
 
 type scanner struct {

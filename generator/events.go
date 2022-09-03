@@ -33,12 +33,9 @@ func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 }
 
 func eventButton(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-	if err := assertEventParameter(g, stmt, parser.DTString); err != nil {
+	param, err := getParameter(g, stmt, parser.DTString, []string{"a", "b"})
+	if err != nil {
 		return nil, err
-	}
-	param := stmt.Parameter.Literal.(string)
-	if param != "a" && param != "b" {
-		return nil, g.newError(`Unknown button. Available options: "a", "b".`, stmt.Parameter)
 	}
 	block := blocks.NewBlockTopLevel(blocks.EventButtonPress)
 	block.Fields["fieldMenu_2"] = []any{param, nil}
@@ -46,12 +43,9 @@ func eventButton(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 }
 
 func eventDirectionKey(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-	if err := assertEventParameter(g, stmt, parser.DTString); err != nil {
+	param, err := getParameter(g, stmt, parser.DTString, []string{"left", "right", "up", "down", "middle"})
+	if err != nil {
 		return nil, err
-	}
-	param := stmt.Parameter.Literal.(string)
-	if param != "left" && param != "right" && param != "up" && param != "down" && param != "middle" {
-		return nil, g.newError(`Unknown button. Available options: "left", "right", "up", "down", "middle".`, stmt.Parameter)
 	}
 	block := blocks.NewBlockTopLevel(blocks.EventDirectionKeyPress)
 	block.Fields["fieldMenu_2"] = []any{param, nil}
@@ -60,19 +54,9 @@ func eventDirectionKey(g *generator, stmt *parser.StmtEvent) (*blocks.Block, err
 
 func eventAction(blockType blocks.BlockType, prefix string, options ...string) func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-		if err := assertEventParameter(g, stmt, parser.DTString); err != nil {
+		param, err := getParameter(g, stmt, parser.DTString, options)
+		if err != nil {
 			return nil, err
-		}
-		param := stmt.Parameter.Literal.(string)
-		valid := false
-		for _, o := range options {
-			if param == o {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			return nil, g.newError(fmt.Sprintf(`Unknown argument value. Available options: "%s".`, strings.Join(options, "\", \"")), stmt.Parameter)
 		}
 		if param == "backward" {
 			param = "back"
@@ -96,10 +80,10 @@ func eventActionSingle(blockType blocks.BlockType, name string) func(g *generato
 
 func eventSensor(sensor string) func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-		if err := assertEventParameter(g, stmt, parser.DTString); err != nil {
+		param, err := getParameter[string](g, stmt, parser.DTString, nil)
+		if err != nil {
 			return nil, err
 		}
-		param := stmt.Parameter.Literal.(string)
 		parts := strings.SplitAfter(param, ">")
 		if len(parts) == 1 {
 			parts = strings.SplitAfter(param, "<")
@@ -137,12 +121,43 @@ func assertNoEventParameter(g *generator, stmt *parser.StmtEvent) error {
 	return nil
 }
 
-func assertEventParameter(g *generator, stmt *parser.StmtEvent, dataType parser.DataType) error {
+func getParameter[T comparable](g *generator, stmt *parser.StmtEvent, dataType parser.DataType, options []T) (T, error) {
+	var value T
 	if (stmt.Parameter == parser.Token{}) {
-		return g.newError(fmt.Sprintf("The '%s' event takes a value of type %s as an argument.", stmt.Name.Lexeme, dataType), stmt.Name)
+		return value, g.newError(fmt.Sprintf("The '%s' event takes a value of type %s as an argument.", stmt.Name.Lexeme, dataType), stmt.Name)
 	}
-	if stmt.Parameter.DataType != dataType {
-		return g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
+	if stmt.Parameter.Type == parser.TkIdentifier {
+		if constant, ok := g.constants[stmt.Parameter.Lexeme]; ok {
+			if constant.Type != dataType {
+				return value, g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
+			}
+			value = constant.Value.Literal.(T)
+		} else {
+			return value, g.newError("Unknown constant.", stmt.Parameter)
+		}
+	} else {
+		if stmt.Parameter.DataType != dataType {
+			return value, g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
+		}
+		value = stmt.Parameter.Literal.(T)
 	}
-	return nil
+
+	if options != nil {
+		valid := false
+		for _, o := range options {
+			if value == o {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			strOptions := make([]string, len(options))
+			for i, o := range options {
+				strOptions[i] = fmt.Sprintf("%v", o)
+			}
+			return value, g.newError(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
+		}
+	}
+
+	return value, nil
 }

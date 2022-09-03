@@ -4,6 +4,7 @@ topLevel->event
 event-> '@' IDENTIFIER LITERAL? ':' statement*
 
 variableDecl-> 'var' IDENTIFIER (':' TYPE) ('=' expression)?
+constDecl-> 'const' IDENTIFIER (':' TYPE) '=' LITERAL
 
 statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'

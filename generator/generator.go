@@ -10,10 +10,17 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, []error) {
+type Constant struct {
+	Name  parser.Token
+	Value parser.Token
+	Type  parser.DataType
+}
+
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, []error) {
 	g := &generator{
 		blocks:    make(map[string]*blocks.Block),
 		variables: make(map[string]*blocks.Variable),
+		constants: make(map[string]*Constant),
 		lines:     lines,
 	}
 	errs := make([]error, 0)
@@ -23,7 +30,7 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*block
 			errs = append(errs, err)
 		}
 	}
-	return g.blocks, g.variables, errs
+	return g.blocks, g.variables, g.constants, errs
 }
 
 type generator struct {
@@ -36,6 +43,7 @@ type generator struct {
 
 	variableInitializer *blocks.Block
 	variables           map[string]*blocks.Variable
+	constants           map[string]*Constant
 
 	noNext       bool
 	variableName string
@@ -43,6 +51,9 @@ type generator struct {
 
 func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 	if v, ok := g.variables[stmt.Name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	}
+	if v, ok := g.constants[stmt.Name.Lexeme]; ok {
 		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
 	}
 
@@ -114,6 +125,22 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 
 	variable.Declared = true
 
+	return nil
+}
+
+func (g *generator) VisitConstDecl(stmt *parser.StmtConstDecl) error {
+	if v, ok := g.variables[stmt.Name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	}
+	if v, ok := g.constants[stmt.Name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	}
+
+	g.constants[stmt.Name.Lexeme] = &Constant{
+		Name:  stmt.Name,
+		Value: stmt.Value,
+		Type:  stmt.Value.DataType,
+	}
 	return nil
 }
 
@@ -305,6 +332,10 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		return nil
 	}
 
+	if _, ok := g.constants[expr.Name.Lexeme]; ok {
+		return g.newError("Constants are not supported in this context.", expr.Name)
+	}
+
 	return g.newError("Unknown identifier.", expr.Name)
 }
 
@@ -469,7 +500,8 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 }
 
 func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate func(v any) bool, errorMessage string) ([]any, error) {
-	if literal, ok := expr.(*parser.ExprLiteral); ok {
+	if literalExpr, ok := expr.(*parser.ExprLiteral); ok {
+		literal := *literalExpr
 		if dataType == parser.DTString && literal.Token.DataType == parser.DTNumber {
 			literal.Token.DataType = parser.DTString
 			literal.Token.Literal = fmt.Sprintf("%v", literal.Token.Literal)
@@ -486,6 +518,26 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		g.dataType = literal.Token.DataType
 		return []any{1, []any{valueInt, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
+		if ident, ok := expr.(*parser.ExprIdentifier); ok {
+			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+				constant := *myConst
+				if dataType == parser.DTString && constant.Type == parser.DTNumber {
+					constant.Type = parser.DTString
+					constant.Value.Literal = fmt.Sprintf("%v", constant.Value.Literal)
+				}
+				if dataType != "" && constant.Type != dataType {
+					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
+				}
+				if constant.Type == parser.DTBool {
+					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
+				}
+				if !validate(constant.Value.Literal) {
+					return nil, g.newError(errorMessage, ident.Name)
+				}
+				g.dataType = constant.Type
+				return []any{1, []any{valueInt, fmt.Sprintf("%v", constant.Value.Literal)}}, nil
+			}
+		}
 		g.parent = parent
 		g.noNext = true
 		defer func() { g.variableName = "" }()
@@ -511,7 +563,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 	}
 }
 
-func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v parser.Token) error) ([]any, error) {
+func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v any, token parser.Token) error) ([]any, error) {
 	gparent := g.parent
 	defer func() { g.parent = gparent }()
 	g.parent = parent
@@ -525,7 +577,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
 		}
 
-		if err := validateValue(literal.Token); err != nil {
+		if err := validateValue(literal.Token.Literal, literal.Token); err != nil {
 			return nil, err
 		}
 
@@ -540,6 +592,30 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		g.dataType = literal.Token.DataType
 		return []any{1, block.ID}, nil
 	} else {
+		if ident, ok := expr.(*parser.ExprIdentifier); ok {
+			if constant, ok := g.constants[ident.Name.Lexeme]; ok {
+				if dataType != "" && constant.Type != dataType {
+					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
+				}
+				if constant.Type == parser.DTBool {
+					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
+				}
+				if err := validateValue(constant.Value.Literal, ident.Name); err != nil {
+					return nil, err
+				}
+
+				block := g.NewBlock(blockType, true)
+
+				value := fmt.Sprintf("%v", constant.Value.Literal)
+				if _, ok := constant.Value.Literal.(string); ok {
+					value = fmt.Sprintf("%s%s%s", surroundStringsWith, constant.Value.Literal, surroundStringsWith)
+				}
+
+				block.Fields[menuFieldKey] = []any{value, nil}
+				g.dataType = constant.Type
+				return []any{1, block.ID}, nil
+			}
+		}
 		block := g.NewBlock(blockType, true)
 		block.Fields[menuFieldKey] = []any{"", nil}
 		g.noNext = true
@@ -564,6 +640,14 @@ func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parse
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		return literal.Token.Literal, nil
+	}
+	if ident, ok := expr.(*parser.ExprIdentifier); ok {
+		if constant, ok := g.constants[ident.Name.Lexeme]; ok {
+			if constant.Type != dataType {
+				return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
+			}
+			return constant.Value.Literal, nil
+		}
 	}
 	return nil, g.newError("Only literals are allowed in this context.", token)
 }

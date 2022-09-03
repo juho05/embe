@@ -102,6 +102,34 @@ const (
 	NetWifiGetValue              BlockType = "cyberpi.cyberpi_wifi_broadcast_get_value"
 )
 
+// Motors
+const (
+	Mbot2MoveDirectionWithRPM                      BlockType = "mbot2.mbot2_move_direction_with_rpm"
+	Mbot2MoveDirectionWithTime                     BlockType = "mbot2.mbot2_move_direction_with_time"
+	Mbot2MoveMoveWithCmAndInch                     BlockType = "mbot2.mbot2_move_straight_with_cm_and_inch"
+	Mbot2CwAndCcwWithAngle                         BlockType = "mbot2.mbot2_cw_and_ccw_with_angle"
+	Mbot2EncoderMotorSet                           BlockType = "mbot2.mbot2_encoder_motor_set"
+	Mbot2EncoderMotorSetMenu                       BlockType = "mbot2.mbot2_encoder_motor_set_inputMenu_1_menu"
+	Mbot2EncoderMotorSetWithTime                   BlockType = "mbot2.mbot2_encoder_motor_set_with_time"
+	Mbot2EncoderMotorSetWithTimeMenu               BlockType = "mbot2.mbot2_encoder_motor_set_with_time_fieldMenu_1_menu"
+	Mbot2EncoderMotorStop                          BlockType = "mbot2.mbot2_encoder_motor_stop"
+	Mbot2EncoderMotorResetAngle                    BlockType = "mbot2.mbot2_encoder_motor_reset_angle"
+	Mbot2EncoderMotorResetAngleMenu                BlockType = "mbot2.mbot2_encoder_motor_reset_angle_inputMenu_1_menu"
+	Mbot2EncoderMotorLockUnlock                    BlockType = "mbot2.mbot2_encoder_motor_lock_and_unlock"
+	Mbot2EncoderMotorLockUnlockMenu                BlockType = "mbot2.mbot2_encoder_motor_lock_and_unlock_inputMenu_1_menu"
+	Mbot2EncoderMotorSetWithTimeAngleAndCircle     BlockType = "mbot2.mbot2_encoder_motor_set_with_time_angle_and_circle"
+	Mbot2EncoderMotorSetWithTimeAngleAndCircleMenu BlockType = "mbot2.mbot2_encoder_motor_set_with_time_angle_and_circle_fieldMenu_1_menu"
+	Mbot2EncoderMotorGetSpeed                      BlockType = "mbot2.mbot2_encoder_motor_get_speed"
+	Mbot2EncoderMotorGetSpeedMenu                  BlockType = "mbot2.mbot2_encoder_motor_get_speed_inputMenu_2_menu"
+	Mbot2EncoderMotorGetAngle                      BlockType = "mbot2.mbot2_encoder_motor_get_angle"
+	Mbot2EncoderMotorGetAngleMenu                  BlockType = "mbot2.mbot2_encoder_motor_get_angle_inputMenu_1_menu"
+)
+
+// MBot2
+const (
+	Mbot2SetParameters BlockType = "mbot2.mbot2_set_para"
+)
+
 // Display
 const (
 	DisplayPrintln                        BlockType = "cyberpi.cyberpi_display_println"

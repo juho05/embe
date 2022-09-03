@@ -49,9 +49,24 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"net.reconnect":  funcNetReconnect,
 	"net.disconnect": funcNetDisconnect,
 
+	"motors.run":                 funcMotorsRun("forward"),
+	"motors.runBackward":         funcMotorsRun("backward"),
+	"motors.runDistance":         funcMotorsRunDistance("forward"),
+	"motors.runDistanceBackward": funcMotorsRunDistance("backward"),
+	"motors.turn":                funcMotorsTurn,
+	"motors.rotateRPM":           funcMotorsRotate("speed"),
+	"motors.rotatePower":         funcMotorsRotate("power"),
+	"motors.rotateAngle":         funcMotorsRotateAngle,
+	"motors.stop":                funcMotorsStop,
+	"motors.resetAngle":          funcMotorsResetAngle,
+	"motors.lock":                funcMotorsSetLock("1"),
+	"motors.unlock":              funcMotorsSetLock("0"),
+
 	"time.sleep": funcTimeSleep,
 
-	"mbot.restart": funcMBotRestart,
+	"mbot.restart":             funcMBotRestart,
+	"mbot.calibrateParameters": funcMBotChassisParameters("calibrate"),
+	"mbot.resetParameters":     funcMBotChassisParameters("reset"),
 
 	"program.exit": funcProgramExit,
 }
@@ -770,6 +785,233 @@ func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	return block, nil
 }
 
+func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+			return nil, g.newError("The 'motors.run' function takes 1-2 arguments: motors.run(rpm: number, duration: number)", stmt.Name)
+		}
+		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
+
+		block.Fields["DIRECTION"] = []any{direction, nil}
+
+		var err error
+		block.Inputs["POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(stmt.Parameters) == 2 {
+			block.Type = blocks.Mbot2MoveDirectionWithTime
+			block.Inputs["TIME"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return block, nil
+	}
+}
+
+func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 1 {
+			return nil, g.newError("The 'motors.runDistance' function takes 1 argument: motors.runDistance(distance: number)", stmt.Name)
+		}
+		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
+
+		block.Fields["DIRECTION"] = []any{direction, nil}
+		block.Fields["fieldMenu_3"] = []any{"cm", nil}
+
+		var err error
+		block.Inputs["POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+		return block, nil
+	}
+}
+
+func funcMotorsTurn(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'motors.turn' function takes 1 argument: motors.turn(angle: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.Mbot2CwAndCcwWithAngle, false)
+	block.Fields["fieldMenu_1"] = []any{"ccw", nil}
+
+	var err error
+	block.Inputs["ANGLE"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 2 && len(stmt.Parameters) != 3 {
+			return nil, g.newError("The 'motors.rotate' function takes 1 argument: motors.rotate(motor: string, rpm: number, duration?: number)", stmt.Name)
+		}
+		blockType := blocks.Mbot2EncoderMotorSet
+		menuType := blocks.Mbot2EncoderMotorSetMenu
+		inputField := "inputMenu_1"
+		if len(stmt.Parameters) == 3 {
+			inputField = "fieldMenu_1"
+			blockType = blocks.Mbot2EncoderMotorSetWithTime
+			menuType = blocks.Mbot2EncoderMotorSetWithTimeMenu
+		}
+
+		block := g.NewBlock(blockType, false)
+
+		var err error
+		block.Inputs[inputField], err = g.fieldMenu(menuType, "", "MBOT2_ENCODER_MOTOR_SET_WITH_TIME_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v any, token parser.Token) error {
+			str := v.(string)
+			if str != "ALL" && str != "EM1" && str != "EM2" {
+				return g.newError("Unknown encoder motor. Available options: ALL, EM1, EM2", token)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_4"] = []any{unit, nil}
+
+		block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(stmt.Parameters) == 3 {
+			block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return block, nil
+	}
+}
+
+func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 2 {
+		return nil, g.newError("The `motors.rotateAngle` function takes 1-2 arguments: motors.rotateAngle(motor: string, angle: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.Mbot2EncoderMotorSetWithTimeAngleAndCircle, false)
+
+	var err error
+	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.Mbot2EncoderMotorSetWithTimeAngleAndCircleMenu, "", "MBOT2_ENCODER_MOTOR_SET_WITH_TIME_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v any, token parser.Token) error {
+		str := v.(string)
+		if str != "ALL" && str != "EM1" && str != "EM2" {
+			return g.newError("Unknown encoder motor. Available options: ALL, EM1, EM2", token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+	return block, err
+}
+
+func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 1 {
+		return nil, g.newError("The `motors.stop` function takes 0-1 arguments: motors.stop(motor?: string)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.Mbot2EncoderMotorStop, false)
+
+	encoderMotor := "ALL"
+	if len(stmt.Parameters) == 1 {
+		motor, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
+		if err != nil {
+			return nil, err
+		}
+		encoderMotor = motor.(string)
+		if encoderMotor != "ALL" && encoderMotor != "EM1" && encoderMotor != "EM2" {
+			return nil, g.newError("Unknown encoder motor. Available options: ALL, EM1, EM2", parameterToken(stmt.Parameters[0]))
+		}
+	}
+
+	block.Fields["fieldMenu_1"] = []any{encoderMotor, nil}
+
+	return block, nil
+}
+
+func funcMotorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 1 {
+		return nil, g.newError("The `motors.resetAngle` function takes 0-1 arguments: motors.resetAngle(motor?: string)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.Mbot2EncoderMotorResetAngle, false)
+
+	var motor parser.Expr
+	if len(stmt.Parameters) == 1 {
+		motor = stmt.Parameters[0]
+	} else {
+		motor = &parser.ExprLiteral{
+			Token: parser.Token{
+				Type:     parser.TkLiteral,
+				Literal:  "ALL",
+				DataType: parser.DTString,
+				Line:     stmt.Name.Line,
+			},
+		}
+	}
+
+	var err error
+	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.Mbot2EncoderMotorResetAngleMenu, "", "MBOT2_ENCODER_MOTOR_STOP_FIELDMENU_1", block.ID, stmt.Name, motor, parser.DTString, func(v any, token parser.Token) error {
+		encoderMotor := v.(string)
+		if encoderMotor != "ALL" && encoderMotor != "EM1" && encoderMotor != "EM2" {
+			return g.newError("Unknown encoder motor. Available options: ALL, EM1, EM2", token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) > 1 {
+			return nil, g.newError("The `motors.lock` function takes 0-1 arguments: motors.lock(motor?: string)", stmt.Name)
+		}
+		block := g.NewBlock(blocks.Mbot2EncoderMotorLockUnlock, false)
+
+		block.Fields["fieldMenu_2"] = []any{value, nil}
+
+		var motor parser.Expr
+		if len(stmt.Parameters) == 1 {
+			motor = stmt.Parameters[0]
+		} else {
+			motor = &parser.ExprLiteral{
+				Token: parser.Token{
+					Type:     parser.TkLiteral,
+					Literal:  "ALL",
+					DataType: parser.DTString,
+					Line:     stmt.Name.Line,
+				},
+			}
+		}
+
+		var err error
+		block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.Mbot2EncoderMotorLockUnlockMenu, "", "MBOT2_ENCODER_MOTOR_STOP_FIELDMENU_1", block.ID, stmt.Name, motor, parser.DTString, func(v any, token parser.Token) error {
+			encoderMotor := v.(string)
+			if encoderMotor != "ALL" && encoderMotor != "EM1" && encoderMotor != "EM2" {
+				return g.newError("Unknown encoder motor. Available options: ALL, EM1, EM2", token)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return block, nil
+	}
+}
+
 func funcTimeSleep(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 1 {
 		return nil, g.newError("The 'time.sleep' function takes 1 argument: time.sleep(seconds: number) or time.sleep(continueCondition: boolean)", stmt.Name)
@@ -798,6 +1040,23 @@ func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	}
 	block := g.NewBlock(blocks.ControlRestart, false)
 	return block, nil
+}
+
+func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) > 0 {
+			return nil, g.newError(fmt.Sprintf("The `mbot.%sParameters` function takes no arguments.", parameter), stmt.Name)
+		}
+		block := g.NewBlock(blocks.Mbot2SetParameters, false)
+
+		if parameter == "calibrate" {
+			parameter = "set_auto"
+		}
+
+		block.Fields["PARA"] = []any{parameter, nil}
+
+		return block, nil
+	}
 }
 
 func funcProgramExit(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

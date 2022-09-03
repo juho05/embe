@@ -37,4 +37,6 @@ var Variables = map[string]Var{
 		block.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
 		parent.Inputs["index"] = []any{1, block.ID}
 	}},
+
+	"net.connected": {blockType: blocks.NetWifiIsConnected, dataType: parser.DTBool},
 }

@@ -567,10 +567,25 @@ func (p *parser) equality() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		expr = &ExprBinary{
-			Operator: operator,
-			Left:     expr,
-			Right:    right,
+		if operator.Type == TkNotEqual {
+			operator.Type = TkEqual
+			expr = &ExprUnary{
+				Operator: Token{
+					Type: TkBang,
+					Line: operator.Line,
+				},
+				Right: &ExprBinary{
+					Operator: operator,
+					Left:     expr,
+					Right:    right,
+				},
+			}
+		} else {
+			expr = &ExprBinary{
+				Operator: operator,
+				Left:     expr,
+				Right:    right,
+			}
 		}
 	}
 

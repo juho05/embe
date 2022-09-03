@@ -394,7 +394,7 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	var block *blocks.Block
 	retDataType := parser.DTBool
-	if expr.Operator.Type == parser.TkPlus {
+	if expr.Operator.Type == parser.TkPlus || expr.Operator.Type == parser.TkEqual {
 		block = g.NewBlock(blocks.OpAdd, false)
 
 		left, err := g.value(block.ID, expr.Operator, expr.Left, "")
@@ -413,15 +413,22 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			return g.newError("Expected number or string operands.", expr.Operator)
 		}
 
-		if leftType == parser.DTString || rightType == parser.DTString {
-			block.Type = blocks.OpJoin
-			block.Inputs["STRING1"] = left
-			block.Inputs["STRING2"] = right
-			retDataType = parser.DTString
+		if expr.Operator.Type == parser.TkEqual {
+			block.Inputs["OPERAND1"] = left
+			block.Inputs["OPERAND2"] = right
+			block.Type = blocks.OpEquals
+			retDataType = parser.DTBool
 		} else {
-			block.Inputs["NUM1"] = left
-			block.Inputs["NUM2"] = right
-			retDataType = parser.DTNumber
+			if leftType == parser.DTString || rightType == parser.DTString {
+				block.Type = blocks.OpJoin
+				block.Inputs["STRING1"] = left
+				block.Inputs["STRING2"] = right
+				retDataType = parser.DTString
+			} else {
+				block.Inputs["NUM1"] = left
+				block.Inputs["NUM2"] = right
+				retDataType = parser.DTNumber
+			}
 		}
 	} else {
 		var operandDataType parser.DataType
@@ -432,9 +439,6 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			operandDataType = parser.DTNumber
 		case parser.TkGreater:
 			block = g.NewBlock(blocks.OpGreaterThan, false)
-			operandDataType = parser.DTNumber
-		case parser.TkEqual:
-			block = g.NewBlock(blocks.OpEquals, false)
 			operandDataType = parser.DTNumber
 		case parser.TkAnd:
 			block = g.NewBlock(blocks.OpAnd, false)

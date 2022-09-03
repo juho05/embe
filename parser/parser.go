@@ -754,6 +754,24 @@ func (p *parser) primary() (Expr, error) {
 				Name: name,
 			}, nil
 		}
+	} else if p.match(TkType) {
+		token := p.previous()
+		if !p.match(TkOpenParen) {
+			return nil, p.newError("Expected '(' after type name for type cast.")
+		}
+
+		value, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+
+		if !p.match(TkCloseParen) {
+			return nil, p.newError("Expected ')' after value for type cast.")
+		}
+		return &ExprTypeCast{
+			Type:  token,
+			Value: value,
+		}, nil
 	}
 
 	if p.match(TkLiteral) {

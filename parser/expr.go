@@ -3,6 +3,7 @@ package parser
 type ExprVisitor interface {
 	VisitIdentifier(expr *ExprIdentifier) error
 	VisitExprFuncCall(expr *ExprFuncCall) error
+	VisitTypeCast(expr *ExprTypeCast) error
 	VisitLiteral(expr *ExprLiteral) error
 	VisitUnary(expr *ExprUnary) error
 	VisitBinary(expr *ExprBinary) error
@@ -19,6 +20,15 @@ type ExprFuncCall struct {
 
 func (e *ExprFuncCall) Accept(visitor ExprVisitor) error {
 	return visitor.VisitExprFuncCall(e)
+}
+
+type ExprTypeCast struct {
+	Type  Token
+	Value Expr
+}
+
+func (e *ExprTypeCast) Accept(visitor ExprVisitor) error {
+	return visitor.VisitTypeCast(e)
 }
 
 type ExprIdentifier struct {

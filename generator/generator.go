@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/google/uuid"
 
@@ -353,6 +354,19 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	return nil
 }
 
+func (g *generator) VisitTypeCast(expr *parser.ExprTypeCast) error {
+	dataType := expr.Type.DataType
+	err := expr.Value.Accept(g)
+	if err != nil {
+		return err
+	}
+	if expr.Type.DataType == parser.DTBool || g.dataType == parser.DTBool {
+		return g.newError("Cannot cast from or to a boolean.", expr.Type)
+	}
+	g.dataType = dataType
+	return nil
+}
+
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
 	return g.newError("Literals are not allowed in this context.", expr.Token)
 }
@@ -500,11 +514,17 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 }
 
 func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate func(v any) bool, errorMessage string) ([]any, error) {
-	if literalExpr, ok := expr.(*parser.ExprLiteral); ok {
+	var castType parser.Token
+	castValue := expr
+	if cast, ok := expr.(*parser.ExprTypeCast); ok {
+		castType = cast.Type
+		castValue = cast.Value
+	}
+
+	if literalExpr, ok := castValue.(*parser.ExprLiteral); ok {
 		literal := *literalExpr
-		if dataType == parser.DTString && literal.Token.DataType == parser.DTNumber {
-			literal.Token.DataType = parser.DTString
-			literal.Token.Literal = fmt.Sprintf("%v", literal.Token.Literal)
+		if castValue != expr {
+			literal.Token = castToken(literal.Token, castType.DataType)
 		}
 		if dataType != "" && literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
@@ -518,12 +538,12 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		g.dataType = literal.Token.DataType
 		return []any{1, []any{valueInt, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
-		if ident, ok := expr.(*parser.ExprIdentifier); ok {
+		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
 			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
 				constant := *myConst
-				if dataType == parser.DTString && constant.Type == parser.DTNumber {
-					constant.Type = parser.DTString
-					constant.Value.Literal = fmt.Sprintf("%v", constant.Value.Literal)
+				if castValue != expr {
+					constant.Type = castType.DataType
+					constant.Value = castToken(constant.Value, castType.DataType)
 				}
 				if dataType != "" && constant.Type != dataType {
 					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
@@ -546,9 +566,6 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			return nil, err
 		}
 		g.noNext = false
-		if dataType == parser.DTString && g.dataType == parser.DTNumber {
-			g.dataType = parser.DTString
-		}
 		if dataType != "" && g.dataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
@@ -564,12 +581,23 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 }
 
 func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v any, token parser.Token) error) ([]any, error) {
+	var castType parser.Token
+	castValue := expr
+	if cast, ok := expr.(*parser.ExprTypeCast); ok {
+		castType = cast.Type
+		castValue = cast.Value
+	}
+
 	gparent := g.parent
 	defer func() { g.parent = gparent }()
 	g.parent = parent
 	g.noNext = true
 	defer func() { g.variableName = ""; g.noNext = false }()
-	if literal, ok := expr.(*parser.ExprLiteral); ok {
+	if literalExpr, ok := castValue.(*parser.ExprLiteral); ok {
+		literal := *literalExpr
+		if castValue != expr {
+			literal.Token = castToken(literal.Token, castType.DataType)
+		}
 		if dataType != "" && literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
@@ -592,8 +620,13 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		g.dataType = literal.Token.DataType
 		return []any{1, block.ID}, nil
 	} else {
-		if ident, ok := expr.(*parser.ExprIdentifier); ok {
-			if constant, ok := g.constants[ident.Name.Lexeme]; ok {
+		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
+			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+				constant := *myConst
+				if castValue != expr {
+					constant.Type = castType.DataType
+					constant.Value = castToken(constant.Value, castType.DataType)
+				}
 				if dataType != "" && constant.Type != dataType {
 					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
 				}
@@ -635,14 +668,30 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 }
 
 func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parser.DataType) (any, error) {
-	if literal, ok := expr.(*parser.ExprLiteral); ok {
+	var castType parser.Token
+	castValue := expr
+	if cast, ok := expr.(*parser.ExprTypeCast); ok {
+		castType = cast.Type
+		castValue = cast.Value
+	}
+
+	if literalExpr, ok := castValue.(*parser.ExprLiteral); ok {
+		literal := *literalExpr
+		if castValue != expr {
+			literal.Token = castToken(literal.Token, castType.DataType)
+		}
 		if literal.Token.DataType != dataType {
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		return literal.Token.Literal, nil
 	}
-	if ident, ok := expr.(*parser.ExprIdentifier); ok {
-		if constant, ok := g.constants[ident.Name.Lexeme]; ok {
+	if ident, ok := castValue.(*parser.ExprIdentifier); ok {
+		if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+			constant := *myConst
+			if castValue != expr {
+				constant.Type = castType.DataType
+				constant.Value = castToken(constant.Value, castType.DataType)
+			}
 			if constant.Type != dataType {
 				return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
 			}
@@ -665,6 +714,42 @@ func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Bl
 	}
 	g.noNext = false
 	return block
+}
+
+func castToken(token parser.Token, dataType parser.DataType) parser.Token {
+	switch dataType {
+	case parser.DTBool:
+		switch token.DataType {
+		case parser.DTNumber:
+			if token.Literal.(float64) == 0 {
+				token.Literal = false
+			} else {
+				token.Literal = true
+			}
+		case parser.DTString:
+			token.Literal, _ = strconv.ParseBool(token.Literal.(string))
+		}
+	case parser.DTNumber:
+		switch token.DataType {
+		case parser.DTBool:
+			if token.Literal.(bool) {
+				token.Literal = 1
+			} else {
+				token.Literal = 0
+			}
+		case parser.DTString:
+			token.Literal, _ = strconv.ParseFloat(token.Literal.(string), 64)
+		}
+	case parser.DTString:
+		switch token.DataType {
+		case parser.DTBool:
+			token.Literal = fmt.Sprintf("%t", token.Literal.(bool))
+		case parser.DTNumber:
+			token.Literal = fmt.Sprintf("%v", token.Literal)
+		}
+	}
+	token.DataType = dataType
+	return token
 }
 
 type GenerateError struct {

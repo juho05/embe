@@ -197,8 +197,8 @@ func (s *scanner) identifier() {
 	}
 
 	name := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
-	if _, ok := types[name]; ok {
-		s.addToken(TkType)
+	if t, ok := types[name]; ok {
+		s.addTokenWithValue(TkType, t, nil)
 	} else if k, ok := keywords[name]; ok {
 		s.addToken(k)
 	} else if name == "true" || name == "false" {

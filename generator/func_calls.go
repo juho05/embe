@@ -73,7 +73,9 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"mbot.calibrateParameters": funcMBotChassisParameters("calibrate"),
 	"mbot.resetParameters":     funcMBotChassisParameters("reset"),
 
-	"program.exit": funcProgramExit,
+	"script.stop":      funcScriptStop("this script"),
+	"script.stopAll":   funcScriptStop("all"),
+	"script.stopOther": funcScriptStop("other scripts in sprite"),
 }
 
 func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
@@ -818,7 +820,7 @@ func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks
 
 func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The 'display.clear' function takes no arguments.", stmt.Name)
+		return nil, g.newError("The 'display.clear' function does not take any arguments.", stmt.Name)
 	}
 	block := g.NewBlock(blocks.DisplayClear, false)
 	return block, nil
@@ -902,7 +904,7 @@ func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 
 func funcNetReconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The 'net.reconnect' function takes no arguments.", stmt.Name)
+		return nil, g.newError("The 'net.reconnect' function does not take any arguments.", stmt.Name)
 	}
 	block := g.NewBlock(blocks.NetWifiReconnect, false)
 	return block, nil
@@ -910,7 +912,7 @@ func funcNetReconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 
 func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The 'net.disconnect' function takes no arguments.", stmt.Name)
+		return nil, g.newError("The 'net.disconnect' function does not take any arguments.", stmt.Name)
 	}
 	block := g.NewBlock(blocks.NetWifiDisconnect, false)
 	return block, nil
@@ -1176,7 +1178,7 @@ func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 		if len(stmt.Parameters) > 0 {
-			return nil, g.newError(fmt.Sprintf("The `mbot.%sParameters` function takes no arguments.", parameter), stmt.Name)
+			return nil, g.newError(fmt.Sprintf("The `mbot.%sParameters` function does not take any arguments.", parameter), stmt.Name)
 		}
 		block := g.NewBlock(blocks.Mbot2SetParameters, false)
 
@@ -1190,10 +1192,27 @@ func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser
 	}
 }
 
-func funcProgramExit(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The 'program.exit' function does not take any arguments.", stmt.Name)
+func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 0 {
+			return nil, g.newError("The 'script.stop' function does not take any arguments.", stmt.Name)
+		}
+		block := g.NewBlock(blocks.ControlStop, false)
+		block.NoNext = true
+
+		block.Fields["STOP_OPTION"] = []any{stopOption, nil}
+
+		hasNext := "false"
+		if stopOption == "other scripts in sprite" {
+			hasNext = "true"
+			block.NoNext = false
+		}
+		block.Mutation = map[string]any{
+			"tagName":  "mutation",
+			"children": []any{},
+			"hasnext":  hasNext,
+		}
+
+		return block, nil
 	}
-	block := g.NewBlock(blocks.ControlStop, false)
-	return block, nil
 }

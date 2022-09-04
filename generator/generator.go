@@ -17,12 +17,13 @@ type Constant struct {
 	Type  parser.DataType
 }
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, []error) {
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, []error, []error) {
 	g := &generator{
 		blocks:    make(map[string]*blocks.Block),
 		variables: make(map[string]*blocks.Variable),
 		constants: make(map[string]*Constant),
 		lines:     lines,
+		warnings:  make([]error, 0),
 	}
 	errs := make([]error, 0)
 	for _, stmt := range statements {
@@ -31,7 +32,7 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*block
 			errs = append(errs, err)
 		}
 	}
-	return g.blocks, g.variables, g.constants, errs
+	return g.blocks, g.variables, g.constants, g.warnings, errs
 }
 
 type generator struct {
@@ -48,6 +49,8 @@ type generator struct {
 
 	noNext       bool
 	variableName string
+
+	warnings []error
 }
 
 func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
@@ -167,6 +170,13 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 }
 
 func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
+	if parent, ok := g.blocks[g.parent]; ok {
+		if parent.NoNext {
+			g.newWarning("Unreachable code.", stmt.Name)
+			return nil
+		}
+	}
+
 	fn, ok := FuncCalls[stmt.Name.Lexeme]
 	if !ok {
 		return g.newError("Unknown function.", stmt.Name)
@@ -175,11 +185,19 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if err != nil {
 		return err
 	}
+
 	g.blockID = block.ID
 	return nil
 }
 
 func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
+	if parent, ok := g.blocks[g.parent]; ok {
+		if parent.NoNext {
+			g.newWarning("Unreachable code.", stmt.Variable)
+			return nil
+		}
+	}
+
 	var block *blocks.Block
 	if assignment, ok := Assignments[stmt.Variable.Lexeme]; ok {
 		blockType := assignment.AssignType
@@ -223,12 +241,20 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 }
 
 func (g *generator) VisitIf(stmt *parser.StmtIf) error {
+	if parent, ok := g.blocks[g.parent]; ok {
+		if parent.NoNext {
+			g.newWarning("Unreachable code.", stmt.Keyword)
+			return nil
+		}
+	}
+
 	var block *blocks.Block
 	if stmt.ElseBody == nil {
 		block = g.NewBlock(blocks.ControlIf, false)
 	} else {
 		block = g.NewBlock(blocks.ControlIfElse, false)
 	}
+
 	g.parent = block.ID
 
 	g.noNext = true
@@ -271,6 +297,13 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 }
 
 func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
+	if parent, ok := g.blocks[g.parent]; ok {
+		if parent.NoNext {
+			g.newWarning("Unreachable code.", stmt.Keyword)
+			return nil
+		}
+	}
+
 	var block *blocks.Block
 	var err error
 	parent := g.parent
@@ -713,8 +746,9 @@ func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Bl
 		block = blocks.NewBlock(blockType, g.parent)
 	}
 	g.blocks[block.ID] = block
-	if !g.noNext {
-		g.blocks[g.parent].Next = &block.ID
+	parent := g.blocks[g.parent]
+	if !g.noNext && !parent.NoNext {
+		parent.Next = &block.ID
 	}
 	g.noNext = false
 	return block
@@ -760,6 +794,7 @@ type GenerateError struct {
 	Token   parser.Token
 	Message string
 	Line    []rune
+	Warning bool
 }
 
 func (p GenerateError) Error() string {
@@ -767,7 +802,11 @@ func (p GenerateError) Error() string {
 	if p.Token.Type == parser.TkNewLine {
 		length = 1
 	}
-	return generateErrorText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+	if p.Warning {
+		return generateWarningText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+	} else {
+		return generateErrorText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+	}
 }
 
 func (g *generator) newError(message string, token parser.Token) error {
@@ -776,4 +815,13 @@ func (g *generator) newError(message string, token parser.Token) error {
 		Message: message,
 		Line:    g.lines[token.Line],
 	}
+}
+
+func (g *generator) newWarning(message string, token parser.Token) {
+	g.warnings = append(g.warnings, GenerateError{
+		Token:   token,
+		Message: message,
+		Line:    g.lines[token.Line],
+		Warning: true,
+	})
 }

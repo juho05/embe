@@ -4,11 +4,13 @@ import "github.com/google/uuid"
 
 type Block struct {
 	ID       string         `json:"-"`
+	NoNext   bool           `json:"-"`
 	Type     BlockType      `json:"opcode"`
 	Next     *string        `json:"next"`
 	Parent   *string        `json:"parent"`
 	Inputs   map[string]any `json:"inputs"`
 	Fields   map[string]any `json:"fields"`
+	Mutation map[string]any `json:"mutation,omitempty"`
 	Shadow   bool           `json:"shadow"`
 	TopLevel bool           `json:"topLevel"`
 	X        int            `json:"x,omitempty"`

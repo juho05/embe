@@ -16,6 +16,8 @@ var ExprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*b
 	"mbot.isJoystickPulled":  exprFuncIsJoystickPulled,
 	"mbot.joystickPullCount": exprFuncJoystickPullCount,
 
+	"lights.front.brightness": funcLEDGetAmbientBrightness,
+
 	"sensors.isTilted": exprFuncIsTilted,
 	"sensors.isFaceUp": exprFuncIsFaceUp,
 
@@ -142,6 +144,25 @@ func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks
 	}
 
 	block.Fields["fieldMenu_1"] = []any{direction.(string), nil}
+
+	return block, parser.DTNumber, nil
+}
+
+func funcLEDGetAmbientBrightness(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	if len(expr.Parameters) > 1 {
+		return nil, parser.DTNumber, g.newError("The 'lights.front.brightness' function takes 0-1 arguments: lights.front.brightness(light?: number)", expr.Name)
+	}
+	block := g.NewBlock(blocks.UltrasonicGetBrightness, false)
+
+	err := selectAmbientLight(g, block, blocks.UltrasonicGetBrightnessOrder, expr.Name, expr.Parameters, 0, "order", "MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX", false)
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+
+	g.noNext = true
+	indexMenu := g.NewBlock(blocks.UltrasonicGetBrightnessIndex, true)
+	indexMenu.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
+	block.Inputs["index"] = []any{1, indexMenu.ID}
 
 	return block, parser.DTNumber, nil
 }

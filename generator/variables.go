@@ -16,7 +16,7 @@ var Variables = map[string]Var{
 	"audio.volume": {blockType: blocks.AudioGetVolume, dataType: parser.DTNumber},
 	"audio.speed":  {blockType: blocks.AudioGetSpeed, dataType: parser.DTNumber},
 
-	"led.brightness": {blockType: blocks.LEDGetBrightness, dataType: parser.DTNumber},
+	"lights.back.brightness": {blockType: blocks.LEDGetBrightness, dataType: parser.DTNumber},
 
 	"mbot.battery": {blockType: blocks.SensorBatteryLevelMacAddressAndSoOn, dataType: parser.DTNumber, fields: map[string]any{"fieldMenu_1": []any{"battery", nil}}},
 

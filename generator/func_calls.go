@@ -24,12 +24,17 @@ var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*block
 	"audio.recording.stop":  funcAudioRecordingStop,
 	"audio.recording.play":  funcAudioRecordingPlay,
 
-	"led.display":         funcLEDDisplay,
-	"led.displayColor":    funcLEDDisplayColor,
-	"led.displayColorFor": funcLEDDisplayColorFor,
-	"led.deactivate":      funcLEDDeactivate,
-	"led.move":            funcLEDMove,
-	"led.playAnimation":   funcLEDPlayAnimation,
+	"lights.back.display":         funcLEDDisplay,
+	"lights.back.displayColor":    funcLEDDisplayColor,
+	"lights.back.displayColorFor": funcLEDDisplayColorFor,
+	"lights.back.deactivate":      funcLEDDeactivate,
+	"lights.back.move":            funcLEDMove,
+	"lights.back.playAnimation":   funcLEDPlayAnimation,
+
+	"lights.front.setBrightness":  funcLEDSetAmbientBrightness("set"),
+	"lights.front.addBrightness":  funcLEDSetAmbientBrightness("add"),
+	"lights.front.displayEmotion": funcLEDDisplayEmotion,
+	"lights.front.deactivate":     funcLEDDeactivateAmbient,
 
 	"display.print":                 funcDisplayPrint(false),
 	"display.println":               funcDisplayPrint(true),
@@ -267,7 +272,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 
 func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The 'led.playAnimation' function takes 1 argument: led.playAnimation(name: string)", stmt.Name)
+		return nil, g.newError("The 'lights.back.playAnimation' function takes 1 argument: lights.back.playAnimation(name: string)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDPlayAnimation, false)
 
@@ -286,9 +291,88 @@ func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
+func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
+			return nil, g.newError(fmt.Sprintf("The 'lights.front.%sBrightness' function takes 1-2 arguments: lights.front.%sBrightness(light?: number, value: number)", operation, operation), stmt.Name)
+		}
+		blockType := blocks.UltrasonicSetBrightness
+		indexType := blocks.UltrasonicSetBrightnessIndex
+		orderType := blocks.UltrasonicSetBrightnessOrder
+		if operation == "add" {
+			blockType = blocks.UltrasonicAddBrightness
+			indexType = blocks.UltrasonicAddBrightnessIndex
+			orderType = blocks.UltrasonicAddBrightnessOrder
+		}
+		block := g.NewBlock(blockType, false)
+
+		err := selectAmbientLight(g, block, orderType, stmt.Name, stmt.Parameters, 1, "order", "MBUILD_ULTRASONIC2_SET_BRI_ORDER", true)
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["bv"], err = g.value(g.blockID, stmt.Name, stmt.Parameters[len(stmt.Parameters)-1], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		g.noNext = true
+		indexMenu := g.NewBlock(indexType, true)
+		indexMenu.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
+		block.Inputs["index"] = []any{1, indexMenu.ID}
+
+		return block, nil
+	}
+}
+
+func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) != 1 {
+		return nil, g.newError("The 'lights.front.displayEmotion' function takes 1 argument: lights.front.displayEmotion(emotion: string)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.UltrasonicShowEmotion, false)
+
+	g.noNext = true
+	indexMenu := g.NewBlock(blocks.UltrasonicShowEmotionIndex, true)
+	indexMenu.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
+	block.Inputs["index"] = []any{1, indexMenu.ID}
+
+	var err error
+	block.Inputs["emotion"], err = g.fieldMenu(blocks.UltrasonicShowEmotionMenu, "", "MBUILD_ULTRASONIC2_SHOW_EMOTION_EMOTION", block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, func(v any, token parser.Token) error {
+		names := []string{"sleepy", "wink", "happy", "dizzy", "thinking"}
+		if !slices.Contains(names, v.(string)) {
+			return g.newError(fmt.Sprintf("Unknown emotion name. Available options: %s", strings.Join(names, ", ")), token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	if len(stmt.Parameters) > 1 {
+		return nil, g.newError("The 'lights.front.deactivate' function takes 0-1 arguments: lights.front.deactivate(light?: number)", stmt.Name)
+	}
+	block := g.NewBlock(blocks.UltrasonicOffLED, false)
+
+	err := selectAmbientLight(g, block, blocks.UltrasonicOffLEDInput, stmt.Name, stmt.Parameters, 0, "inputMenu_3", "MBUILD_ULTRASONIC2_SET_BRI_ORDER", true)
+	if err != nil {
+		return nil, err
+	}
+
+	g.noNext = true
+	indexMenu := g.NewBlock(blocks.UltrasonicOffLEDIndex, true)
+	indexMenu.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
+	block.Inputs["index"] = []any{1, indexMenu.ID}
+
+	return block, nil
+}
+
 func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 5 {
-		return nil, g.newError("The 'led.display' function takes 5 arguments: led.display(color1: string, color2: string, color3: string, color4: string, color5: string)", stmt.Name)
+		return nil, g.newError("The 'lights.back.display' function takes 5 arguments: lights.back.display(color1: string, color2: string, color3: string, color4: string, color5: string)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDDisplay, false)
 
@@ -315,7 +399,7 @@ var hexColorRegex = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
 
 func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) < 1 || len(stmt.Parameters) > 4 {
-		return nil, g.newError("The 'led.displayColor' function takes 1-4 arguments: led.displayColor(led?: number, color: string) or led.displayColor(led?: number, r: number, g: number, b: number)", stmt.Name)
+		return nil, g.newError("The 'lights.back.displayColor' function takes 1-4 arguments: lights.back.displayColor(led?: number, color: string) or lights.back.displayColor(led?: number, r: number, g: number, b: number)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDDisplaySingleColor, false)
 	if len(stmt.Parameters) > 2 {
@@ -353,7 +437,7 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 
 func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) < 2 || len(stmt.Parameters) > 5 {
-		return nil, g.newError("The 'led.displayColorFor' function takes 2-5 arguments: led.displayColorFor(led?: number, color: string, duration: number) or led.displayColor(led?: number, r: number, g: number, b: number, duration: number)", stmt.Name)
+		return nil, g.newError("The 'lights.back.displayColorFor' function takes 2-5 arguments: lights.back.displayColorFor(led?: number, color: string, duration: number) or lights.back.displayColor(led?: number, r: number, g: number, b: number, duration: number)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDDisplaySingleColorWithTime, false)
 	if len(stmt.Parameters) > 3 {
@@ -399,7 +483,7 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 
 func funcLEDDeactivate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The 'led.deactivate' function takes 0-1 arguments: led.deactivate(led?: number)", stmt.Name)
+		return nil, g.newError("The 'lights.back.deactivate' function takes 0-1 arguments: lights.back.deactivate(led?: number)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDOff, false)
 
@@ -436,6 +520,53 @@ func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType
 			nr := int(v.(float64))
 			if nr != 1 && nr != 2 && nr != 3 && nr != 4 && nr != 5 {
 				return g.newError("Unknown LED. Available options: \"all\", 1, 2, 3, 4, 5", token)
+			}
+			return nil
+		})
+	}
+	return err
+}
+
+func selectAmbientLight(g *generator, block *blocks.Block, menuBlockType blocks.BlockType, token parser.Token, parameters []parser.Expr, paramCountWithoutLight int, orderKey string, menuFieldKey string, allowAll bool) error {
+	errorMsg := "Unknown light. Available options: 1, 2, 3, 4, 5, 6, 7, 8"
+	if allowAll {
+		errorMsg = "Unknown light. Available options: \"all\", 1, 2, 3, 4, 5, 6, 7, 8"
+	}
+
+	if len(parameters) == paramCountWithoutLight {
+		if !allowAll {
+			return g.newError(errorMsg, token)
+		}
+		parameters = append([]parser.Expr{&parser.ExprLiteral{
+			Token: parser.Token{
+				Type:     parser.TkLiteral,
+				Literal:  "all",
+				DataType: parser.DTString,
+			},
+		}}, parameters...)
+	}
+
+	errWrongType := errors.New("wrong-type")
+	var err error
+	if allowAll {
+		block.Inputs[orderKey], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, token, parameters[0], "", func(v any, token parser.Token) error {
+			if str, ok := v.(string); !ok {
+				return errWrongType
+			} else {
+				if str != "all" {
+					return g.newError(errorMsg, token)
+				}
+			}
+			return nil
+		})
+	} else {
+		err = errWrongType
+	}
+	if err == errWrongType {
+		block.Inputs[orderKey], err = g.fieldMenu(menuBlockType, "\"", menuFieldKey, block.ID, token, parameters[0], parser.DTNumber, func(v any, token parser.Token) error {
+			nr := int(v.(float64))
+			if nr < 1 || nr > 8 {
+				return g.newError(errorMsg, token)
 			}
 			return nil
 		})
@@ -695,7 +826,7 @@ func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The 'led.move' function takes 1 argument: led.scroll(amount: number)", stmt.Name)
+		return nil, g.newError("The 'lights.back.move' function takes 1 argument: lights.back.move(amount: number)", stmt.Name)
 	}
 	block := g.NewBlock(blocks.LEDMove, false)
 

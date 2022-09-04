@@ -90,6 +90,25 @@ const (
 	LEDAddBrightness                             BlockType = "cyberpi.cyberpi_add_led_brightness"
 )
 
+// Ambient light (ultrasonic sensor)
+const (
+	UltrasonicSetBrightness      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_set_bri"
+	UltrasonicSetBrightnessIndex BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_set_bri_index_menu"
+	UltrasonicSetBrightnessOrder BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_set_bri_order_menu"
+	UltrasonicAddBrightness      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_add_bri"
+	UltrasonicAddBrightnessIndex BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_add_bri_index_menu"
+	UltrasonicAddBrightnessOrder BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_add_bri_order_menu"
+	UltrasonicGetBrightness      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_get_bri"
+	UltrasonicGetBrightnessIndex BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_get_bri_index_menu"
+	UltrasonicGetBrightnessOrder BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_get_bri_order_menu"
+	UltrasonicOffLED             BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_off_led"
+	UltrasonicOffLEDIndex        BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_off_led_index_menu"
+	UltrasonicOffLEDInput        BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_off_led_inputMenu_3_menu"
+	UltrasonicShowEmotion        BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_show_emotion"
+	UltrasonicShowEmotionIndex   BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_show_emotion_index_menu"
+	UltrasonicShowEmotionMenu    BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_show_emotion_emotion_menu"
+)
+
 // Net
 const (
 	NetSetWifiBroadcast          BlockType = "cyberpi.cyberpi_set_wifi_broadcast"

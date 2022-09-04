@@ -26,7 +26,7 @@ var Assignments = map[string]Assignment{
 		InputName:    "number_1",
 	},
 
-	"led.brightness": {
+	"lights.back.brightness": {
 		AssignType:   blocks.LEDSetBrightness,
 		IncreaseType: blocks.LEDAddBrightness,
 		DataType:     parser.DTNumber,

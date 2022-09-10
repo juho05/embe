@@ -18,7 +18,11 @@ var Variables = map[string]Var{
 
 	"lights.back.brightness": {blockType: blocks.LEDGetBrightness, dataType: parser.DTNumber},
 
-	"mbot.battery": {blockType: blocks.SensorBatteryLevelMacAddressAndSoOn, dataType: parser.DTNumber, fields: map[string]any{"fieldMenu_1": []any{"battery", nil}}},
+	"time.timer": {blockType: blocks.Mbot2TimerGet, dataType: parser.DTNumber},
+
+	"mbot.battery":  {blockType: blocks.SensorBatteryLevelMacAddressAndSoOn, dataType: parser.DTNumber, fields: map[string]any{"fieldMenu_1": []any{"battery", nil}}},
+	"mbot.mac":      {blockType: blocks.SensorBatteryLevelMacAddressAndSoOn, dataType: parser.DTString, fields: map[string]any{"fieldMenu_1": []any{"mac", nil}}},
+	"mbot.hostname": {blockType: blocks.Mbot2Hostname, dataType: parser.DTString},
 
 	"sensors.wavingAngle":     {blockType: blocks.SensorWaveAngle, dataType: parser.DTNumber},
 	"sensors.wavingSpeed":     {blockType: blocks.SensorWaveSpeed, dataType: parser.DTNumber},
@@ -36,6 +40,12 @@ var Variables = map[string]Var{
 		block := g.NewBlock(blocks.SensorUltrasonicOutOfRangeMenu, true)
 		block.Fields["MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX"] = []any{"1", nil}
 		parent.Inputs["index"] = []any{1, block.ID}
+	}},
+	"sensors.lineDeviation": {blockType: blocks.SensorColorGetOffTrack, dataType: parser.DTNumber, fn: func(g *generator, parent *blocks.Block) {
+		g.noNext = true
+		indexMenu := g.NewBlock(blocks.SensorColorGetOffTrackIndex, true)
+		indexMenu.Fields["MBUILD_QUAD_COLOR_SENSOR_GET_STA_WITH_INPUTMENU_INDEX"] = []any{"1", nil}
+		parent.Inputs["index"] = []any{1, indexMenu.ID}
 	}},
 
 	"net.connected": {blockType: blocks.NetWifiIsConnected, dataType: parser.DTBool},

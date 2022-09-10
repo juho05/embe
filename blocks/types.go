@@ -25,6 +25,29 @@ const (
 	SensorUltrasonicOutOfRange          BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range"
 	SensorUltrasonicOutOfRangeMenu      BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_out_of_range_index_menu"
 
+	SensorColorDefineColor               BlockType = "mbuild_quad_color_sensor.BLOCK_1626250042594"
+	SensorColorDefineColorIndex          BlockType = "mbuild_quad_color_sensor.BLOCK_1626250042594_index_menu"
+	SensorColorL1R1Status                BlockType = "mbuild_quad_color_sensor.BLOCK_1618397596925"
+	SensorColorL1R1StatusIndex           BlockType = "mbuild_quad_color_sensor.BLOCK_1618397596925_index_menu"
+	SensorColorStatus                    BlockType = "mbuild_quad_color_sensor.BLOCK_1618397679204"
+	SensorColorStatusIndex               BlockType = "mbuild_quad_color_sensor.BLOCK_1618397679204_index_menu"
+	SensorColorGetRGBGrayLight           BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_rgb_gray_light"
+	SensorColorGetRGBGrayLightIndex      BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_rgb_gray_light_index_menu"
+	SensorColorGetRGBGrayLightInput2     BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_rgb_gray_light_inputMenu_2_menu"
+	SensorColorGetRGBGrayLightInput3     BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_rgb_gray_light_inputMenu_3_menu"
+	SensorColorGetOffTrack               BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_off_track"
+	SensorColorGetOffTrackIndex          BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_off_track_index_menu"
+	SensorColorIsStatusL1R1              BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_sta_with_inputMenu"
+	SensorColorIsStatusL1R1Index         BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_sta_with_inputMenu_index_menu"
+	SensorColorIsStatusL1R1Input         BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_get_sta_with_inputMenu_inputMenu_2_menu"
+	SensorColorIsStatus                  BlockType = "mbuild_quad_color_sensor.BLOCK_1618364921511"
+	SensorColorIsStatusIndex             BlockType = "mbuild_quad_color_sensor.BLOCK_1618364921511_index_menu"
+	SensorColorIsStatusInput             BlockType = "mbuild_quad_color_sensor.BLOCK_1618364921511_inputMenu_2_menu"
+	SensorColorIsLineAndBackground       BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background"
+	SensorColorIsLineAndBackgroundIndex  BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_index_menu"
+	SensorColorIsLineAndBackgroundInput2 BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_inputMenu_2_menu"
+	SensorColorIsLineAndBackgroundInput3 BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_inputMenu_3_menu"
+
 	SensorShakingStrength BlockType = "cyberpi.cyberpi_shaked_value"
 
 	SensorWaveAngle BlockType = "cyberpi.cyberpi_wave_angle"
@@ -40,6 +63,9 @@ const (
 	SensorButtonPressCount       BlockType = "cyberpi.cyberpi_button_count"
 	SensorDirectionKeyPress      BlockType = "cyberpi.cyberpi_direction_key_press"
 	SensorDirectionKeyPressCount BlockType = "cyberpi.cyberpi_direction_key_count"
+
+	SensorsResetAxisRotationAngle BlockType = "cyberpi.cyberpi_reset_axis_rotation_angle"
+	SensorsResetYaw               BlockType = "cyberpi.cyberpi_reset_yaw"
 )
 
 // Audio
@@ -109,6 +135,14 @@ const (
 	UltrasonicShowEmotionMenu    BlockType = "cyberpi_mbuild_ultrasonic2.mbuild_ultrasonic2_show_emotion_emotion_menu"
 )
 
+// Bottom light (RGB sensor)
+const (
+	SensorColorSetFillColor          BlockType = "mbuild_quad_color_sensor.BLOCK_1618382823173"
+	SensorColorSetFillColorIndex     BlockType = "mbuild_quad_color_sensor.BLOCK_1618382823173_index_menu"
+	SensorColorDisableFillColor      BlockType = "mbuild_quad_color_sensor.BLOCK_1620904215289"
+	SensorColorDisableFillColorIndex BlockType = "mbuild_quad_color_sensor.BLOCK_1620904215289_index_menu"
+)
+
 // Net
 const (
 	NetSetWifiBroadcast          BlockType = "cyberpi.cyberpi_set_wifi_broadcast"
@@ -147,6 +181,9 @@ const (
 // MBot2
 const (
 	Mbot2SetParameters BlockType = "mbot2.mbot2_set_para"
+	Mbot2TimerReset    BlockType = "cyberpi.cyberpi_timer_reset"
+	Mbot2TimerGet      BlockType = "cyberpi.cyberpi_timer_get"
+	Mbot2Hostname      BlockType = "cyberpi.cyberpi_name"
 )
 
 // Display

@@ -62,8 +62,8 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 	}
 
 	if g.variableInitializer == nil {
-		fn := Events["start"]
-		block, _ := fn(g, &parser.StmtEvent{})
+		ev := Events["start"]
+		block, _ := ev.Fn(g, &parser.StmtEvent{})
 		g.variableInitializer = block
 		g.blocks[block.ID] = block
 	}
@@ -149,11 +149,11 @@ func (g *generator) VisitConstDecl(stmt *parser.StmtConstDecl) error {
 }
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
-	fn, ok := Events[stmt.Name.Lexeme]
+	ev, ok := Events[stmt.Name.Lexeme]
 	if !ok {
 		return g.newError("Unknown event.", stmt.Name)
 	}
-	block, err := fn(g, stmt)
+	block, err := ev.Fn(g, stmt)
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if !ok {
 		return g.newError("Unknown function.", stmt.Name)
 	}
-	block, err := fn(g, stmt)
+	block, err := fn.Fn(g, stmt)
 	if err != nil {
 		return err
 	}
@@ -352,7 +352,7 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		if v.fn != nil {
 			v.fn(g, block)
 		}
-		g.dataType = v.dataType
+		g.dataType = v.DataType
 		g.blockID = block.ID
 		return nil
 	}
@@ -378,7 +378,7 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	if !ok {
 		return g.newError("Unknown function.", expr.Name)
 	}
-	block, dataType, err := fn(g, expr)
+	block, dataType, err := fn.Fn(g, expr)
 	if err != nil {
 		return err
 	}

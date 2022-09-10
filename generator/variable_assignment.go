@@ -1,35 +1,38 @@
 package generator
 
 import (
+	"fmt"
+
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
 )
 
 type Assignment struct {
+	Name         string
+	DataType     parser.DataType
 	AssignType   blocks.BlockType
 	IncreaseType blocks.BlockType
-	DataType     parser.DataType
 	InputName    string
 }
 
-var Assignments = map[string]Assignment{
-	"audio.volume": {
-		AssignType:   blocks.AudioSetVolume,
-		IncreaseType: blocks.AudioAddVolume,
-		DataType:     parser.DTNumber,
-		InputName:    "number_1",
-	},
-	"audio.speed": {
-		AssignType:   blocks.AudioSetSpeed,
-		IncreaseType: blocks.AudioAddSpeed,
-		DataType:     parser.DTNumber,
-		InputName:    "number_1",
-	},
+func (a Assignment) String() string {
+	return fmt.Sprintf("var %s: %s", a.Name, a.DataType)
+}
 
-	"lights.back.brightness": {
-		AssignType:   blocks.LEDSetBrightness,
-		IncreaseType: blocks.LEDAddBrightness,
-		DataType:     parser.DTNumber,
-		InputName:    "number_1",
-	},
+var Assignments = make(map[string]Assignment)
+
+func newAssignment(name string, dataType parser.DataType, assignType, increaseType blocks.BlockType, inputName string) {
+	Assignments[name] = Assignment{
+		Name:         name,
+		DataType:     dataType,
+		AssignType:   assignType,
+		IncreaseType: increaseType,
+		InputName:    inputName,
+	}
+}
+
+func init() {
+	newAssignment("audio.volume", parser.DTNumber, blocks.AudioSetVolume, blocks.AudioAddVolume, "number_1")
+	newAssignment("audio.speed", parser.DTNumber, blocks.AudioSetSpeed, blocks.AudioAddSpeed, "number_1")
+	newAssignment("lights.back.brightness", parser.DTNumber, blocks.LEDSetBrightness, blocks.LEDAddBrightness, "number_1")
 }

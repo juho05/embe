@@ -182,7 +182,7 @@ func (p *parser) event() (Stmt, error) {
 		newBody = append(newBody, &StmtFuncCall{
 			Name: Token{
 				Type:   TkIdentifier,
-				Lexeme: "time.sleep",
+				Lexeme: "time.wait",
 				Line:   name.Line,
 			},
 			Parameters: []Expr{

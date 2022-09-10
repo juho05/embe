@@ -14,91 +14,152 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var FuncCalls = map[string]func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error){
-	"audio.stop":            funcAudioStop,
-	"audio.playBuzzer":      funcAudioPlayBuzzer,
-	"audio.playNote":        funcAudioPlayNote,
-	"audio.playInstrument":  funcAudioPlayInstrument,
-	"audio.playClip":        funcAudioPlayClip,
-	"audio.recording.start": funcAudioRecordingStart,
-	"audio.recording.stop":  funcAudioRecordingStop,
-	"audio.recording.play":  funcAudioRecordingPlay,
+type Param struct {
+	Name string
+	Type parser.DataType
+}
 
-	"lights.back.display":         funcLEDDisplay,
-	"lights.back.displayColor":    funcLEDDisplayColor,
-	"lights.back.displayColorFor": funcLEDDisplayColorFor,
-	"lights.back.deactivate":      funcLEDDeactivate,
-	"lights.back.move":            funcLEDMove,
-	"lights.back.playAnimation":   funcLEDPlayAnimation,
+type Signature struct {
+	FuncName   string
+	Params     []Param
+	ReturnType parser.DataType
+}
 
-	"lights.front.setBrightness":  funcLEDSetAmbientBrightness("set"),
-	"lights.front.addBrightness":  funcLEDSetAmbientBrightness("add"),
-	"lights.front.displayEmotion": funcLEDDisplayEmotion,
-	"lights.front.deactivate":     funcLEDDeactivateAmbient,
+func (s Signature) String() string {
+	signature := s.FuncName + "("
 
-	"lights.bottom.deactivate": funcLEDDeactivateFill,
-	"lights.bottom.setColor":   funcLEDSetFillColor,
+	for i, p := range s.Params {
+		if i > 0 {
+			signature += ", "
+		}
+		signature = fmt.Sprintf("%s%s: %s", signature, p.Name, p.Type)
+	}
 
-	"display.print":                 funcDisplayPrint(false),
-	"display.println":               funcDisplayPrint(true),
-	"display.setFontSize":           funcDisplaySetFontSize,
-	"display.setColor":              funcDisplaySetColor,
-	"display.showLabel":             funcDisplayShowLabel,
-	"display.lineChart.addData":     funcDisplayLineChartAddData,
-	"display.lineChart.setInterval": funcDisplayLineChartSetInterval,
-	"display.barChart.addData":      funcDisplayBarChartAddData,
-	"display.table.addData":         funcDisplayTableAddData,
-	"display.clear":                 funcDisplayClear,
-	"display.setOrientation":        funcDisplaySetOrientation,
+	signature += ")"
 
-	"net.broadcast":  funcNetBroadcast,
-	"net.setChannel": funcNetSetChannel,
-	"net.connect":    funcNetConnect,
-	"net.reconnect":  funcNetReconnect,
-	"net.disconnect": funcNetDisconnect,
+	if s.ReturnType != "" {
+		signature += " : " + string(s.ReturnType)
+	}
 
-	"sensors.resetAngle":    funcSensorsResetAngle,
-	"sensors.resetYawAngle": funcSensorsResetYawAngle,
+	return signature
+}
 
-	"sensors.defineColor": funcSensorsDefineColor,
+type FuncCall struct {
+	Name       string
+	Signatures []Signature
+	Fn         func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
+}
 
-	"motors.run":                 funcMotorsRun("forward"),
-	"motors.runBackward":         funcMotorsRun("backward"),
-	"motors.runDistance":         funcMotorsRunDistance("forward"),
-	"motors.runDistanceBackward": funcMotorsRunDistance("backward"),
-	"motors.turn":                funcMotorsTurn,
-	"motors.rotateRPM":           funcMotorsRotate("speed"),
-	"motors.rotatePower":         funcMotorsRotate("power"),
-	"motors.rotateAngle":         funcMotorsRotateAngle,
-	"motors.stop":                funcMotorsStop,
-	"motors.resetAngle":          funcMotorsResetAngle,
-	"motors.lock":                funcMotorsSetLock("1"),
-	"motors.unlock":              funcMotorsSetLock("0"),
+var FuncCalls = make(map[string]FuncCall)
 
-	"time.sleep":      funcTimeSleep,
-	"time.resetTimer": funcResetTimer,
+func newFuncCall(name string, fn func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error), signatures ...[]Param) {
+	if len(signatures) == 0 {
+		signatures = append(signatures, []Param{})
+	}
 
-	"mbot.restart":             funcMBotRestart,
-	"mbot.calibrateParameters": funcMBotChassisParameters("calibrate"),
-	"mbot.resetParameters":     funcMBotChassisParameters("reset"),
+	call := FuncCall{
+		Name:       name,
+		Signatures: make([]Signature, len(signatures)),
+	}
 
-	"script.stop":      funcScriptStop("this script"),
-	"script.stopAll":   funcScriptStop("all"),
-	"script.stopOther": funcScriptStop("other scripts in sprite"),
+	for i, s := range signatures {
+		call.Signatures[i].FuncName = name
+		call.Signatures[i].Params = s
+	}
+
+	call.Fn = func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		for _, s := range signatures {
+			if len(s) == len(stmt.Parameters) {
+				return fn(g, stmt)
+			}
+		}
+
+		signature := make([]string, len(call.Signatures))
+		for i, s := range call.Signatures {
+			signature[i] = s.String()
+		}
+
+		return nil, g.newError("Wrong argument count.", stmt.Name)
+	}
+
+	FuncCalls[name] = call
+}
+
+func init() {
+	newFuncCall("audio.stop", funcAudioStop)
+	newFuncCall("audio.playBuzzer", funcAudioPlayBuzzer, []Param{{Name: "frequency", Type: parser.DTNumber}}, []Param{{Name: "frequency", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("audio.playClip", funcAudioPlayClip, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "block", Type: parser.DTBool}})
+	newFuncCall("audio.playInstrument", funcAudioPlayInstrument, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("audio.playNote", funcAudioPlayNote, []Param{{Name: "name", Type: parser.DTNumber}, {Name: "octave", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "note", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("audio.record.start", funcAudioRecordingStart)
+	newFuncCall("audio.record.stop", funcAudioRecordingStart)
+	newFuncCall("audio.record.play", funcAudioRecordingStart, []Param{}, []Param{{Name: "block", Type: parser.DTBool}})
+
+	newFuncCall("lights.back.playAnimation", funcLEDPlayAnimation, []Param{{Name: "name", Type: parser.DTString}})
+	newFuncCall("lights.front.setBrightness", funcLEDSetAmbientBrightness("set"), []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
+	newFuncCall("lights.front.addBrightness", funcLEDSetAmbientBrightness("add"), []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
+	newFuncCall("lights.front.displayEmotion", funcLEDDisplayEmotion, []Param{{Name: "emotion", Type: parser.DTString}})
+	newFuncCall("lights.front.deactivate", funcLEDDeactivateAmbient, []Param{}, []Param{{Name: "light", Type: parser.DTNumber}})
+	newFuncCall("lights.bottom.deactivate", funcLEDDeactivateFill)
+	newFuncCall("lights.bottom.setColor", funcLEDSetFillColor, []Param{{Name: "color", Type: parser.DTString}})
+	newFuncCall("lights.back.display", funcLEDDisplay, []Param{{Name: "color1", Type: parser.DTString}, {Name: "color2", Type: parser.DTString}, {Name: "color3", Type: parser.DTString}, {Name: "color4", Type: parser.DTString}, {Name: "color5", Type: parser.DTString}})
+	newFuncCall("lights.back.displayColor", funcLEDDisplayColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
+	newFuncCall("lights.back.displayColorFor", funcLEDDisplayColorFor, []Param{{Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("lights.back.deactivate", funcLEDDeactivate, []Param{}, []Param{{Name: "led", Type: parser.DTNumber}})
+
+	newFuncCall("display.print", funcDisplayPrint(false), []Param{{Name: "text", Type: parser.DTString}})
+	newFuncCall("display.println", funcDisplayPrint(true), []Param{{Name: "text", Type: parser.DTString}})
+	newFuncCall("display.setFontSize", funcDisplaySetFontSize, []Param{{Name: "size", Type: parser.DTNumber}})
+	newFuncCall("display.setColor", funcDisplaySetColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
+	newFuncCall("display.showLabel", funcDisplayShowLabel, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "location", Type: parser.DTString}, {Name: "size", Type: parser.DTNumber}}, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "size", Type: parser.DTNumber}})
+	newFuncCall("display.lineChart.addData", funcDisplayLineChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})
+	newFuncCall("display.lineChart.setInterval", funcDisplayLineChartSetInterval, []Param{{Name: "interval", Type: parser.DTNumber}})
+	newFuncCall("display.barChart.addData", funcDisplayBarChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})
+	newFuncCall("display.table.addData", funcDisplayTableAddData, []Param{{Name: "text", Type: parser.DTString}, {Name: "row", Type: parser.DTNumber}, {Name: "column", Type: parser.DTNumber}})
+	newFuncCall("display.setOrientation", funcDisplaySetOrientation, []Param{{Name: "orientation", Type: parser.DTNumber}})
+	newFuncCall("display.clear", funcDisplayClear)
+
+	newFuncCall("net.broadcast", funcNetBroadcast, []Param{{Name: "message", Type: parser.DTString}}, []Param{{Name: "message", Type: parser.DTString}, {Name: "value", Type: parser.DTString}})
+	newFuncCall("net.setChannel", funcNetSetChannel, []Param{{Name: "channel", Type: parser.DTNumber}})
+	newFuncCall("net.connect", funcNetConnect, []Param{{Name: "ssid", Type: parser.DTString}, {Name: "password", Type: parser.DTString}})
+	newFuncCall("net.reconnect", funcNetReconnect)
+	newFuncCall("net.disconnect", funcNetDisconnect)
+
+	newFuncCall("sensors.resetAngle", funcSensorsResetAngle, []Param{{Name: "axis", Type: parser.DTString}})
+	newFuncCall("sensors.resetYawAngle", funcSensorsResetYawAngle)
+	newFuncCall("sensors.defineColor", funcSensorsDefineColor, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "tolerance", Type: parser.DTNumber}})
+
+	newFuncCall("motors.run", funcMotorsRun("forward"), []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("motors.runBackward", funcMotorsRun("backward"), []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("motors.moveDistance", funcMotorsRunDistance("forward"), []Param{{Name: "distance", Type: parser.DTNumber}})
+	newFuncCall("motors.moveDistanceBackward", funcMotorsRunDistance("backward"), []Param{{Name: "distance", Type: parser.DTNumber}})
+	newFuncCall("motors.turn", funcMotorsTurn, []Param{{Name: "angle", Type: parser.DTNumber}})
+	newFuncCall("motors.rotateRPM", funcMotorsRotate("rpm"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("motors.rotatePower", funcMotorsRotate("power"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("motors.rotateAngle", funcMotorsRotateAngle, []Param{{Name: "motor", Type: parser.DTString}, {Name: "angle", Type: parser.DTNumber}})
+	newFuncCall("motors.stop", funcMotorsStop, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
+	newFuncCall("motors.resetAngle", funcMotorsResetAngle, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
+	newFuncCall("motors.lock", funcMotorsSetLock("1"), []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
+	newFuncCall("motors.unlock", funcMotorsSetLock("0"), []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
+
+	newFuncCall("time.wait", funcTimeWait, []Param{{Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "continueCondition", Type: parser.DTBool}})
+	newFuncCall("time.resetTimer", funcResetTimer)
+
+	newFuncCall("mbot.restart", funcMBotRestart)
+	newFuncCall("mbot.resetParameters", funcMBotChassisParameters("reset"))
+	newFuncCall("mbot.calibrateParameters", funcMBotChassisParameters("calibrate"))
+
+	newFuncCall("script.stop", funcScriptStop("this script"))
+	newFuncCall("script.stopAll", funcScriptStop("all"))
+	newFuncCall("script.stopOther", funcScriptStop("other scripts in sprite"))
 }
 
 func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `audio.stop` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioStop, false)
 	return block, nil
 }
 
 func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `audio.playBuzzer` function takes 1-2 arguments: audio.playBuzzer(frequency: number, duration?: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioPlayBuzzerTone, false)
 
 	number, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
@@ -121,9 +182,6 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 }
 
 func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `audio.playClip` function takes 1-2 arguments: audio.playClip(name: string, untilDone?: boolean)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioPlayClip, false)
 
 	menuBlockType := blocks.AudioPlayClipFileNameMenu
@@ -150,9 +208,6 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 }
 
 func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `audio.playInstrument` function takes 2 arguments: audio.playInstrument(name: string, duration: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioPlayMusicInstrument, false)
 
 	var err error
@@ -176,9 +231,6 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 }
 
 func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 2 && len(stmt.Parameters) != 3 {
-		return nil, g.newError("The `audio.playNote` function takes 2-3 arguments: audio.playNote(note: number, duration: number) audio.playNote(name: string, octave: number, duration: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioPlayNote, false)
 
 	noteBlock := blocks.NewShadowBlock(blocks.AudioNote, block.ID)
@@ -247,25 +299,16 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 }
 
 func funcAudioRecordingStart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `audio.record.start` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioRecordStart, false)
 	return block, nil
 }
 
 func funcAudioRecordingStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `audio.record.stop` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioRecordStop, false)
 	return block, nil
 }
 
 func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The `audio.record.play` function takes 0-1 arguments: audio.record.play(untilDone?: boolean)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.AudioRecordPlay, false)
 
 	if len(stmt.Parameters) == 1 {
@@ -282,9 +325,6 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 }
 
 func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `lights.back.playAnimation` function takes 1 argument: lights.back.playAnimation(name: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDPlayAnimation, false)
 
 	name, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
@@ -304,9 +344,6 @@ func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 
 func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-			return nil, g.newError(fmt.Sprintf("The `lights.front.%sBrightness` function takes 1-2 arguments: lights.front.%sBrightness(light?: number, value: number)", operation, operation), stmt.Name)
-		}
 		blockType := blocks.UltrasonicSetBrightness
 		indexType := blocks.UltrasonicSetBrightnessIndex
 		orderType := blocks.UltrasonicSetBrightnessOrder
@@ -337,9 +374,6 @@ func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *pars
 }
 
 func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `lights.front.displayEmotion` function takes 1 argument: lights.front.displayEmotion(emotion: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.UltrasonicShowEmotion, false)
 
 	g.noNext = true
@@ -363,9 +397,6 @@ func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 }
 
 func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The `lights.front.deactivate` function takes 0-1 arguments: lights.front.deactivate(light?: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.UltrasonicOffLED, false)
 
 	err := selectAmbientLight(g, block, blocks.UltrasonicOffLEDInput, stmt.Name, stmt.Parameters, 0, "inputMenu_3", "MBUILD_ULTRASONIC2_SET_BRI_ORDER", true)
@@ -382,9 +413,6 @@ func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtFuncCall) (*blocks.
 }
 
 func funcLEDDeactivateFill(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The `lights.bottom.deactivate` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorDisableFillColor, false)
 
 	g.noNext = true
@@ -395,9 +423,6 @@ func funcLEDDeactivateFill(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 }
 
 func funcLEDSetFillColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `lights.bottom.setColor` function takes 1 argument: lights.bottom.setColor(color: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorSetFillColor, false)
 
 	color, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
@@ -418,9 +443,6 @@ func funcLEDSetFillColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 }
 
 func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 5 {
-		return nil, g.newError("The `lights.back.display` function takes 5 arguments: lights.back.display(color1: string, color2: string, color3: string, color4: string, color5: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDDisplay, false)
 
 	names := make([]string, 5)
@@ -445,9 +467,6 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 var hexColorRegex = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
 
 func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) < 1 || len(stmt.Parameters) > 4 {
-		return nil, g.newError("The `lights.back.displayColor` function takes 1-4 arguments: lights.back.displayColor(led?: number, color: string) or lights.back.displayColor(led?: number, r: number, g: number, b: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDDisplaySingleColor, false)
 	if len(stmt.Parameters) > 2 {
 		block.Type = blocks.LEDDisplaySingleColorWithRGB
@@ -483,9 +502,6 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 }
 
 func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) < 2 || len(stmt.Parameters) > 5 {
-		return nil, g.newError("The `lights.back.displayColorFor` function takes 2-5 arguments: lights.back.displayColorFor(led?: number, color: string, duration: number) or lights.back.displayColor(led?: number, r: number, g: number, b: number, duration: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDDisplaySingleColorWithTime, false)
 	if len(stmt.Parameters) > 3 {
 		block.Type = blocks.LEDDisplaySingleColorWithRGBAndTime
@@ -529,9 +545,6 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 }
 
 func funcLEDDeactivate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The `lights.back.deactivate` function takes 0-1 arguments: lights.back.deactivate(led?: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDOff, false)
 
 	err := selectLED(g, block, blocks.LEDOffFieldMenu, stmt, 0, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
@@ -623,9 +636,6 @@ func selectAmbientLight(g *generator, block *blocks.Block, menuBlockType blocks.
 
 func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 1 {
-			return nil, g.newError(fmt.Sprintf("The `%s` function takes 1 argument: %s(text: string)", stmt.Name.Lexeme, stmt.Name.Lexeme), stmt.Name)
-		}
 		block := g.NewBlock(blocks.DisplayPrint, false)
 		if newLine {
 			block.Type = blocks.DisplayPrintln
@@ -642,9 +652,6 @@ func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtFuncCall
 }
 
 func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `display.setFontSize` function takes 1 argument: display.setFontSize(size: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplaySetFont, false)
 
 	var err error
@@ -667,9 +674,6 @@ func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 }
 
 func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 3 {
-		return nil, g.newError("The `display.setColor` function takes 1 or 3 arguments: display.setColor(color: string) or display.setColor(r: number, g: number, b: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplaySetBrushColor, false)
 	var err error
 	if len(stmt.Parameters) == 3 {
@@ -697,10 +701,6 @@ func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 }
 
 func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 4 && len(stmt.Parameters) != 5 {
-		return nil, g.newError("The `display.showLabel` function takes 3 or 4 arguments: display.showLabel(label: number, text: string, location: string, size: number) or display.showLabel(label: number, text: string, x: number, y: number, size: number)", stmt.Name)
-	}
-
 	block := g.NewBlock(blocks.DisplayLabelShowSomewhereWithSize, false)
 	number, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTNumber)
 	if err != nil {
@@ -760,9 +760,6 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 }
 
 func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `display.lineChart.addData` function takes 1 argument: display.lineChart.addData(value: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplayLineChartAddData, false)
 
 	var err error
@@ -775,9 +772,6 @@ func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtFuncCall) (*bloc
 }
 
 func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `display.lineChart.setInterval` function takes 1 argument: display.lineChart.setInterval(interval: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplayLineChartSetInterval, false)
 
 	var err error
@@ -790,9 +784,6 @@ func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtFuncCall) (*
 }
 
 func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `display.barChart.addData` function takes 1 argument: display.barChart.addData(value: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplayBarChartAddData, false)
 
 	var err error
@@ -805,9 +796,6 @@ func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtFuncCall) (*block
 }
 
 func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 3 {
-		return nil, g.newError("The `display.table.addData` function takes 3 arguments: display.table.addData(text: string, row: number, column: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplayTableAddDataAtRowColumn, false)
 
 	var err error
@@ -840,9 +828,6 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 }
 
 func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `display.setOrientation` function takes 1 argument: display.setOrientation(orientation: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplaySetOrientation, false)
 
 	var err error
@@ -864,17 +849,11 @@ func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks
 }
 
 func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `display.clear` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.DisplayClear, false)
 	return block, nil
 }
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `lights.back.move` function takes 1 argument: lights.back.move(amount: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.LEDMove, false)
 
 	var err error
@@ -887,9 +866,6 @@ func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
 }
 
 func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `net.broadcast` function takes 1-2 arguments: net.broadcast(message: string, value?: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.NetSetWifiBroadcast, false)
 
 	var err error
@@ -910,9 +886,6 @@ func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 }
 
 func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `net.setChannel` function takes 1 argument: net.setChannel(channel: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.NetSetWifiChannel, false)
 
 	channel, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTNumber)
@@ -928,9 +901,6 @@ func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 }
 
 func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `net.connect` function takes 2 arguments: net.connect(ssid: string, password: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.NetConnectWifi, false)
 
 	var err error
@@ -948,25 +918,16 @@ func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 }
 
 func funcNetReconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The `net.reconnect` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.NetWifiReconnect, false)
 	return block, nil
 }
 
 func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The `net.disconnect` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.NetWifiDisconnect, false)
 	return block, nil
 }
 
 func funcSensorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `sensors.resetAngle` function takes 1 argument: sensors.resetAngle(axis: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.SensorsResetAxisRotationAngle, false)
 	value, err := g.literal(stmt.Name, stmt.Parameters[0], parser.DTString)
 	if err != nil {
@@ -981,17 +942,11 @@ func funcSensorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 }
 
 func funcSensorsResetYawAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 0 {
-		return nil, g.newError("The `sensors.resetYawAngle` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.SensorsResetYaw, false)
 	return block, nil
 }
 
 func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 3 && len(stmt.Parameters) != 4 {
-		return nil, g.newError("The `sensors.defineColor` function takes 3-4 arguments: sensors.defineColor(r: number, g: number, b: number, tolerance?: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorDefineColor, false)
 
 	var err error
@@ -1026,9 +981,6 @@ func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 
 func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 1 && len(stmt.Parameters) != 2 {
-			return nil, g.newError("The `motors.run` function takes 1-2 arguments: motors.run(rpm: number, duration: number)", stmt.Name)
-		}
 		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
 
 		block.Fields["DIRECTION"] = []any{direction, nil}
@@ -1053,9 +1005,6 @@ func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCal
 
 func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 1 {
-			return nil, g.newError("The `motors.runDistance` function takes 1 argument: motors.runDistance(distance: number)", stmt.Name)
-		}
 		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
 
 		block.Fields["DIRECTION"] = []any{direction, nil}
@@ -1071,9 +1020,6 @@ func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.Stm
 }
 
 func funcMotorsTurn(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `motors.turn` function takes 1 argument: motors.turn(angle: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2CwAndCcwWithAngle, false)
 	block.Fields["fieldMenu_1"] = []any{"ccw", nil}
 
@@ -1088,9 +1034,6 @@ func funcMotorsTurn(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 
 func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 2 && len(stmt.Parameters) != 3 {
-			return nil, g.newError("The `motors.rotate` function takes 1 argument: motors.rotate(motor: string, rpm: number, duration?: number)", stmt.Name)
-		}
 		blockType := blocks.Mbot2EncoderMotorSet
 		menuType := blocks.Mbot2EncoderMotorSetMenu
 		inputField := "inputMenu_1"
@@ -1133,9 +1076,6 @@ func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall)
 }
 
 func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 2 {
-		return nil, g.newError("The `motors.rotateAngle` function takes 1-2 arguments: motors.rotateAngle(motor: string, angle: number)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2EncoderMotorSetWithTimeAngleAndCircle, false)
 
 	var err error
@@ -1155,9 +1095,6 @@ func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 }
 
 func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The `motors.stop` function takes 0-1 arguments: motors.stop(motor?: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2EncoderMotorStop, false)
 
 	encoderMotor := "ALL"
@@ -1178,9 +1115,6 @@ func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 }
 
 func funcMotorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) > 1 {
-		return nil, g.newError("The `motors.resetAngle` function takes 0-1 arguments: motors.resetAngle(motor?: string)", stmt.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2EncoderMotorResetAngle, false)
 
 	var motor parser.Expr
@@ -1214,9 +1148,6 @@ func funcMotorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 
 func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) > 1 {
-			return nil, g.newError("The `motors.lock` function takes 0-1 arguments: motors.lock(motor?: string)", stmt.Name)
-		}
 		block := g.NewBlock(blocks.Mbot2EncoderMotorLockUnlock, false)
 
 		block.Fields["fieldMenu_2"] = []any{value, nil}
@@ -1251,10 +1182,7 @@ func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtFuncCal
 	}
 }
 
-func funcTimeSleep(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 1 {
-		return nil, g.newError("The `time.sleep` function takes 1 argument: time.sleep(seconds: number) or time.sleep(continueCondition: boolean)", stmt.Name)
-	}
+func funcTimeWait(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ControlWaitUntil, false)
 
 	condition, err := g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTBool)
@@ -1274,26 +1202,17 @@ func funcTimeSleep(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, erro
 }
 
 func funcResetTimer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `timer.resetTimer` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2TimerReset, false)
 	return block, nil
 }
 
 func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	if len(stmt.Parameters) != 0 {
-		return nil, g.newError("The `mbot.restart` function does not take any arguments.", stmt.Name)
-	}
 	block := g.NewBlock(blocks.ControlRestart, false)
 	return block, nil
 }
 
 func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) > 0 {
-			return nil, g.newError(fmt.Sprintf("The `mbot.%sParameters` function does not take any arguments.", parameter), stmt.Name)
-		}
 		block := g.NewBlock(blocks.Mbot2SetParameters, false)
 
 		if parameter == "calibrate" {
@@ -1308,9 +1227,6 @@ func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser
 
 func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		if len(stmt.Parameters) != 0 {
-			return nil, g.newError("The `script.stop` function does not take any arguments.", stmt.Name)
-		}
 		block := g.NewBlock(blocks.ControlStop, false)
 		block.NoNext = true
 

@@ -11,66 +11,97 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var ExprFuncCalls = map[string]func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error){
-	"mbot.isButtonPressed":   exprFuncIsButtonPressed,
-	"mbot.buttonPressCount":  exprFuncButtonPressCount,
-	"mbot.isJoystickPulled":  exprFuncIsJoystickPulled,
-	"mbot.joystickPullCount": exprFuncJoystickPullCount,
+type ExprFuncCall struct {
+	Name       string
+	Signatures []Signature
+	Fn         func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error)
+}
 
-	"lights.front.brightness": funcLEDGetAmbientBrightness,
+var ExprFuncCalls = make(map[string]ExprFuncCall)
 
-	"sensors.isTilted": exprFuncIsTilted,
-	"sensors.isFaceUp": exprFuncIsFaceUp,
+func newExprFuncCall(name string, fn func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error), signatures ...Signature) {
+	if len(signatures) == 0 {
+		signatures = append(signatures, Signature{Params: []Param{}})
+	}
 
-	"sensors.isWaving":   exprFuncDetectAction("sensors.isWaving", []string{"up", "down", "left", "right"}, "wave"),
-	"sensors.isRotating": exprFuncDetectAction("sensors.isRotating", []string{"clockwise", "anticlockwise"}, ""),
-	"sensors.isFalling":  exprFuncDetectSingleAction("sensors.isFalling", "freefall"),
-	"sensors.isShaking":  exprFuncDetectSingleAction("sensors.isShaking", "shake"),
+	call := ExprFuncCall{
+		Name:       name,
+		Signatures: make([]Signature, len(signatures)),
+	}
 
-	"sensors.tiltAngle":     exprFuncTiltAngle("sensors.tiltAngle", []string{"forward", "backward", "left", "right"}),
-	"sensors.rotationAngle": exprFuncTiltAngle("sensors.rotationAngle", []string{"clockwise", "anticlockwise"}),
+	for i, s := range signatures {
+		call.Signatures[i].FuncName = name
+		call.Signatures[i].Params = s.Params
+		call.Signatures[i].ReturnType = s.ReturnType
+	}
 
-	"sensors.acceleration": exprFuncAcceleration,
-	"sensors.rotation":     exprFuncRotation,
-	"sensors.angleSpeed":   exprFuncAngleSpeed,
+	call.Fn = func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+		for _, s := range signatures {
+			if len(s.Params) == len(expr.Parameters) {
+				return fn(g, expr)
+			}
+		}
+		return nil, signatures[0].ReturnType, g.newError("Wrong argument count.", expr.Name)
+	}
 
-	"sensors.colorStatus":   exprFuncColorStatus,
-	"sensors.getColor":      exprFuncGetColor,
-	"sensors.isColorStatus": exprFuncIsColorStatus,
-	"sensors.detectColor":   exprFuncDetectColor,
+	ExprFuncCalls[name] = call
+}
 
-	"motors.rpm":   exprFuncMotorsSpeed("speed"),
-	"motors.power": exprFuncMotorsSpeed("power"),
-	"motors.angle": exprFuncMotorsAngle,
+func init() {
+	newExprFuncCall("mbot.isButtonPressed", exprFuncIsButtonPressed, Signature{Params: []Param{{Name: "button", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("mbot.buttonPressCount", exprFuncButtonPressCount, Signature{Params: []Param{{Name: "button", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("mbot.isJoystickPulled", exprFuncIsJoystickPulled, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("mbot.joystickPullCount", exprFuncJoystickPullCount, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
 
-	"net.receive": exprFuncNetReceive,
+	newExprFuncCall("lights.front.brightness", exprFuncLEDAmbientBrightness, Signature{Params: []Param{}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "light", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
 
-	"math.random":     exprFuncMathRandom,
-	"math.round":      exprFuncMathRound,
-	"math.abs":        exprFuncMathOp("math.abs", "abs"),
-	"math.floor":      exprFuncMathOp("math.floor", "floor"),
-	"math.ceil":       exprFuncMathOp("math.ceil", "ceiling"),
-	"math.sqrt":       exprFuncMathOp("math.sqrt", "sqrt"),
-	"math.sin":        exprFuncMathOp("math.sin", "sin"),
-	"math.cos":        exprFuncMathOp("math.cos", "cos"),
-	"math.tan":        exprFuncMathOp("math.tan", "tan"),
-	"math.asin":       exprFuncMathOp("math.asin", "asin"),
-	"math.acos":       exprFuncMathOp("math.acos", "acos"),
-	"math.atan":       exprFuncMathOp("math.atan", "atan"),
-	"math.ln":         exprFuncMathOp("math.ln", "ln"),
-	"math.log":        exprFuncMathOp("math.log", "log"),
-	"math.ePowerOf":   exprFuncMathOp("math.ePowerOf", "e ^"),
-	"math.tenPowerOf": exprFuncMathOp("math.tenPowerOf", "10 ^"),
+	newExprFuncCall("sensors.isTilted", exprFuncIsTilted, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.isFaceUp", exprFuncIsFaceUp, Signature{Params: []Param{}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.isWaving", exprFuncDetectAction([]string{"up", "down", "left", "right"}, "wave"), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.isRotating", exprFuncDetectAction([]string{"clockwise", "anticlockwise"}, ""), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.isFalling", exprFuncDetectSingleAction("freefall"), Signature{Params: []Param{}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.isShaking", exprFuncDetectSingleAction("shake"), Signature{Params: []Param{}, ReturnType: parser.DTBool})
 
-	"strings.letter":   exprFuncStringsLetter,
-	"strings.length":   exprFuncStringsLength,
-	"strings.contains": exprFuncStringsContains,
+	newExprFuncCall("sensors.tiltAngle", exprFuncTiltAngle([]string{"forward", "backward", "left", "right"}), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sensors.rotationAngle", exprFuncTiltAngle([]string{"clockwise", "anticlockwise"}), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+
+	newExprFuncCall("sensors.acceleration", exprFuncAcceleration, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sensors.rotation", exprFuncRotation, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sensors.angleSpeed", exprFuncAngleSpeed, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+
+	newExprFuncCall("sensors.colorStatus", exprFuncColorStatus, Signature{Params: []Param{{Name: "target", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "inner", Type: parser.DTBool}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sensors.getColor", exprFuncGetColor, Signature{Params: []Param{{Name: "sensor", Type: parser.DTString}, {Name: "valueType", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sensors.isColorStatus", exprFuncIsColorStatus, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "status", Type: parser.DTBool}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "status", Type: parser.DTNumber}, {Name: "inner", Type: parser.DTBool}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sensors.detectColor", exprFuncDetectColor, Signature{Params: []Param{{Name: "sensor", Type: parser.DTString}, {Name: "target", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("motors.rpm", exprFuncMotorsSpeed("speed"), Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("motors.power", exprFuncMotorsSpeed("power"), Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("motors.angle", exprFuncMotorsAngle, Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+
+	newExprFuncCall("net.receive", exprFuncNetReceive, Signature{Params: []Param{{Name: "message", Type: parser.DTString}}, ReturnType: parser.DTString})
+
+	newExprFuncCall("math.round", exprFuncMathRound, Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.random", exprFuncMathRandom, Signature{Params: []Param{{Name: "from", Type: parser.DTNumber}, {Name: "to", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.abs", exprFuncMathOp("abs"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.floor", exprFuncMathOp("floor"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.ceil", exprFuncMathOp("ceil"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.sqrt", exprFuncMathOp("sqrt"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.sin", exprFuncMathOp("sin"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.cos", exprFuncMathOp("cos"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.tan", exprFuncMathOp("tan"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.asin", exprFuncMathOp("asin"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.acos", exprFuncMathOp("acos"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.atan", exprFuncMathOp("atan"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.ln", exprFuncMathOp("ln"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.log", exprFuncMathOp("log"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.ePowerOf", exprFuncMathOp("e ^"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("math.tenPowerOf", exprFuncMathOp("10 ^"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+
+	newExprFuncCall("strings.length", exprFuncStringsLength, Signature{Params: []Param{{Name: "str", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("strings.letter", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString})
+	newExprFuncCall("strings.contains", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "substr", Type: parser.DTString}}, ReturnType: parser.DTBool})
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTBool, g.newError("The `mbot.isButtonPressed` function takes 1 argument: mbot.isButtonPressed(button: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorButtonPress, false)
 
 	btn, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -89,9 +120,6 @@ func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 }
 
 func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `mbot.buttonPressCount` function takes 1 argument: mbot.buttonPressCount(button: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorButtonPressCount, false)
 
 	btn, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -110,9 +138,6 @@ func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.
 }
 
 func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTBool, g.newError("The `mbot.isJoystickPulledb function takes 1 argument: mbot.isJoystickPulled(direction: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorDirectionKeyPress, false)
 
 	direction, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -134,9 +159,6 @@ func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.
 }
 
 func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `mbot.joystickPullCount` function takes 1 argument: mbot.joystickPullCount(direction: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorDirectionKeyPressCount, false)
 
 	direction, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -154,10 +176,7 @@ func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks
 	return block, parser.DTNumber, nil
 }
 
-func funcLEDGetAmbientBrightness(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) > 1 {
-		return nil, parser.DTNumber, g.newError("The 'lights.front.brightness' function takes 0-1 arguments: lights.front.brightness(light?: number)", expr.Name)
-	}
+func exprFuncLEDAmbientBrightness(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	block := g.NewBlock(blocks.UltrasonicGetBrightness, false)
 
 	err := selectAmbientLight(g, block, blocks.UltrasonicGetBrightnessOrder, expr.Name, expr.Parameters, 0, "order", "MBUILD_ULTRASONIC2_GET_DISTANCE_INDEX", false)
@@ -174,9 +193,6 @@ func funcLEDGetAmbientBrightness(g *generator, expr *parser.ExprFuncCall) (*bloc
 }
 
 func exprFuncIsTilted(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTBool, g.newError("The `sensors.isTilted` function takes 1 argument: sensors.isTilted(direction: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorDetectAttitude, false)
 
 	param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -199,9 +215,6 @@ func exprFuncIsTilted(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 }
 
 func exprFuncIsFaceUp(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) > 0 {
-		return nil, parser.DTBool, g.newError("The `sensors.isFaceUp` function takes no arguments.", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorDetectAttitude, false)
 
 	block.Fields["tilt"] = []any{"faceup", nil}
@@ -209,11 +222,8 @@ func exprFuncIsFaceUp(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 	return block, parser.DTBool, nil
 }
 
-func exprFuncDetectAction(name string, options []string, prefix string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+func exprFuncDetectAction(options []string, prefix string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-		if len(expr.Parameters) != 1 {
-			return nil, parser.DTBool, g.newError(fmt.Sprintf("The `%s` function takes 1 argument: %s(direction: string)", name, name), expr.Name)
-		}
 		block := g.NewBlock(blocks.SensorDetectAction, false)
 
 		param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -231,11 +241,8 @@ func exprFuncDetectAction(name string, options []string, prefix string) func(g *
 	}
 }
 
-func exprFuncDetectSingleAction(name, actionName string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+func exprFuncDetectSingleAction(actionName string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-		if len(expr.Parameters) > 0 {
-			return nil, parser.DTBool, g.newError(fmt.Sprintf("The `%s` function takes no arguments.", name), expr.Name)
-		}
 		block := g.NewBlock(blocks.SensorDetectAction, false)
 
 		block.Fields["tilt"] = []any{actionName, nil}
@@ -244,11 +251,8 @@ func exprFuncDetectSingleAction(name, actionName string) func(g *generator, expr
 	}
 }
 
-func exprFuncTiltAngle(name string, options []string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+func exprFuncTiltAngle(options []string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-		if len(expr.Parameters) != 1 {
-			return nil, parser.DTNumber, g.newError(fmt.Sprintf("The `%s` function takes 1 argument: %s(direction: string)", name, name), expr.Name)
-		}
 		block := g.NewBlock(blocks.SensorTiltDegree, false)
 
 		param, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -275,9 +279,6 @@ func exprFuncTiltAngle(name string, options []string) func(g *generator, expr *p
 }
 
 func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `sensors.acceleration` function takes 1 argument: sensors.acceleration(axis: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorAcceleration, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -296,9 +297,6 @@ func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 }
 
 func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `sensors.rotation` function takes 1 argument: sensors.rotation(axis: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorRotationAngle, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -317,9 +315,6 @@ func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 }
 
 func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `sensors.angleSpeed` function takes 1 argument: sensors.angleSpeed(axis: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorAngleSpeed, false)
 
 	axis, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -338,9 +333,6 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 }
 
 func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 && len(expr.Parameters) != 2 {
-		return nil, parser.DTNumber, g.newError("The `sensors.colorStatus` function takes 1-2 argument: sensors.colorStatus(target: string, inner?: boolean)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorStatus, false)
 
 	target, err := g.literal(expr.Name, expr.Parameters[0], parser.DTString)
@@ -375,9 +367,6 @@ func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 }
 
 func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 {
-		return nil, parser.DTNumber, g.newError("The `sensors.getColor` function takes 2 argument: sensors.getColor(sensor: string, valueType: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorGetRGBGrayLight, false)
 
 	var err error
@@ -411,9 +400,6 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, p
 }
 
 func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 && len(expr.Parameters) != 3 {
-		return nil, parser.DTBool, g.newError("The `sensors.isColorStatus` function takes 2-3 argument: sensors.colorStatus(target: string, status: number, inner?: boolean)", expr.Name)
-	}
 	blockType := blocks.SensorColorIsStatus
 	indexType := blocks.SensorColorIsStatusIndex
 	inputType := blocks.SensorColorIsStatusInput
@@ -471,9 +457,6 @@ func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 }
 
 func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 {
-		return nil, parser.DTBool, g.newError("The `sensors.detectColor` function takes 2 argument: sensors.getColor(sensor: string, target: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.SensorColorIsLineAndBackground, false)
 
 	var err error
@@ -508,9 +491,6 @@ func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 
 func exprFuncMotorsSpeed(unit string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-		if len(expr.Parameters) != 1 {
-			return nil, parser.DTNumber, g.newError("The `motors.rpm` function takes 1 argument: motors.rpm(motor: string)", expr.Name)
-		}
 		block := g.NewBlock(blocks.Mbot2EncoderMotorGetSpeed, false)
 
 		var err error
@@ -532,9 +512,6 @@ func exprFuncMotorsSpeed(unit string) func(g *generator, expr *parser.ExprFuncCa
 }
 
 func exprFuncMotorsAngle(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `motors.angle` function takes 1 argument: motors.angle(motor: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.Mbot2EncoderMotorGetAngle, false)
 
 	var err error
@@ -553,9 +530,6 @@ func exprFuncMotorsAngle(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 }
 
 func exprFuncNetReceive(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTString, g.newError("The `net.receive` function takes 1 argument: net.receive(message: string).", expr.Name)
-	}
 	block := g.NewBlock(blocks.NetWifiGetValue, false)
 
 	var err error
@@ -568,9 +542,6 @@ func exprFuncNetReceive(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 }
 
 func exprFuncMathRound(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `math.round` function takes 1 argument: math.round(n: number)", expr.Name)
-	}
 	block := g.NewBlock(blocks.OpRound, false)
 
 	var err error
@@ -583,9 +554,6 @@ func exprFuncMathRound(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, 
 }
 
 func exprFuncMathRandom(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 {
-		return nil, parser.DTNumber, g.newError("The `math.random` function takes 2 arguments: math.random(from: number, to: number)", expr.Name)
-	}
 	block := g.NewBlock(blocks.OpRandom, false)
 
 	var err error
@@ -602,11 +570,8 @@ func exprFuncMathRandom(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	return block, parser.DTNumber, nil
 }
 
-func exprFuncMathOp(name, operator string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+func exprFuncMathOp(operator string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-		if len(expr.Parameters) != 1 {
-			return nil, parser.DTNumber, g.newError(fmt.Sprintf("The `%s` function takes 1 argument: %s(n: number)", name, name), expr.Name)
-		}
 		block := g.NewBlock(blocks.OpMath, false)
 
 		block.Fields["OPERATOR"] = []any{operator, nil}
@@ -622,9 +587,6 @@ func exprFuncMathOp(name, operator string) func(g *generator, expr *parser.ExprF
 }
 
 func exprFuncStringsLength(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 1 {
-		return nil, parser.DTNumber, g.newError("The `strings.length` function takes 1 argument: strings.length(str: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.OpLength, false)
 	var err error
 	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
@@ -632,9 +594,6 @@ func exprFuncStringsLength(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 }
 
 func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 {
-		return nil, parser.DTString, g.newError("The `strings.letter` function takes 2 arguments: strings.letter(str: string, index: number)", expr.Name)
-	}
 	block := g.NewBlock(blocks.OpLetterOf, false)
 	var err error
 	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)
@@ -646,9 +605,6 @@ func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 }
 
 func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
-	if len(expr.Parameters) != 2 {
-		return nil, parser.DTBool, g.newError("The `strings.contains` function takes 2 arguments: strings.contains(str: string, substr: string)", expr.Name)
-	}
 	block := g.NewBlock(blocks.OpContains, false)
 	var err error
 	block.Inputs["STRING1"], err = g.value(block.ID, expr.Name, expr.Parameters[0], parser.DTString)

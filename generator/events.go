@@ -9,21 +9,44 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){
-	"start":    eventStart,
-	"button":   eventButton,
-	"joystick": eventDirectionKey,
-	"tilt":     eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"),
-	"face":     eventAction(blocks.EventDetectAttitude, "face", "up", "down"),
-	"wave":     eventAction(blocks.EventDetectAction, "wave", "left", "right", "up", "down"),
-	"rotate":   eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"),
-	"fall":     eventActionSingle(blocks.EventDetectAction, "freefall"),
-	"shake":    eventActionSingle(blocks.EventDetectAction, "shake"),
-	"light":    eventSensor("light_sensor"),
-	"sound":    eventSensor("microphone"),
-	"shakeval": eventSensor("shake_val"),
-	"timer":    eventSensor("timer"),
-	"receive":  eventReceive,
+type Event struct {
+	Name  string
+	Fn    func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error)
+	Param *Param
+}
+
+func (e Event) String() string {
+	if e.Param == nil {
+		return "@" + e.Name
+	}
+	return fmt.Sprintf("@%s %s: %s", e.Name, e.Param.Name, e.Param.Type)
+}
+
+var Events = make(map[string]Event)
+
+func newEvent(name string, fn func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error), param *Param) {
+	Events[name] = Event{
+		Name:  name,
+		Fn:    fn,
+		Param: param,
+	}
+}
+
+func init() {
+	newEvent("start", eventStart, nil)
+	newEvent("button", eventButton, &Param{Name: "name", Type: parser.DTString})
+	newEvent("joystick", eventDirectionKey, &Param{Name: "direction", Type: parser.DTString})
+	newEvent("tilt", eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"), &Param{Name: "direction", Type: parser.DTString})
+	newEvent("face", eventAction(blocks.EventDetectAttitude, "face", "up", "down"), &Param{Name: "direction", Type: parser.DTString})
+	newEvent("wave", eventAction(blocks.EventDetectAction, "wave", "left", "right"), &Param{Name: "direction", Type: parser.DTString})
+	newEvent("rotate", eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"), &Param{Name: "direction", Type: parser.DTString})
+	newEvent("fall", eventActionSingle(blocks.EventDetectAction, "freefall"), nil)
+	newEvent("shake", eventActionSingle(blocks.EventDetectAction, "shake"), nil)
+	newEvent("light", eventSensor("light_sensor"), &Param{Name: "comparison", Type: parser.DTString})
+	newEvent("sound", eventSensor("microphone"), &Param{Name: "comparison", Type: parser.DTString})
+	newEvent("shakeval", eventSensor("shakeval"), &Param{Name: "comparison", Type: parser.DTString})
+	newEvent("timer", eventSensor("timer"), &Param{Name: "comparison", Type: parser.DTString})
+	newEvent("receive", eventReceive, &Param{Name: "message", Type: parser.DTString})
 }
 
 func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {

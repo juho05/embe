@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"golang.org/x/exp/slices"
 
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
@@ -173,6 +174,10 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	argumentNames := make([]string, 0, len(stmt.Params))
 	argumentDefaults := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
+		if slices.Contains(argumentNames, p.Name.Lexeme) {
+			return g.newError("Duplicate parameter name.", p.Name)
+		}
+
 		id := uuid.NewString()
 		argumentIDs = append(argumentIDs, id)
 		argumentNames = append(argumentNames, p.Name.Lexeme)

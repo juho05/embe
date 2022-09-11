@@ -106,6 +106,7 @@ func init() {
 	newFuncCall("lights.back.displayColor", funcLEDDisplayColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
 	newFuncCall("lights.back.displayColorFor", funcLEDDisplayColorFor, []Param{{Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("lights.back.deactivate", funcLEDDeactivate, []Param{}, []Param{{Name: "led", Type: parser.DTNumber}})
+	newFuncCall("lights.back.move", funcLEDMove, []Param{{Name: "amount", Type: parser.DTNumber}})
 
 	newFuncCall("display.print", funcDisplayPrint(false), []Param{{Name: "text", Type: parser.DTString}})
 	newFuncCall("display.println", funcDisplayPrint(true), []Param{{Name: "text", Type: parser.DTString}})

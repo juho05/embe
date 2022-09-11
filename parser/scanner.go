@@ -150,8 +150,11 @@ func (s *scanner) scan() error {
 		case ' ', '\t':
 
 		default:
-			if isDigit(c) {
-				s.number()
+			if isDigit(c, 10) {
+				err = s.number()
+				if err != nil {
+					return err
+				}
 			} else if isAlpha(c) {
 				s.identifier()
 			} else {
@@ -212,20 +215,50 @@ func (s *scanner) identifier() {
 	}
 }
 
-func (s *scanner) number() {
-	for isDigit(s.peek()) {
-		s.nextCharacter()
-	}
+func (s *scanner) number() error {
+	base := 10
 
-	if s.peek() == '.' && isDigit(s.peekNext()) {
-		s.nextCharacter()
-		for isDigit(s.peek()) {
-			s.nextCharacter()
+	if string(s.lines[s.line][s.currentColumn:s.currentColumn+1]) == "0" {
+		r, _ := s.nextCharacter()
+		switch r {
+		case 'x':
+			base = 16
+		case 'o':
+			base = 8
+		case 'b':
+			base = 2
 		}
 	}
 
-	value, _ := strconv.ParseFloat(string(s.lines[s.line][s.tokenStartColumn:s.currentColumn+1]), 64)
-	s.addTokenWithValue(TkLiteral, DTNumber, value)
+	for isDigit(s.peek(), base) {
+		s.nextCharacter()
+	}
+
+	if base == 10 && s.peek() == '.' && isDigit(s.peekNext(), base) {
+		s.nextCharacter()
+		for isDigit(s.peek(), base) {
+			s.nextCharacter()
+		}
+		value, _ := strconv.ParseFloat(string(s.lines[s.line][s.tokenStartColumn:s.currentColumn+1]), 64)
+		s.addTokenWithValue(TkLiteral, DTNumber, value)
+		return nil
+	}
+
+	lexeme := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
+	switch base {
+	case 16:
+		lexeme = strings.TrimPrefix(lexeme, "0x")
+	case 8:
+		lexeme = strings.TrimPrefix(lexeme, "0o")
+	case 2:
+		lexeme = strings.TrimPrefix(lexeme, "0b")
+	}
+	if lexeme == "" {
+		return s.newError("There must be at least one digit after a number prefix.")
+	}
+	value, _ := strconv.ParseInt(lexeme, base, 64)
+	s.addTokenWithValue(TkLiteral, DTNumber, float64(value))
+	return nil
 }
 
 func (s *scanner) comment() {
@@ -360,8 +393,19 @@ func getIndentation(line []rune) int {
 	return level
 }
 
-func isDigit(char rune) bool {
-	return char >= '0' && char <= '9'
+func isDigit(r rune, base int) bool {
+	switch base {
+	case 16:
+		return r >= '0' && r <= '9' || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F'
+	case 10:
+		return r >= '0' && r <= '9'
+	case 8:
+		return r >= '0' && r <= '7'
+	case 2:
+		return r == '0' || r == '1'
+	default:
+		return false
+	}
 }
 
 func isAlpha(char rune) bool {
@@ -369,7 +413,7 @@ func isAlpha(char rune) bool {
 }
 
 func isAlphaNum(char rune) bool {
-	return isDigit(char) || isAlpha(char)
+	return isDigit(char, 10) || isAlpha(char)
 }
 
 type ScanError struct {

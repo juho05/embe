@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -17,11 +18,21 @@ type Constant struct {
 	Type  parser.DataType
 }
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, []error, []error) {
+type Function struct {
+	Name        parser.Token
+	Params      []parser.FuncParam
+	ProcCode    string
+	ArgumentIDs []string
+	StartLine   int
+	EndLine     int
+}
+
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, map[string]*Function, []error, []error) {
 	g := &generator{
 		blocks:    make(map[string]*blocks.Block),
 		variables: make(map[string]*blocks.Variable),
 		constants: make(map[string]*Constant),
+		functions: make(map[string]*Function),
 		lines:     lines,
 		warnings:  make([]error, 0),
 	}
@@ -32,7 +43,7 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*block
 			errs = append(errs, err)
 		}
 	}
-	return g.blocks, g.variables, g.constants, g.warnings, errs
+	return g.blocks, g.variables, g.constants, g.functions, g.warnings, errs
 }
 
 type generator struct {
@@ -46,19 +57,19 @@ type generator struct {
 	variableInitializer *blocks.Block
 	variables           map[string]*blocks.Variable
 	constants           map[string]*Constant
+	functions           map[string]*Function
 
 	noNext       bool
 	variableName string
 
 	warnings []error
+
+	currentFunction *Function
 }
 
 func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
-	if v, ok := g.variables[stmt.Name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
-	}
-	if v, ok := g.constants[stmt.Name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	if err := g.assertNotDeclared(stmt.Name); err != nil {
+		return err
 	}
 
 	if g.variableInitializer == nil {
@@ -133,17 +144,106 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 }
 
 func (g *generator) VisitConstDecl(stmt *parser.StmtConstDecl) error {
-	if v, ok := g.variables[stmt.Name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
-	}
-	if v, ok := g.constants[stmt.Name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", stmt.Name.Lexeme, v.Name.Line+1), stmt.Name)
+	if err := g.assertNotDeclared(stmt.Name); err != nil {
+		return err
 	}
 
 	g.constants[stmt.Name.Lexeme] = &Constant{
 		Name:  stmt.Name,
 		Value: stmt.Value,
 		Type:  stmt.Value.DataType,
+	}
+	return nil
+}
+
+func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
+	if err := g.assertNotDeclared(stmt.Name); err != nil {
+		return err
+	}
+
+	block := blocks.NewBlockTopLevel(blocks.ProceduresDefinition)
+	g.blocks[block.ID] = block
+	g.parent = block.ID
+
+	g.noNext = true
+	prototype := g.NewBlock(blocks.ProceduresPrototype, true)
+
+	procCode := stmt.Name.Lexeme
+	argumentIDs := make([]string, 0, len(stmt.Params))
+	argumentNames := make([]string, 0, len(stmt.Params))
+	argumentDefaults := make([]string, 0, len(stmt.Params))
+	for _, p := range stmt.Params {
+		id := uuid.NewString()
+		argumentIDs = append(argumentIDs, id)
+		argumentNames = append(argumentNames, p.Name.Lexeme)
+		argumentDefaults = append(argumentDefaults, "todo")
+
+		g.noNext = true
+		var reporterBlock *blocks.Block
+		if p.Type.DataType == parser.DTBool {
+			reporterBlock = g.NewBlock(blocks.ArgumentReporterBoolean, true)
+			procCode += " %b"
+		} else {
+			reporterBlock = g.NewBlock(blocks.ArgumentReporterStringNumber, true)
+			if p.Type.DataType == parser.DTNumber {
+				procCode += " %n"
+			} else {
+				procCode += " %s"
+			}
+		}
+		reporterBlock.Fields["VALUE"] = []any{p.Name.Lexeme, nil}
+		prototype.Inputs[id] = []any{1, reporterBlock.ID}
+	}
+
+	prototype.Mutation = map[string]any{
+		"tagName":          "mutation",
+		"children":         []any{},
+		"proccode":         procCode,
+		"warp":             "false",
+		"argumentids":      "[]",
+		"argumentnames":    "[]",
+		"argumentdefaults": "[]",
+	}
+	if len(stmt.Params) > 0 {
+		prototype.Mutation["argumentids"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentIDs, "\",\""))
+		prototype.Mutation["argumentnames"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentNames, "\",\""))
+		prototype.Mutation["argumentdefaults"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentDefaults, "\",\""))
+	}
+
+	g.functions[stmt.Name.Lexeme] = &Function{
+		Name:        stmt.Name,
+		Params:      stmt.Params,
+		ProcCode:    procCode,
+		ArgumentIDs: argumentIDs,
+		StartLine:   stmt.StartLine,
+		EndLine:     stmt.EndLine,
+	}
+
+	block.Inputs["custom_block"] = []any{1, prototype.ID}
+
+	g.currentFunction = g.functions[stmt.Name.Lexeme]
+	g.parent = block.ID
+	for _, s := range stmt.Body {
+		err := s.Accept(g)
+		if err != nil {
+			return err
+		}
+		g.parent = g.blockID
+	}
+	g.currentFunction = nil
+
+	return nil
+}
+
+func (g *generator) assertNotDeclared(name parser.Token) error {
+	if v, ok := g.variables[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
+	}
+	if v, ok := g.constants[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
+	}
+	if v, ok := g.functions[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
 	}
 	return nil
 }
@@ -177,16 +277,47 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		}
 	}
 
-	fn, ok := FuncCalls[stmt.Name.Lexeme]
-	if !ok {
-		return g.newError("Unknown function.", stmt.Name)
-	}
-	block, err := fn.Fn(g, stmt)
-	if err != nil {
-		return err
+	if f, ok := g.functions[stmt.Name.Lexeme]; ok {
+		block := g.NewBlock(blocks.ProceduresCall, false)
+
+		if len(stmt.Parameters) != len(f.Params) {
+			return g.newError("Wrong argument count.", stmt.Name)
+		}
+
+		var err error
+		for i, p := range stmt.Parameters {
+			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, stmt.Name, p, f.Params[i].Type.DataType)
+			if err != nil {
+				return err
+			}
+		}
+
+		block.Mutation = map[string]any{
+			"tagName":     "mutation",
+			"children":    []any{},
+			"proccode":    f.ProcCode,
+			"argumentids": "[]",
+			"warp":        "false",
+		}
+
+		if len(f.Params) > 0 {
+			block.Mutation["argumentids"] = fmt.Sprintf("[\"%s\"]", strings.Join(f.ArgumentIDs, "\",\""))
+		}
+
+		g.blockID = block.ID
+	} else {
+		fn, ok := FuncCalls[stmt.Name.Lexeme]
+		if !ok {
+			return g.newError("Unknown function.", stmt.Name)
+		}
+		block, err := fn.Fn(g, stmt)
+		if err != nil {
+			return err
+		}
+
+		g.blockID = block.ID
 	}
 
-	g.blockID = block.ID
 	return nil
 }
 
@@ -344,6 +475,24 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 }
 
 func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
+	if g.currentFunction != nil {
+		for _, p := range g.currentFunction.Params {
+			if p.Name.Lexeme == expr.Name.Lexeme {
+				g.dataType = p.Type.DataType
+				var reporterBlock *blocks.Block
+				g.noNext = true
+				if p.Type.DataType == parser.DTBool {
+					reporterBlock = g.NewBlock(blocks.ArgumentReporterBoolean, false)
+				} else {
+					reporterBlock = g.NewBlock(blocks.ArgumentReporterStringNumber, false)
+				}
+				reporterBlock.Fields["VALUE"] = []any{p.Name.Lexeme, nil}
+				g.blockID = reporterBlock.ID
+				return nil
+			}
+		}
+	}
+
 	if v, ok := Variables[expr.Name.Lexeme]; ok {
 		block := g.NewBlock(v.blockType, false)
 		if v.fields != nil {
@@ -611,7 +760,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		}
 		if g.variableName != "" {
 			variable := g.variables[g.variableName]
-			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{4, ""}}, nil
+			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{valueInt, ""}}, nil
 		}
 		return []any{3, g.blockID, []any{valueInt, ""}}, nil
 	}

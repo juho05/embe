@@ -43,6 +43,7 @@ const (
 	TkFor
 	TkVar
 	TkConst
+	TkFunc
 
 	TkIdentifier
 	TkLiteral

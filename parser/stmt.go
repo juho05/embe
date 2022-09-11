@@ -3,6 +3,7 @@ package parser
 type StmtVisitor interface {
 	VisitVarDecl(stmt *StmtVarDecl) error
 	VisitConstDecl(stmt *StmtConstDecl) error
+	VisitFuncDecl(stmt *StmtFuncDecl) error
 	VisitEvent(stmt *StmtEvent) error
 	VisitFuncCall(stmt *StmtFuncCall) error
 	VisitAssignment(stmt *StmtAssignment) error
@@ -33,6 +34,23 @@ type StmtConstDecl struct {
 
 func (s *StmtConstDecl) Accept(visitor StmtVisitor) error {
 	return visitor.VisitConstDecl(s)
+}
+
+type FuncParam struct {
+	Name Token
+	Type Token
+}
+
+type StmtFuncDecl struct {
+	Name      Token
+	Params    []FuncParam
+	Body      []Stmt
+	StartLine int
+	EndLine   int
+}
+
+func (s *StmtFuncDecl) Accept(visitor StmtVisitor) error {
+	return visitor.VisitFuncDecl(s)
 }
 
 type StmtEvent struct {

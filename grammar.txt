@@ -1,10 +1,11 @@
 program-> topLevel*
-topLevel->event
+topLevel->event|variableDecl|constDecl|funcDecl
 
-event-> '@' IDENTIFIER LITERAL? ':' statement*
+event-> '@' IDENTIFIER LITERAL? ':' '\n' statement*
 
-variableDecl-> 'var' IDENTIFIER (':' TYPE) ('=' expression)?
-constDecl-> 'const' IDENTIFIER (':' TYPE) '=' LITERAL
+variableDecl-> 'var' IDENTIFIER (':' TYPE) ('=' expression)? '\n'
+constDecl-> 'const' IDENTIFIER (':' TYPE) '=' LITERAL '\n'
+funcDecl-> 'func' IDENTIFIER '(' (IDENTIFIER ':' TYPE (',' IDENTIFIER ':' TYPE)*)? ')' ':' '\n' statement*
 
 statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'

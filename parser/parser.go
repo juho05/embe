@@ -41,10 +41,12 @@ func (p *parser) topLevel() Stmt {
 		stmt, err = p.varDecl()
 	case TkConst:
 		stmt, err = p.constDecl()
+	case TkFunc:
+		stmt, err = p.funcDecl()
 	case TkAt:
 		stmt, err = p.event()
 	default:
-		err = p.newError("Expected event or variable declaration.")
+		err = p.newError("Expected event or declaration.")
 	}
 	if err != nil {
 		p.errors = append(p.errors, err)
@@ -153,6 +155,70 @@ func (p *parser) constDecl() (Stmt, error) {
 	}, nil
 }
 
+func (p *parser) funcDecl() (Stmt, error) {
+	if !p.match(TkFunc) {
+		return nil, p.newError("Expected 'func' keyword.")
+	}
+
+	if !p.match(TkIdentifier) {
+		return nil, p.newError("Expected function name.")
+	}
+	name := p.previous()
+	if strings.Contains(name.Lexeme, ".") {
+		return nil, p.newErrorAt("Function names cannot contain a dot.", name)
+	}
+
+	if !p.match(TkOpenParen) {
+		return nil, p.newError("Expected '(' after function name.")
+	}
+
+	parameters := make([]FuncParam, 0)
+	for p.peek().Type != TkCloseParen {
+		if !p.match(TkIdentifier) {
+			return nil, p.newError("Expected parameter name.")
+		}
+		pName := p.previous()
+		if !p.match(TkColon) {
+			return nil, p.newError("Expected ':' after parameter name.")
+		}
+		if !p.match(TkType) {
+			return nil, p.newError("Expected type after ':'.")
+		}
+		pType := p.previous()
+		parameters = append(parameters, FuncParam{
+			Name: pName,
+			Type: pType,
+		})
+		if !p.match(TkComma) {
+			break
+		}
+	}
+
+	if !p.match(TkCloseParen) {
+		return nil, p.newError("Expected ')' after parameter list.")
+	}
+
+	if !p.match(TkColon) {
+		return nil, p.newError("Expected ':' after function declaration.")
+	}
+
+	if !p.match(TkNewLine) {
+		return nil, p.newError("Expected '\n' after ':'.")
+	}
+
+	start := p.peek().Line
+	body := p.statements(name.Indent + 1)
+	end := p.peek().Line
+
+	return &StmtFuncDecl{
+		Name:      name,
+		Body:      body,
+		Params:    parameters,
+		StartLine: start,
+		EndLine:   end,
+	}, nil
+}
+
 func (p *parser) event() (Stmt, error) {
 	if !p.match(TkAt) {
 		return nil, p.newError("Expected event.")
@@ -176,7 +242,7 @@ func (p *parser) event() (Stmt, error) {
 		return nil, p.newError("Expected '\n' after ':'.")
 	}
 
-	body := p.statements(1)
+	body := p.statements(name.Indent + 1)
 	if name.Lexeme == "start" {
 		newBody := make([]Stmt, 0, len(body)+1)
 		newBody = append(newBody, &StmtFuncCall{

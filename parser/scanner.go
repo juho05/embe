@@ -16,6 +16,7 @@ var keywords = map[string]TokenType{
 	"for":   TkFor,
 	"var":   TkVar,
 	"const": TkConst,
+	"func":  TkFunc,
 }
 
 var types = map[string]DataType{

@@ -50,7 +50,7 @@ func init() {
 }
 
 func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-	if err := assertNoEventParameter(g, stmt); err != nil {
+	if err := g.assertNoEventParameter(stmt); err != nil {
 		return nil, err
 	}
 	return blocks.NewBlockTopLevel(blocks.EventLaunch), nil
@@ -93,7 +93,7 @@ func eventAction(blockType blocks.BlockType, prefix string, options ...string) f
 
 func eventActionSingle(blockType blocks.BlockType, name string) func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-		if err := assertNoEventParameter(g, stmt); err != nil {
+		if err := g.assertNoEventParameter(stmt); err != nil {
 			return nil, err
 		}
 		block := blocks.NewBlockTopLevel(blockType)
@@ -148,7 +148,7 @@ func eventReceive(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	return block, nil
 }
 
-func assertNoEventParameter(g *generator, stmt *parser.StmtEvent) error {
+func (g *generator) assertNoEventParameter(stmt *parser.StmtEvent) error {
 	if (stmt.Parameter != parser.Token{}) {
 		return g.newError(fmt.Sprintf("The '%s' event does not take any arguments.", stmt.Name.Lexeme), stmt.Parameter)
 	}

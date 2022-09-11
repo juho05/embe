@@ -31,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	blocks, variables, _, warnings, errs := generator.GenerateBlocks(statements, lines)
+	blocks, variables, _, _, warnings, errs := generator.GenerateBlocks(statements, lines)
 	for _, w := range warnings {
 		fmt.Fprintln(os.Stderr, w)
 	}

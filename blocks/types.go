@@ -254,3 +254,12 @@ const (
 	VariableSetTo    BlockType = "data_setvariableto"
 	VariableChangeBy BlockType = "data_changevariableby"
 )
+
+// Custom blocks
+const (
+	ProceduresDefinition         BlockType = "procedures_definition"
+	ProceduresPrototype          BlockType = "procedures_prototype"
+	ArgumentReporterStringNumber BlockType = "argument_reporter_string_number"
+	ArgumentReporterBoolean      BlockType = "argument_reporter_boolean"
+	ProceduresCall               BlockType = "procedures_call"
+)

@@ -1006,7 +1006,7 @@ func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCal
 
 func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
+		block := g.NewBlock(blocks.Mbot2MoveMoveWithCmAndInch, false)
 
 		block.Fields["DIRECTION"] = []any{direction, nil}
 		block.Fields["fieldMenu_3"] = []any{"cm", nil}

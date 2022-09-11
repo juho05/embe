@@ -527,7 +527,7 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 			return nil, err
 		}
 	} else {
-		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithTime, stmt, 2, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
+		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithTimeFieldMenu, stmt, 2, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
 		if err != nil {
 			return nil, err
 		}

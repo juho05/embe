@@ -220,14 +220,16 @@ func (s *scanner) number() error {
 	base := 10
 
 	if string(s.lines[s.line][s.currentColumn:s.currentColumn+1]) == "0" {
-		r, _ := s.nextCharacter()
-		switch r {
+		switch s.peek() {
 		case 'x':
 			base = 16
+			s.nextCharacter()
 		case 'o':
 			base = 8
+			s.nextCharacter()
 		case 'b':
 			base = 2
+			s.nextCharacter()
 		}
 	}
 

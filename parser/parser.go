@@ -206,7 +206,7 @@ func (p *parser) funcDecl() (Stmt, error) {
 		return nil, p.newError("Expected '\n' after ':'.")
 	}
 
-	start := p.peek().Line
+	start := name.Line
 	body := p.statements(name.Indent + 1)
 	end := p.peek().Line
 

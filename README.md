@@ -4,19 +4,21 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 **NOTE:** Due to some incompatibilities between the desktop and the web version of the mBlock IDE it is recommended to use the [web version](https://ide.mblock.cc/) to display and run output files of embe.
 
-## Installation
+## Installation & Updating
 
 ### Windows
 
-1. Hit Win+R
+1. Hit <kbd>Win</kbd> + <kbd>R</kbd> to open the run prompt
 2. Type `powershell` and hit OK
-3. Paste the following command and hit enter:
+3. Paste the following command into the blue window and hit enter:
 
 ```powershell
 iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
 ```
 
 ### macOS/Linux
+
+Paste one of the following commands into a terminal window:
 
 #### curl
 
@@ -35,7 +37,7 @@ wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/i
 1. Download the install script from [here](https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh).
 2. Execute it with *bash* in a terminal: `bash install.sh`
 
-## Editor support
+## Editor Support
 
 - LSP: [embe-ls](https://github.com/Bananenpro/embe-ls)
 - VS Code: [vscode-embe](https://github.com/Bananenpro/vscode-embe)

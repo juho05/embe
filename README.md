@@ -4,7 +4,34 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 ## Installation
 
-[Build](#building) the `embe` binary and place it somewhere in your PATH.
+### Windows
+
+1. Hit Win+R
+2. Type `powershell` and hit OK
+3. Paste the following command and hit enter:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
+```
+
+### macOS/Linux
+
+#### curl
+
+```bash
+curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash
+```
+
+#### wget (in case curl is not installed)
+
+```bash
+wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash
+```
+
+#### manually (in case neither curl nor wget are installed)
+
+1. Download the install script from [here](https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh).
+2. Execute it with *bash* in a terminal: `bash install.sh`
 
 ## Editor support
 

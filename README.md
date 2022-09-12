@@ -2,6 +2,8 @@
 
 Embe is a programming language that compiles to [mBlock](https://makeblock.com) Scratch code.
 
+**NOTE:** Due to some incompatibilities between the desktop and the web version of the mBlock IDE it is recommended to use the [web version](https://ide.mblock.cc/) to display and run output files of embe.
+
 ## Installation
 
 ### Windows

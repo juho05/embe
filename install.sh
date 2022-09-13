@@ -41,6 +41,7 @@ if [[ $os == *"linux"* ]]; then
 		exit 1
 	fi
 elif [[ $os == *"darwin"* ]]; then
+	export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 	if [[ $arch == *"x86"* ]]; then
 		echo "Detected OS: macOS x86_64"
 		download "darwin" "amd64"
@@ -75,7 +76,7 @@ if hash code 2>/dev/null; then
 	else
 		curl -L https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix > embe.vsix || exit 1
 	fi
-	code --uninstall-extension bananenpro.embe
+	code --uninstall-extension bananenpro.embe 2>/dev/null
 	code --install-extension embe.vsix || exit 1
 	rm embe.vsix
 fi

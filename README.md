@@ -32,11 +32,6 @@ curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash
 wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash
 ```
 
-#### manually (in case neither curl nor wget are installed)
-
-1. Download the install script from [here](https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh).
-2. Execute it with *bash* in a terminal: `bash install.sh`
-
 ## Editor Support
 
 - LSP: [embe-ls](https://github.com/Bananenpro/embe-ls)

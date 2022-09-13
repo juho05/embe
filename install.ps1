@@ -27,10 +27,13 @@ rm embe-ls.zip
 if (Get-Command code -ErrorAction SilentlyContinue) { 
 	Write-Host "Installing vscode-embe..."
 	Invoke-WebRequest -Uri https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix -OutFile .\embe.vsix
-	code --uninstall-extension bananenpro.embe
+	code --uninstall-extension bananenpro.embe | Out-Null
 	code --install-extension embe.vsix
 	rm embe.vsix
 }
 
-Write-Host "Done."
-Write-Host "Please reboot for the installation to take effect." -ForegroundColor Yellow
+Write-Host "Restarting explorer.exe..."
+taskkill /f /im explorer.exe
+Start-Process explorer
+
+Write-Host "Done." -ForegroundColor Green

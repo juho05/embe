@@ -64,6 +64,7 @@ fi
 
 
 echo "Installing binaries into /usr/local/bin..."
+sudo mkdir /usr/local/bin -p
 tar -xzf embe.tar.gz embe && sudo mv embe /usr/local/bin || exit 1
 rm embe.tar.gz
 tar -xzf embe-ls.tar.gz embe-ls && sudo mv embe-ls /usr/local/bin || exit 1

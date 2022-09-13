@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) == 1 {
-		fmt.Fprintf(os.Stdin, "USAGE: %s <file>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "USAGE: %s <file>\n", os.Args[0])
 		os.Exit(1)
 	}
 
@@ -55,6 +55,6 @@ func check(err error) {
 	if err == nil {
 		return
 	}
-	fmt.Fprintf(os.Stdin, "ERROR: %s\n", err.Error())
+	fmt.Fprintf(os.Stderr, "ERROR: %s\n", err.Error())
 	os.Exit(1)
 }

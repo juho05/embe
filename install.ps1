@@ -32,8 +32,19 @@ if (Get-Command code -ErrorAction SilentlyContinue) {
 	rm embe.vsix
 }
 
-Write-Host "Restarting explorer.exe..."
-taskkill /f /im explorer.exe
-Start-Process explorer
+Write-Host "Refreshing environment variables..."
+$HWND_BROADCAST = [intptr]0xffff;
+$WM_SETTINGCHANGE = 0x1a;
+$result = [uintptr]::zero
+if (-not ("win32.nativemethods" -As [type])) {
+	Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @"
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(
+IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam,
+uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+"@
+}
+[void]([win32.nativemethods]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [uintptr]::Zero, "Environment", 2, 5000, [ref]$result))
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "Done." -ForegroundColor Green

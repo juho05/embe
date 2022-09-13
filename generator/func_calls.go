@@ -452,7 +452,7 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 		if err != nil {
 			return nil, err
 		}
-		colors := []string{"gray", "red", "orange", "yellow", "green", "cyan", "blue", "magenta"}
+		colors := []string{"gray", "red", "orange", "yellow", "green", "cyan", "blue", "magenta", "white"}
 		if index := slices.Index(colors, n.(string)); index >= 0 {
 			names[i] = strconv.Itoa(index)
 		} else {

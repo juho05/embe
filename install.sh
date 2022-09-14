@@ -77,7 +77,7 @@ if hash code 2>/dev/null; then
 	else
 		curl -L https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix > embe.vsix || exit 1
 	fi
-	code --uninstall-extension bananenpro.embe 2>/dev/null
+	code --uninstall-extension bananenpro.embe &>/dev/null
 	code --install-extension embe.vsix || exit 1
 	rm embe.vsix
 fi

@@ -208,7 +208,7 @@ func (p *parser) funcDecl() (Stmt, error) {
 
 	start := name.Line
 	body := p.statements(name.Indent + 1)
-	end := p.peek().Line
+	end := p.previous().Line + 1
 
 	return &StmtFuncDecl{
 		Name:      name,

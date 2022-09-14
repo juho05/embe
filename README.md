@@ -16,6 +16,12 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
 ```
 
+#### Behind a proxy
+
+```
+iwr -Proxy http://example.com:8080 -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
+```
+
 ### macOS/Linux
 
 Paste one of the following commands into a terminal window:

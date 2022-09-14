@@ -1,3 +1,10 @@
+if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyEnable) {
+    $proxy = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings').ProxyServer
+    $env:HTTP_PROXY = $proxy
+    $env:HTTPS_PROXY = $proxy
+	Write-Host "Using proxy: $proxy"
+}
+
 $EmbeDir = "$HOME\AppData\Local\Programs\embe"
 if (!($EmbeDir | Test-Path)) {
 	New-Item -ItemType "directory" -Path $EmbeDir
@@ -24,7 +31,7 @@ Rename-Item -Path $EmbeDir\README.md -NewName README-embe-ls.md
 Rename-Item -Path $EmbeDir\LICENSE -NewName LICENSE-embe-ls
 rm embe-ls.zip
 
-if (Get-Command code -ErrorAction SilentlyContinue) { 
+if (Get-Command code -ErrorAction SilentlyContinue) {
 	Write-Host "Installing vscode-embe..."
 	Invoke-WebRequest -Uri https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix -OutFile .\embe.vsix
 	code --uninstall-extension bananenpro.embe | Out-Null

@@ -76,7 +76,10 @@ func (p *parser) varDecl() (Stmt, error) {
 		var ok bool
 		dataType, ok = types[p.previous().Lexeme]
 		if !ok {
-			return nil, p.newError("Unknown data type.")
+			if dataType, ok = types[strings.TrimSuffix(p.previous().Lexeme, "[]")]; !ok {
+				return nil, p.newError("Unknown data type.")
+			}
+			dataType += "[]"
 		}
 		if dataType == DTBool {
 			return nil, p.newError("Boolean variables are not supported.")
@@ -173,7 +176,7 @@ func (p *parser) funcDecl() (Stmt, error) {
 	}
 
 	parameters := make([]FuncParam, 0)
-	for p.peek().Type != TkCloseParen {
+	for p.peek().Type != TkCloseParen && p.peek().Type != TkEOF {
 		if !p.match(TkIdentifier) {
 			return nil, p.newError("Expected parameter name.")
 		}
@@ -830,12 +833,13 @@ func (p *parser) primary() (Expr, error) {
 				Name:       name,
 				Parameters: parameters,
 			}, nil
-		} else {
-			return &ExprIdentifier{
-				Name: name,
-			}, nil
 		}
-	} else if p.match(TkType) {
+		return &ExprIdentifier{
+			Name: name,
+		}, nil
+	}
+
+	if p.match(TkType) {
 		token := p.previous()
 		if !p.match(TkOpenParen) {
 			return nil, p.newError("Expected '(' after type name for type cast.")
@@ -852,6 +856,27 @@ func (p *parser) primary() (Expr, error) {
 		return &ExprTypeCast{
 			Type:  token,
 			Value: value,
+		}, nil
+	}
+
+	if p.match(TkOpenBracket) {
+		openBracket := p.previous()
+		values := make([]Token, 0)
+		for p.peek().Type != TkCloseBracket && p.peek().Type != TkEOF {
+			if !p.match(TkIdentifier, TkLiteral) {
+				return nil, p.newError("Expected literal or constant.")
+			}
+			values = append(values, p.previous())
+			if !p.match(TkComma) {
+				break
+			}
+		}
+		if !p.match(TkCloseBracket) {
+			return nil, p.newError("Expected ']' after value list.")
+		}
+		return &ExprListInitializer{
+			OpenBracket: openBracket,
+			Values:      values,
 		}, nil
 	}
 

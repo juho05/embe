@@ -62,6 +62,10 @@ func (s *scanner) scan() error {
 			s.addToken(TkOpenParen)
 		case ')':
 			s.addToken(TkCloseParen)
+		case '[':
+			s.addToken(TkOpenBracket)
+		case ']':
+			s.addToken(TkCloseBracket)
 		case ':':
 			s.addToken(TkColon)
 		case '.':
@@ -202,6 +206,11 @@ func (s *scanner) identifier() {
 
 	name := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
 	if t, ok := types[name]; ok {
+		if name != "boolean" && s.peek() == '[' && s.peekNext() == ']' {
+			s.nextCharacter()
+			s.nextCharacter()
+			t += "[]"
+		}
 		s.addTokenWithValue(TkType, t, nil)
 	} else if k, ok := keywords[name]; ok {
 		s.addToken(k)

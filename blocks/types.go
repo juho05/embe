@@ -249,6 +249,19 @@ const (
 	OpLength   BlockType = "operator_length"
 )
 
+// Lists
+const (
+	ListAdd       BlockType = "data_addtolist"
+	ListDelete    BlockType = "data_deleteoflist"
+	ListClear     BlockType = "data_deletealloflist"
+	ListInsert    BlockType = "data_insertatlist"
+	ListReplace   BlockType = "data_replaceitemoflist"
+	ListItem      BlockType = "data_itemoflist"
+	ListItemIndex BlockType = "data_itemnumoflist"
+	ListLength    BlockType = "data_lengthoflist"
+	ListContains  BlockType = "data_listcontainsitem"
+)
+
 // Variables
 const (
 	VariableSetTo    BlockType = "data_setvariableto"

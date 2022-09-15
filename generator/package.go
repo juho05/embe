@@ -30,7 +30,7 @@ var wav []byte
 //go:embed assets/mscratch.json
 var mscratch []byte
 
-func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[string]*blocks.Variable) error {
+func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[string]*Variable, lists map[string]*List) error {
 	w := zip.NewWriter(writer)
 	defer w.Close()
 
@@ -39,7 +39,12 @@ func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[st
 		variableMap[v.ID] = []any{v.Name.Lexeme, 0}
 	}
 
-	err := createProject(w, blocks, variableMap)
+	listMap := make(map[string][]any, len(lists))
+	for _, l := range lists {
+		listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
+	}
+
+	err := createProject(w, blocks, variableMap, listMap)
 	if err != nil {
 		return err
 	}
@@ -62,7 +67,7 @@ func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[st
 	return nil
 }
 
-func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block, variableMap map[string][]any) error {
+func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any) error {
 	w, err := zw.Create("project.json")
 	if err != nil {
 		return err
@@ -83,12 +88,19 @@ func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block, variableMa
 		return err
 	}
 
+	listJSON, err := json.Marshal(listMap)
+	if err != nil {
+		return err
+	}
+
 	tmpl.Execute(w, struct {
 		Blocks    string
 		Variables string
+		Lists     string
 	}{
 		Blocks:    string(blockJSON),
 		Variables: string(variableJSON),
+		Lists:     string(listJSON),
 	})
 	return nil
 }

@@ -13,6 +13,20 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
+type Variable struct {
+	ID       string
+	Name     parser.Token
+	DataType parser.DataType
+	Declared bool
+}
+
+type List struct {
+	ID            string
+	Name          parser.Token
+	DataType      parser.DataType
+	InitialValues []string
+}
+
 type Constant struct {
 	Name  parser.Token
 	Value parser.Token
@@ -28,10 +42,21 @@ type Function struct {
 	EndLine     int
 }
 
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*blocks.Block, map[string]*blocks.Variable, map[string]*Constant, map[string]*Function, []error, []error) {
+type GeneratorResult struct {
+	Blocks    map[string]*blocks.Block
+	Variables map[string]*Variable
+	Lists     map[string]*List
+	Constants map[string]*Constant
+	Functions map[string]*Function
+	Warnings  []error
+	Errors    []error
+}
+
+func GenerateBlocks(statements []parser.Stmt, lines [][]rune) GeneratorResult {
 	g := &generator{
 		blocks:    make(map[string]*blocks.Block),
-		variables: make(map[string]*blocks.Variable),
+		variables: make(map[string]*Variable),
+		lists:     make(map[string]*List),
 		constants: make(map[string]*Constant),
 		functions: make(map[string]*Function),
 		lines:     lines,
@@ -44,7 +69,16 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) (map[string]*block
 			errs = append(errs, err)
 		}
 	}
-	return g.blocks, g.variables, g.constants, g.functions, g.warnings, errs
+
+	return GeneratorResult{
+		Blocks:    g.blocks,
+		Variables: g.variables,
+		Lists:     g.lists,
+		Constants: g.constants,
+		Functions: g.functions,
+		Warnings:  g.warnings,
+		Errors:    errs,
+	}
 }
 
 type generator struct {
@@ -56,12 +90,14 @@ type generator struct {
 	dataType parser.DataType
 
 	variableInitializer *blocks.Block
-	variables           map[string]*blocks.Variable
+	variables           map[string]*Variable
+	lists               map[string]*List
 	constants           map[string]*Constant
 	functions           map[string]*Function
 
-	noNext       bool
-	variableName string
+	noNext         bool
+	variableName   string
+	variableIsList bool
 
 	warnings []error
 
@@ -73,74 +109,129 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		return err
 	}
 
-	if g.variableInitializer == nil {
-		ev := Events["start"]
-		block, _ := ev.Fn(g, &parser.StmtEvent{})
-		g.variableInitializer = block
-		g.blocks[block.ID] = block
-	}
-
-	variable := &blocks.Variable{
-		ID:       uuid.NewString(),
-		Name:     stmt.Name,
-		DataType: stmt.DataType,
-	}
-
-	if variable.DataType != "" && stmt.Value == nil {
-		stmt.AssignToken = parser.Token{
-			Type: parser.TkAssign,
-			Line: stmt.Name.Line,
+	if _, ok := stmt.Value.(*parser.ExprListInitializer); ok || strings.HasSuffix(string(stmt.DataType), "[]") {
+		list := &List{
+			ID:            uuid.NewString(),
+			Name:          stmt.Name,
+			DataType:      stmt.DataType,
+			InitialValues: make([]string, 0),
 		}
-		switch variable.DataType {
-		case parser.DTNumber:
-			stmt.Value = &parser.ExprLiteral{
-				Token: parser.Token{
-					Type:     parser.TkLiteral,
-					Lexeme:   "0",
-					Literal:  0,
-					Line:     stmt.Name.Line,
-					DataType: parser.DTNumber,
-				},
+
+		if stmt.Value == nil {
+			stmt.Value = &parser.ExprListInitializer{
+				OpenBracket: stmt.Name,
+				Values:      make([]parser.Token, 0),
 			}
-		case parser.DTString:
-			stmt.Value = &parser.ExprLiteral{
-				Token: parser.Token{
-					Type:     parser.TkLiteral,
-					Lexeme:   "",
-					Literal:  "",
-					Line:     stmt.Name.Line,
-					DataType: parser.DTString,
-				},
-			}
-		default:
-			return g.newError("Unknown type.", stmt.Name)
 		}
-	}
 
-	g.variables[stmt.Name.Lexeme] = variable
-	if stmt.Value != nil {
-		g.parent = g.variableInitializer.ID
-		assign := &parser.StmtAssignment{
-			Variable: stmt.Name,
-			Operator: stmt.AssignToken,
-			Value:    stmt.Value,
+		var init *parser.ExprListInitializer
+		if init, ok = stmt.Value.(*parser.ExprListInitializer); !ok {
+			token := stmt.AssignToken
+			if l, ok := stmt.Value.(*parser.ExprLiteral); ok {
+				token = l.Token
+			}
+			if i, ok := stmt.Value.(*parser.ExprIdentifier); ok {
+				token = i.Name
+			}
+			return g.newError("Expected a list initializer.", token)
 		}
-		err := assign.Accept(g)
-		if err != nil {
+
+		valueType := parser.DataType(strings.TrimSuffix(string(stmt.DataType), "[]"))
+		for _, v := range init.Values {
+			token := v
+			if v.Type == parser.TkIdentifier {
+				if c, ok := g.constants[v.Lexeme]; ok {
+					v = c.Value
+				} else {
+					return g.newError("Unknown constant.", v)
+				}
+			}
+			if valueType == "" {
+				valueType = v.DataType
+			}
+			if v.DataType != valueType {
+				return g.newError(fmt.Sprintf("Wrong data type. Expected %s.", valueType), token)
+			}
+			list.InitialValues = append(list.InitialValues, fmt.Sprintf("%v", v.Literal))
+		}
+		if valueType != "" {
+			list.DataType = valueType + "[]"
+		}
+
+		if list.DataType == "" {
+			return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
+		}
+
+		g.lists[list.Name.Lexeme] = list
+	} else {
+		if g.variableInitializer == nil {
+			ev := Events["start"]
+			block, _ := ev.Fn(g, &parser.StmtEvent{})
+			g.variableInitializer = block
+			g.blocks[block.ID] = block
+		}
+
+		variable := &Variable{
+			ID:       uuid.NewString(),
+			Name:     stmt.Name,
+			DataType: stmt.DataType,
+		}
+
+		if variable.DataType != "" && stmt.Value == nil {
+			stmt.AssignToken = parser.Token{
+				Type: parser.TkAssign,
+				Line: stmt.Name.Line,
+			}
+			switch variable.DataType {
+			case parser.DTNumber:
+				stmt.Value = &parser.ExprLiteral{
+					Token: parser.Token{
+						Type:     parser.TkLiteral,
+						Lexeme:   "0",
+						Literal:  0,
+						Line:     stmt.Name.Line,
+						DataType: parser.DTNumber,
+					},
+				}
+			case parser.DTString:
+				stmt.Value = &parser.ExprLiteral{
+					Token: parser.Token{
+						Type:     parser.TkLiteral,
+						Lexeme:   "",
+						Literal:  "",
+						Line:     stmt.Name.Line,
+						DataType: parser.DTString,
+					},
+				}
+			default:
+				return g.newError("Unknown type.", stmt.Name)
+			}
+		}
+
+		g.variables[stmt.Name.Lexeme] = variable
+		if stmt.Value != nil {
+			g.parent = g.variableInitializer.ID
+			assign := &parser.StmtAssignment{
+				Variable: stmt.Name,
+				Operator: stmt.AssignToken,
+				Value:    stmt.Value,
+			}
+			err := assign.Accept(g)
+			if err != nil {
+				delete(g.variables, stmt.Name.Lexeme)
+				return err
+			}
+			variable.DataType = g.dataType
+			g.variableInitializer = g.blocks[g.blockID]
+		}
+
+		if variable.DataType == "" {
 			delete(g.variables, stmt.Name.Lexeme)
-			return err
+			return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 		}
-		variable.DataType = g.dataType
-		g.variableInitializer = g.blocks[g.blockID]
+
+		variable.Declared = true
 	}
-
-	if variable.DataType == "" {
-		delete(g.variables, stmt.Name.Lexeme)
-		return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
-	}
-
-	variable.Declared = true
-
 	return nil
 }
 
@@ -244,11 +335,14 @@ func (g *generator) assertNotDeclared(name parser.Token) error {
 	if v, ok := g.variables[name.Lexeme]; ok {
 		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
 	}
-	if v, ok := g.constants[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
+	if l, ok := g.lists[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Line+1), name)
 	}
-	if v, ok := g.functions[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
+	if c, ok := g.constants[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Line+1), name)
+	}
+	if f, ok := g.functions[name.Lexeme]; ok {
+		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Line+1), name)
 	}
 	return nil
 }
@@ -520,8 +614,15 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		return nil
 	}
 
+	if l, ok := g.lists[expr.Name.Lexeme]; ok {
+		g.variableName = l.Name.Lexeme
+		g.variableIsList = true
+		g.dataType = l.DataType
+		return nil
+	}
+
 	if _, ok := g.constants[expr.Name.Lexeme]; ok {
-		return g.newError("Constants are not supported in this context.", expr.Name)
+		return g.newError("Constants are not allowed in this context.", expr.Name)
 	}
 
 	return g.newError("Unknown identifier.", expr.Name)
@@ -550,12 +651,19 @@ func (g *generator) VisitTypeCast(expr *parser.ExprTypeCast) error {
 	if expr.Type.DataType == parser.DTBool || g.dataType == parser.DTBool {
 		return g.newError("Cannot cast from or to a boolean.", expr.Type)
 	}
+	if strings.HasSuffix(string(g.dataType), "[]") && expr.Type.DataType != parser.DTString {
+		return g.newError(fmt.Sprintf("Cannot cast list to %s.", expr.Type.DataType), expr.Type)
+	}
 	g.dataType = dataType
 	return nil
 }
 
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
 	return g.newError("Literals are not allowed in this context.", expr.Token)
+}
+
+func (g *generator) VisitListInitializer(expr *parser.ExprListInitializer) error {
+	return g.newError("Literals are not allowed in this context.", expr.OpenBracket)
 }
 
 func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
@@ -751,7 +859,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		}
 		g.parent = parent
 		g.noNext = true
-		defer func() { g.variableName = "" }()
+		defer func() { g.variableName = ""; g.variableIsList = false }()
 		err := expr.Accept(g)
 		if err != nil {
 			return nil, err
@@ -764,6 +872,10 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			return []any{2, g.blockID}, nil
 		}
 		if g.variableName != "" {
+			if g.variableIsList {
+				list := g.lists[g.variableName]
+				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{valueInt, ""}}, nil
+			}
 			variable := g.variables[g.variableName]
 			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{valueInt, ""}}, nil
 		}
@@ -783,7 +895,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 	defer func() { g.parent = gparent }()
 	g.parent = parent
 	g.noNext = true
-	defer func() { g.variableName = ""; g.noNext = false }()
+	defer func() { g.variableName = ""; g.noNext = false; g.variableIsList = false }()
 	if literalExpr, ok := castValue.(*parser.ExprLiteral); ok {
 		literal := *literalExpr
 		if castValue != expr {
@@ -851,6 +963,10 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
 		}
 		if g.variableName != "" {
+			if g.variableIsList {
+				list := g.lists[g.variableName]
+				return []any{3, []any{13, list.Name.Lexeme, list.ID}, block.ID}, nil
+			}
 			variable := g.variables[g.variableName]
 			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, block.ID}, nil
 		}

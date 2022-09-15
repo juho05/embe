@@ -9,6 +9,8 @@ const (
 	TkAt
 	TkOpenParen
 	TkCloseParen
+	TkOpenBracket
+	TkCloseBracket
 	TkColon
 	TkDot
 	TkComma
@@ -58,6 +60,9 @@ const (
 	DTNumber DataType = "number"
 	DTBool   DataType = "boolean"
 	DTString DataType = "string"
+
+	DTNumberList DataType = "number[]"
+	DTStringList DataType = "string[]"
 )
 
 type Token struct {

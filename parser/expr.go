@@ -5,6 +5,7 @@ type ExprVisitor interface {
 	VisitExprFuncCall(expr *ExprFuncCall) error
 	VisitTypeCast(expr *ExprTypeCast) error
 	VisitLiteral(expr *ExprLiteral) error
+	VisitListInitializer(expr *ExprListInitializer) error
 	VisitUnary(expr *ExprUnary) error
 	VisitBinary(expr *ExprBinary) error
 }
@@ -45,6 +46,15 @@ type ExprLiteral struct {
 
 func (e *ExprLiteral) Accept(visitor ExprVisitor) error {
 	return visitor.VisitLiteral(e)
+}
+
+type ExprListInitializer struct {
+	OpenBracket Token
+	Values      []Token
+}
+
+func (e *ExprListInitializer) Accept(visitor ExprVisitor) error {
+	return visitor.VisitListInitializer(e)
 }
 
 type ExprUnary struct {

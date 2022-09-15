@@ -31,12 +31,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	blocks, variables, _, _, warnings, errs := generator.GenerateBlocks(statements, lines)
-	for _, w := range warnings {
+	result := generator.GenerateBlocks(statements, lines)
+	for _, w := range result.Warnings {
 		fmt.Fprintln(os.Stderr, w)
 	}
-	if len(errs) > 0 {
-		for _, err := range errs {
+	if len(result.Errors) > 0 {
+		for _, err := range result.Errors {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		os.Exit(1)
@@ -47,7 +47,7 @@ func main() {
 	outFile, err := os.Create(outName)
 	check(err)
 	defer outFile.Close()
-	err = generator.Package(outFile, blocks, variables)
+	err = generator.Package(outFile, result.Blocks, result.Variables, result.Lists)
 	check(err)
 }
 

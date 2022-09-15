@@ -22,8 +22,10 @@ comparison -> term (('>'|'>='|'<'|'<=') term)*
 term -> factor (('+'|'-') factor)*
 factor -> unary ('*'|'/'|'%') unary)*
 unary -> ('-'|'!') unary | primary
-primary->identifier | LITERAL | '(' expression ')' | exprFuncCall | typeCast
-exprFuncCall->identifier '(' ((expression) (',' (expression))*)? ')'
+primary-> identifier | LITERAL | '(' expression ')' | exprFuncCall | typeCast
+exprFuncCall-> identifier '(' ((expression) (',' (expression))*)? ')'
+listInitializer-> [' ((IDENTIFIER|LITERAL) (',' (IDENTIFIER|LITERAL))*)? ']'
+
 typeCast->TYPE '(' expression ')'
 
 identifier-> IDENTIFIER ('.' IDENTIFIER)*

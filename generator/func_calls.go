@@ -153,6 +153,12 @@ func init() {
 	newFuncCall("script.stop", funcScriptStop("this script"))
 	newFuncCall("script.stopAll", funcScriptStop("all"))
 	newFuncCall("script.stopOther", funcScriptStop("other scripts in sprite"))
+
+	newFuncCall("lists.append", funcListsAppend, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}})
+	newFuncCall("lists.remove", funcListsRemove, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}})
+	newFuncCall("lists.clear", funcListsClear, []Param{{Name: "list", Type: parser.DTStringList}})
+	newFuncCall("lists.insert", funcListsInsert, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
+	newFuncCall("lists.replace", funcListsReplace, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
 }
 
 func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
@@ -1246,4 +1252,91 @@ func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtFuncC
 
 		return block, nil
 	}
+}
+
+func funcListsAppend(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.ListAdd, false)
+	valueType, err := selectList(g, block, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], valueType)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func funcListsRemove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.ListDelete, false)
+	_, err := selectList(g, block, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func funcListsClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.ListClear, false)
+	_, err := selectList(g, block, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func funcListsInsert(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.ListInsert, false)
+	valueType, err := selectList(g, block, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2], valueType)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func funcListsReplace(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.ListReplace, false)
+	valueType, err := selectList(g, block, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2], valueType)
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func selectList(g *generator, block *blocks.Block, token parser.Token, param parser.Expr) (parser.DataType, error) {
+	if i, ok := param.(*parser.ExprIdentifier); ok {
+		token = i.Name
+		if l, ok := g.lists[i.Name.Lexeme]; ok {
+			block.Fields["LIST"] = []any{
+				l.Name.Lexeme,
+				l.ID,
+			}
+			return parser.DataType(strings.TrimSuffix(string(l.DataType), "[]")), nil
+		}
+		return "", g.newError("Unknown list.", token)
+	}
+	if l, ok := param.(*parser.ExprLiteral); ok {
+		token = l.Token
+	}
+	return "", g.newError("Expected list.", token)
 }

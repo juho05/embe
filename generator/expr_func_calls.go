@@ -99,6 +99,11 @@ func init() {
 	newExprFuncCall("strings.length", exprFuncStringsLength, Signature{Params: []Param{{Name: "str", Type: parser.DTString}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("strings.letter", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString})
 	newExprFuncCall("strings.contains", exprFuncStringsContains, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "substr", Type: parser.DTString}}, ReturnType: parser.DTBool})
+
+	newExprFuncCall("lists.get", exprFuncListsGet, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("lists.indexOf", exprFuncListsIndexOf, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("lists.length", exprFuncListsLength, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("lists.contains", exprFuncListsContains, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTBool})
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
@@ -613,6 +618,54 @@ func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 	}
 	block.Inputs["STRING2"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTString)
 	return block, parser.DTBool, err
+}
+
+func exprFuncListsGet(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	block := g.NewBlock(blocks.ListItem, false)
+	valueType, err := selectList(g, block, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, parser.DTString, err
+	}
+	block.Inputs["INDEX"], err = g.value(block.ID, expr.Name, expr.Parameters[1], parser.DTNumber)
+	if err != nil {
+		return nil, valueType, err
+	}
+	return block, valueType, nil
+}
+
+func exprFuncListsIndexOf(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	block := g.NewBlock(blocks.ListItemIndex, false)
+	valueType, err := selectList(g, block, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1], valueType)
+	if err != nil {
+		return nil, parser.DTNumber, err
+	}
+	return block, parser.DTNumber, nil
+}
+
+func exprFuncListsLength(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	block := g.NewBlock(blocks.ListLength, false)
+	_, err := selectList(g, block, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, parser.DTString, err
+	}
+	return block, parser.DTNumber, nil
+}
+
+func exprFuncListsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {
+	block := g.NewBlock(blocks.ListContains, false)
+	valueType, err := selectList(g, block, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, parser.DTBool, err
+	}
+	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1], valueType)
+	if err != nil {
+		return nil, parser.DTBool, err
+	}
+	return block, parser.DTBool, nil
 }
 
 func parameterToken(expr parser.Expr) parser.Token {

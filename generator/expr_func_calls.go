@@ -98,7 +98,7 @@ func init() {
 
 	newExprFuncCall("strings.length", exprFuncStringsLength, Signature{Params: []Param{{Name: "str", Type: parser.DTString}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("strings.letter", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString})
-	newExprFuncCall("strings.contains", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "substr", Type: parser.DTString}}, ReturnType: parser.DTBool})
+	newExprFuncCall("strings.contains", exprFuncStringsContains, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "substr", Type: parser.DTString}}, ReturnType: parser.DTBool})
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, parser.DataType, error) {

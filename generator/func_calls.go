@@ -92,8 +92,8 @@ func init() {
 	newFuncCall("audio.playInstrument", funcAudioPlayInstrument, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("audio.playNote", funcAudioPlayNote, []Param{{Name: "name", Type: parser.DTNumber}, {Name: "octave", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "note", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("audio.record.start", funcAudioRecordingStart)
-	newFuncCall("audio.record.stop", funcAudioRecordingStart)
-	newFuncCall("audio.record.play", funcAudioRecordingStart, []Param{}, []Param{{Name: "block", Type: parser.DTBool}})
+	newFuncCall("audio.record.stop", funcAudioRecordingStop)
+	newFuncCall("audio.record.play", funcAudioRecordingPlay, []Param{}, []Param{{Name: "block", Type: parser.DTBool}})
 
 	newFuncCall("lights.back.playAnimation", funcLEDPlayAnimation, []Param{{Name: "name", Type: parser.DTString}})
 	newFuncCall("lights.front.setBrightness", funcLEDSetAmbientBrightness("set"), []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})

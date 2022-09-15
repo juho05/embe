@@ -446,24 +446,28 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 		if !ok {
 			return g.newError("Unknown variable.", stmt.Variable)
 		}
-		block = g.NewBlock(blocks.VariableChangeBy, false)
+		block = g.NewBlock(blocks.VariableSetTo, false)
 
 		value, err := g.value(block.ID, stmt.Operator, stmt.Value, variable.DataType)
 		if err != nil {
 			return err
 		}
+		block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
 
-		if stmt.Operator.Type == parser.TkAssign {
-			block.Type = blocks.VariableSetTo
-			index := 2
-			if value[0].(int) == 1 {
-				index = 1
+		if stmt.Operator.Type != parser.TkAssign {
+			if variable.DataType == parser.DTNumber {
+				block.Type = blocks.VariableChangeBy
+			} else {
+				g.noNext = true
+				g.parent = block.ID
+				joinBlock := g.NewBlock(blocks.OpJoin, false)
+				joinBlock.Inputs["STRING1"] = []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{10, ""}}
+				joinBlock.Inputs["STRING2"] = value
+				value = []any{3, joinBlock.ID, []any{10, ""}}
 			}
-			value[index].([]any)[0] = 10
 		}
 
 		block.Inputs["VALUE"] = value
-		block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
 	}
 
 	g.blockID = block.ID

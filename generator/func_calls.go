@@ -134,7 +134,8 @@ func init() {
 	newFuncCall("motors.runBackward", funcMotorsRun("backward"), []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.moveDistance", funcMotorsRunDistance("forward"), []Param{{Name: "distance", Type: parser.DTNumber}})
 	newFuncCall("motors.moveDistanceBackward", funcMotorsRunDistance("backward"), []Param{{Name: "distance", Type: parser.DTNumber}})
-	newFuncCall("motors.turn", funcMotorsTurn, []Param{{Name: "angle", Type: parser.DTNumber}})
+	newFuncCall("motors.turnLeft", funcMotorsTurn("cw"), []Param{{Name: "angle", Type: parser.DTNumber}})
+	newFuncCall("motors.turnRight", funcMotorsTurn("ccw"), []Param{{Name: "angle", Type: parser.DTNumber}})
 	newFuncCall("motors.rotateRPM", funcMotorsRotate("rpm"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotatePower", funcMotorsRotate("power"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotateAngle", funcMotorsRotateAngle, []Param{{Name: "motor", Type: parser.DTString}, {Name: "angle", Type: parser.DTNumber}})
@@ -1026,17 +1027,19 @@ func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.Stm
 	}
 }
 
-func funcMotorsTurn(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	block := g.NewBlock(blocks.Mbot2CwAndCcwWithAngle, false)
-	block.Fields["fieldMenu_1"] = []any{"ccw", nil}
+func funcMotorsTurn(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.Mbot2CwAndCcwWithAngle, false)
+		block.Fields["fieldMenu_1"] = []any{direction, nil}
 
-	var err error
-	block.Inputs["ANGLE"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
-	if err != nil {
-		return nil, err
+		var err error
+		block.Inputs["ANGLE"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		return block, nil
 	}
-
-	return block, nil
 }
 
 func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

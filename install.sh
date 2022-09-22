@@ -64,7 +64,7 @@ fi
 
 if [[ :$PATH: == *:"$HOME/.local/bin":* ]] ; then
 	echo "Installing binaries into ~/.local/bin..."
-	mkdir $HOME/.local/bin -p || exit 1
+	mkdir -p $HOME/.local/bin || exit 1
 	if test -f /usr/local/bin/embe; then
 		echo "Removing old version in /usr/local/bin..."
 		sudo rm -f /usr/local/bin/embe
@@ -74,7 +74,7 @@ if [[ :$PATH: == *:"$HOME/.local/bin":* ]] ; then
 	tar -xzf embe-ls.tar.gz embe-ls && mv embe-ls $HOME/.local/bin || exit 1
 else
 	echo "Installing binaries into /usr/local/bin..."
-	sudo mkdir /usr/local/bin -p || exit 1
+	sudo mkdir -p /usr/local/bin || exit 1
 	if test -f $HOME/.local/bin/embe; then
 		echo "Removing old version in ~/.local/bin..."
 		rm -f $HOME/.local/bin/embe

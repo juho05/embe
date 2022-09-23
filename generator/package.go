@@ -54,6 +54,7 @@ func Package(writer io.Writer, results []GeneratorResult) error {
 		}
 
 		stages[i], err = createStage(i, r.Blocks, variableMap, listMap)
+		stages[i] = strings.TrimSuffix(stages[i], "\n")
 		if err != nil {
 			return err
 		}

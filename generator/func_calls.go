@@ -136,7 +136,7 @@ func init() {
 	newFuncCall("motors.moveDistanceBackward", funcMotorsRunDistance("backward"), []Param{{Name: "distance", Type: parser.DTNumber}})
 	newFuncCall("motors.turnLeft", funcMotorsTurn("cw"), []Param{{Name: "angle", Type: parser.DTNumber}})
 	newFuncCall("motors.turnRight", funcMotorsTurn("ccw"), []Param{{Name: "angle", Type: parser.DTNumber}})
-	newFuncCall("motors.rotateRPM", funcMotorsRotate("rpm"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("motors.rotateRPM", funcMotorsRotate("speed"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotatePower", funcMotorsRotate("power"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotateAngle", funcMotorsRotateAngle, []Param{{Name: "motor", Type: parser.DTString}, {Name: "angle", Type: parser.DTNumber}})
 	newFuncCall("motors.stop", funcMotorsStop, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})

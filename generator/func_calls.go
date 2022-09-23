@@ -483,15 +483,15 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 			return nil, err
 		}
 
-		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, 4, 0, 255)
+		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
@@ -500,7 +500,7 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
 			return nil, err
 		}
@@ -518,15 +518,15 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 			return nil, err
 		}
 
-		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, 4, 0, 255)
+		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
@@ -539,7 +539,7 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], parser.DTString, hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
 			return nil, err
 		}
@@ -686,20 +686,20 @@ func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	var err error
 	if len(stmt.Parameters) == 3 {
 		block.Type = blocks.DisplaySetBrushColorRGB
-		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, 4, 0, 255)
+		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
-		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, -1, 0, 255)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, 9, hexColorRegex, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], parser.DTString, hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
 			return nil, err
 		}
@@ -958,15 +958,15 @@ func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	block := g.NewBlock(blocks.SensorColorDefineColor, false)
 
 	var err error
-	block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, 4, 0, 255)
+	block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber, -1, 0, 255)
 	if err != nil {
 		return nil, err
 	}
-	block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, 4, 0, 255)
+	block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber, -1, 0, 255)
 	if err != nil {
 		return nil, err
 	}
-	block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, 4, 0, 255)
+	block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], parser.DTNumber, -1, 0, 255)
 	if err != nil {
 		return nil, err
 	}

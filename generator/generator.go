@@ -785,25 +785,17 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 var matchAllRegex = regexp.MustCompile(".*")
 
 func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
-	valueInt := 4
-	if dataType == parser.DTString {
-		valueInt = 10
-	}
-	return g.valueWithRegex(parent, token, expr, dataType, valueInt, matchAllRegex, "")
+	return g.valueWithRegex(parent, token, expr, dataType, matchAllRegex, -1, "")
 }
 
-func (g *generator) valueWithValueInt(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int) ([]any, error) {
-	return g.valueWithRegex(parent, token, expr, dataType, valueInt, matchAllRegex, "")
-}
-
-func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate *regexp.Regexp, errorMessage string) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, dataType, valueInt, func(v any) bool {
+func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validate *regexp.Regexp, valueIntOverride int, errorMessage string) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, dataType, func(v any) bool {
 		return validate.MatchString(fmt.Sprintf("%v", v))
-	}, errorMessage)
+	}, valueIntOverride, errorMessage)
 }
 
-func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, min any, max any) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, dataType, valueInt, func(v any) bool {
+func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueIntOverride int, min any, max any) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, dataType, func(v any) bool {
 		switch value := v.(type) {
 		case string:
 			return value >= min.(string) && value <= max.(string)
@@ -814,10 +806,10 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 			return value >= min.(float64) && value <= max.(float64)
 		}
 		return false
-	}, fmt.Sprintf("The value must lie between %v and %v.", min, max))
+	}, valueIntOverride, fmt.Sprintf("The value must lie between %v and %v.", min, max))
 }
 
-func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueInt int, validate func(v any) bool, errorMessage string) ([]any, error) {
+func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
@@ -840,7 +832,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			return nil, g.newError(errorMessage, literal.Token)
 		}
 		g.dataType = literal.Token.DataType
-		return []any{1, []any{valueInt, fmt.Sprintf("%v", literal.Token.Literal)}}, nil
+		return []any{1, []any{intFromDT(g.dataType, valueIntOverride), fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
 			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
@@ -859,7 +851,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 					return nil, g.newError(errorMessage, ident.Name)
 				}
 				g.dataType = constant.Type
-				return []any{1, []any{valueInt, fmt.Sprintf("%v", constant.Value.Literal)}}, nil
+				return []any{1, []any{intFromDT(g.dataType, valueIntOverride), fmt.Sprintf("%v", constant.Value.Literal)}}, nil
 			}
 		}
 		g.parent = parent
@@ -879,13 +871,24 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		if g.variableName != "" {
 			if g.variableIsList {
 				list := g.lists[g.variableName]
-				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{valueInt, ""}}, nil
+				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
 			}
 			variable := g.variables[g.variableName]
-			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{valueInt, ""}}, nil
+			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
 		}
-		return []any{3, g.blockID, []any{valueInt, ""}}, nil
+		return []any{3, g.blockID, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
 	}
+}
+
+func intFromDT(dataType parser.DataType, valueIntOverride int) int {
+	if valueIntOverride != -1 {
+		return valueIntOverride
+	}
+	switch dataType {
+	case parser.DTString:
+		return 10
+	}
+	return 4
 }
 
 func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v any, token parser.Token) error) ([]any, error) {

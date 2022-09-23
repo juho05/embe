@@ -48,10 +48,10 @@ func NewShadowBlock(blockType BlockType, parent string) *Block {
 	}
 }
 
-var topLevelX = -420
+var topLevelX = -470
 
 func NewBlockTopLevel(blockType BlockType) *Block {
-	topLevelX += 450
+	topLevelX += 500
 	return &Block{
 		ID:       uuid.NewString(),
 		Type:     blockType,

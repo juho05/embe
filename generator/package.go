@@ -2,8 +2,11 @@ package generator
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 
@@ -11,6 +14,9 @@ import (
 
 	"github.com/Bananenpro/embe/blocks"
 )
+
+//go:embed assets/stage.json.tmpl
+var stageTemplate string
 
 //go:embed assets/project.json.tmpl
 var projectTemplate string
@@ -30,21 +36,30 @@ var wav []byte
 //go:embed assets/mscratch.json
 var mscratch []byte
 
-func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[string]*Variable, lists map[string]*List) error {
+func Package(writer io.Writer, results []GeneratorResult) error {
 	w := zip.NewWriter(writer)
 	defer w.Close()
 
-	variableMap := make(map[string][]any, len(variables))
-	for _, v := range variables {
-		variableMap[v.ID] = []any{v.Name.Lexeme, 0}
+	var err error
+	stages := make([]string, len(results))
+	for i, r := range results {
+		variableMap := make(map[string][]any, len(r.Variables))
+		for _, v := range r.Variables {
+			variableMap[v.ID] = []any{v.Name.Lexeme, 0}
+		}
+
+		listMap := make(map[string][]any, len(r.Lists))
+		for _, l := range r.Lists {
+			listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
+		}
+
+		stages[i], err = createStage(i, r.Blocks, variableMap, listMap)
+		if err != nil {
+			return err
+		}
 	}
 
-	listMap := make(map[string][]any, len(lists))
-	for _, l := range lists {
-		listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
-	}
-
-	err := createProject(w, blocks, variableMap, listMap)
+	err = createProject(w, stages)
 	if err != nil {
 		return err
 	}
@@ -67,42 +82,61 @@ func Package(writer io.Writer, blocks map[string]*blocks.Block, variables map[st
 	return nil
 }
 
-func createProject(zw *zip.Writer, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any) error {
-	w, err := zw.Create("project.json")
+func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any) (string, error) {
+	tmpl, err := template.New("stage").Parse(stageTemplate)
 	if err != nil {
-		return err
-	}
-
-	tmpl, err := template.New("project.json").Parse(projectTemplate)
-	if err != nil {
-		return err
+		return "", err
 	}
 
 	blockJSON, err := json.Marshal(blockMap)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	variableJSON, err := json.Marshal(variableMap)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	listJSON, err := json.Marshal(listMap)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	tmpl.Execute(w, struct {
+	name := fmt.Sprintf("mbotneo%d", index+1)
+	if index == 0 {
+		name = "mbotneo"
+	}
+
+	data := &bytes.Buffer{}
+	tmpl.Execute(data, struct {
+		Name      string
 		Blocks    string
 		Variables string
 		Lists     string
 	}{
+		Name:      name,
 		Blocks:    string(blockJSON),
 		Variables: string(variableJSON),
 		Lists:     string(listJSON),
 	})
-	return nil
+	return data.String(), nil
+}
+
+func createProject(zw *zip.Writer, stages []string) error {
+	w, err := zw.Create("project.json")
+	if err != nil {
+		return err
+	}
+	tmpl, err := template.New("project.json").Parse(projectTemplate)
+	if err != nil {
+		return err
+	}
+	return tmpl.Execute(w, struct {
+		Stages string `json:"stage"`
+	}{
+		Stages: "," + strings.Join(stages, ","),
+	})
 }
 
 func createMBlock5(zw *zip.Writer) error {

@@ -17,6 +17,12 @@ type Block struct {
 	Y        int            `json:"y,omitempty"`
 }
 
+var topLevelX = -520
+
+func NewStage() {
+	topLevelX = -520
+}
+
 func NewBlock(blockType BlockType, parent string) *Block {
 	var p *string
 	p = &parent
@@ -48,10 +54,8 @@ func NewShadowBlock(blockType BlockType, parent string) *Block {
 	}
 }
 
-var topLevelX = -470
-
 func NewBlockTopLevel(blockType BlockType) *Block {
-	topLevelX += 500
+	topLevelX += 550
 	return &Block{
 		ID:       uuid.NewString(),
 		Type:     blockType,

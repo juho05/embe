@@ -53,6 +53,7 @@ type GeneratorResult struct {
 }
 
 func GenerateBlocks(statements []parser.Stmt, lines [][]rune) GeneratorResult {
+	blocks.NewStage()
 	g := &generator{
 		blocks:    make(map[string]*blocks.Block),
 		variables: make(map[string]*Variable),

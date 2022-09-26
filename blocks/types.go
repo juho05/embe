@@ -176,6 +176,8 @@ const (
 	Mbot2EncoderMotorGetSpeedMenu                  BlockType = "mbot2.mbot2_encoder_motor_get_speed_inputMenu_2_menu"
 	Mbot2EncoderMotorGetAngle                      BlockType = "mbot2.mbot2_encoder_motor_get_angle"
 	Mbot2EncoderMotorGetAngleMenu                  BlockType = "mbot2.mbot2_encoder_motor_get_angle_inputMenu_1_menu"
+	Mbot2EncoderMotorDriveSpeed                    BlockType = "mbot2.mbot2_encoder_motor_drive_speed2"
+	Mbot2EncoderMotorDrivePower                    BlockType = "mbot2.mbot2_encoder_motor_drive_power"
 )
 
 // MBot2

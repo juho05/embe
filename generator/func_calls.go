@@ -139,6 +139,8 @@ func init() {
 	newFuncCall("motors.rotateRPM", funcMotorsRotate("speed"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotatePower", funcMotorsRotate("power"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.rotateAngle", funcMotorsRotateAngle, []Param{{Name: "motor", Type: parser.DTString}, {Name: "angle", Type: parser.DTNumber}})
+	newFuncCall("motors.driveRPM", funcMotorsDrive("speed"), []Param{{Name: "em1RPM", Type: parser.DTNumber}, {Name: "em2RPM", Type: parser.DTNumber}})
+	newFuncCall("motors.drivePower", funcMotorsDrive("power"), []Param{{Name: "em1Power", Type: parser.DTNumber}, {Name: "em2Power", Type: parser.DTNumber}})
 	newFuncCall("motors.stop", funcMotorsStop, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
 	newFuncCall("motors.resetAngle", funcMotorsResetAngle, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
 	newFuncCall("motors.lock", funcMotorsSetLock("1"), []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
@@ -1102,6 +1104,30 @@ func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 
 	block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
 	return block, err
+}
+
+func funcMotorsDrive(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.Mbot2EncoderMotorDrivePower, false)
+		rightPowerKey := "number_2"
+		if unit == "speed" {
+			block.Type = blocks.Mbot2EncoderMotorDriveSpeed
+			rightPowerKey = "RIGHT_POWER"
+		}
+
+		var err error
+		block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs[rightPowerKey], err = g.value(block.ID, stmt.Name, stmt.Parameters[1], parser.DTNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		return block, nil
+	}
 }
 
 func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

@@ -408,6 +408,9 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	} else {
 		fn, ok := FuncCalls[stmt.Name.Lexeme]
 		if !ok {
+			if _, ok := ExprFuncCalls[stmt.Name.Lexeme]; ok {
+				return g.newError("Only functions which don't return a value are allowed in this context.", stmt.Name)
+			}
 			return g.newError("Unknown function.", stmt.Name)
 		}
 		block, err := fn.Fn(g, stmt)
@@ -636,6 +639,9 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	fn, ok := ExprFuncCalls[expr.Name.Lexeme]
 	if !ok {
+		if _, ok := FuncCalls[expr.Name.Lexeme]; ok {
+			return g.newError("Only functions which return a value are allowed in this context.", expr.Name)
+		}
 		return g.newError("Unknown function.", expr.Name)
 	}
 	block, dataType, err := fn.Fn(g, expr)

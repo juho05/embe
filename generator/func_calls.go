@@ -90,7 +90,7 @@ func init() {
 	newFuncCall("audio.playBuzzer", funcAudioPlayBuzzer, []Param{{Name: "frequency", Type: parser.DTNumber}}, []Param{{Name: "frequency", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("audio.playClip", funcAudioPlayClip, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "block", Type: parser.DTBool}})
 	newFuncCall("audio.playInstrument", funcAudioPlayInstrument, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("audio.playNote", funcAudioPlayNote, []Param{{Name: "name", Type: parser.DTNumber}, {Name: "octave", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "note", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
+	newFuncCall("audio.playNote", funcAudioPlayNote, []Param{{Name: "name", Type: parser.DTString}, {Name: "octave", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "note", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("audio.record.start", funcAudioRecordingStart)
 	newFuncCall("audio.record.stop", funcAudioRecordingStop)
 	newFuncCall("audio.record.play", funcAudioRecordingPlay, []Param{}, []Param{{Name: "block", Type: parser.DTBool}})

@@ -33,7 +33,7 @@ func newEvent(name string, fn func(g *generator, stmt *parser.StmtEvent) (*block
 }
 
 func init() {
-	newEvent("start", eventStart, nil)
+	newEvent("launch", eventLaunch, nil)
 	newEvent("button", eventButton, &Param{Name: "name", Type: parser.DTString})
 	newEvent("joystick", eventDirectionKey, &Param{Name: "direction", Type: parser.DTString})
 	newEvent("tilt", eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"), &Param{Name: "direction", Type: parser.DTString})
@@ -49,7 +49,7 @@ func init() {
 	newEvent("receive", eventReceive, &Param{Name: "message", Type: parser.DTString})
 }
 
-func eventStart(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
+func eventLaunch(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	if err := g.assertNoEventParameter(stmt); err != nil {
 		return nil, err
 	}

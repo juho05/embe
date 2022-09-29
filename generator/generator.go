@@ -166,7 +166,7 @@ func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		g.lists[list.Name.Lexeme] = list
 	} else {
 		if g.variableInitializer == nil {
-			ev := Events["start"]
+			ev := Events["launch"]
 			block, _ := ev.Fn(g, &parser.StmtEvent{})
 			g.variableInitializer = block
 			g.blocks[block.ID] = block

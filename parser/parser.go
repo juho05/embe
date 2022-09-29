@@ -246,7 +246,7 @@ func (p *parser) event() (Stmt, error) {
 	}
 
 	body := p.statements(name.Indent + 1)
-	if name.Lexeme == "start" {
+	if name.Lexeme == "launch" {
 		newBody := make([]Stmt, 0, len(body)+1)
 		newBody = append(newBody, &StmtFuncCall{
 			Name: Token{

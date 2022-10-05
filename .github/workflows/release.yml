@@ -57,7 +57,13 @@ jobs:
         extra_files: LICENSE README.md
         release_tag: ${{ steps.tags.outputs.tag }}
         md5sum: false
-    - name: Upload install.sh
+  publish_installer:
+    name: Publish Windows Installer
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Upload install.bat
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}

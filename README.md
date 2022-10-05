@@ -10,7 +10,7 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 ### Windows
 
-Download and execute `install.bat` from the [releases](https://github.com/Bananenpro/embe/releases/latest) page.
+[Download](https://github.com/Bananenpro/embe/releases/latest/download/install.bat) and execute `install.bat`.
 
 ### macOS/Linux
 

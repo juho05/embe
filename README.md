@@ -10,19 +10,7 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 ### Windows
 
-1. Hit <kbd>Win</kbd> + <kbd>R</kbd> to open the run prompt
-2. Type `powershell` and hit OK
-3. Paste the following command into the blue window and hit enter:
-
-```powershell
-iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
-```
-
-#### Behind a proxy
-
-```
-iwr -Proxy http://example.com:8080 -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex
-```
+Download and execute `install.bat` from the [releases](https://github.com/Bananenpro/embe/releases/latest) page.
 
 ### macOS/Linux
 

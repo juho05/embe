@@ -112,7 +112,7 @@ func init() {
 	newFuncCall("display.println", funcDisplayPrint(true), []Param{{Name: "text", Type: parser.DTString}})
 	newFuncCall("display.setFontSize", funcDisplaySetFontSize, []Param{{Name: "size", Type: parser.DTNumber}})
 	newFuncCall("display.setColor", funcDisplaySetColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
-	newFuncCall("display.showLabel", funcDisplayShowLabel, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "location", Type: parser.DTString}, {Name: "size", Type: parser.DTNumber}}, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "size", Type: parser.DTNumber}})
+	newFuncCall("display.showLabel", funcDisplayShowLabel, []Param{{Name: "label", Type: parser.DTNumber}, {Name: "text", Type: parser.DTString}, {Name: "location", Type: parser.DTString}, {Name: "size", Type: parser.DTNumber}}, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "size", Type: parser.DTNumber}})
 	newFuncCall("display.lineChart.addData", funcDisplayLineChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})
 	newFuncCall("display.lineChart.setInterval", funcDisplayLineChartSetInterval, []Param{{Name: "interval", Type: parser.DTNumber}})
 	newFuncCall("display.barChart.addData", funcDisplayBarChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})

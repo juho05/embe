@@ -18,6 +18,7 @@ type Variable struct {
 	Name     parser.Token
 	DataType parser.DataType
 	Declared bool
+	used     bool
 }
 
 type List struct {
@@ -25,12 +26,14 @@ type List struct {
 	Name          parser.Token
 	DataType      parser.DataType
 	InitialValues []string
+	used          bool
 }
 
 type Constant struct {
 	Name  parser.Token
 	Value parser.Token
 	Type  parser.DataType
+	used  bool
 }
 
 type Function struct {
@@ -40,6 +43,7 @@ type Function struct {
 	ArgumentIDs []string
 	StartLine   int
 	EndLine     int
+	used        bool
 }
 
 type GeneratorResult struct {
@@ -68,6 +72,30 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) GeneratorResult {
 		err := stmt.Accept(g)
 		if err != nil {
 			errs = append(errs, err)
+		}
+	}
+
+	for _, v := range g.variables {
+		if !v.used {
+			g.newWarning("This variable is never used.", v.Name)
+		}
+	}
+
+	for _, l := range g.lists {
+		if !l.used {
+			g.newWarning("This variable is never used.", l.Name)
+		}
+	}
+
+	for _, c := range g.constants {
+		if !c.used {
+			g.newWarning("This constant is never used.", c.Name)
+		}
+	}
+
+	for _, f := range g.functions {
+		if !f.used {
+			g.newWarning("This function is never called.", f.Name)
 		}
 	}
 
@@ -378,6 +406,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	}
 
 	if f, ok := g.functions[stmt.Name.Lexeme]; ok {
+		f.used = true
 		block := g.NewBlock(blocks.ProceduresCall, false)
 
 		if len(stmt.Parameters) != len(f.Params) {
@@ -617,12 +646,14 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		if !variable.Declared {
 			return g.newError("Cannot use variable in its own initializer.", expr.Name)
 		}
+		variable.used = true
 		g.variableName = variable.Name.Lexeme
 		g.dataType = variable.DataType
 		return nil
 	}
 
 	if l, ok := g.lists[expr.Name.Lexeme]; ok {
+		l.used = true
 		g.variableName = l.Name.Lexeme
 		g.variableIsList = true
 		g.dataType = l.DataType
@@ -842,6 +873,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 	} else {
 		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
 			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+				myConst.used = true
 				constant := *myConst
 				if castValue != expr {
 					constant.Type = castType.DataType
@@ -939,6 +971,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 	} else {
 		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
 			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+				myConst.used = true
 				constant := *myConst
 				if castValue != expr {
 					constant.Type = castType.DataType
@@ -1008,6 +1041,7 @@ func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parse
 	}
 	if ident, ok := castValue.(*parser.ExprIdentifier); ok {
 		if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
+			myConst.used = true
 			constant := *myConst
 			if castValue != expr {
 				constant.Type = castType.DataType

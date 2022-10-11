@@ -9,64 +9,20 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 
+	"github.com/Bananenpro/embe/analyzer"
 	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/parser"
 )
 
-type Variable struct {
-	ID       string
-	Name     parser.Token
-	DataType parser.DataType
-	Declared bool
-	used     bool
-}
-
-type List struct {
-	ID            string
-	Name          parser.Token
-	DataType      parser.DataType
-	InitialValues []string
-	used          bool
-}
-
-type Constant struct {
-	Name  parser.Token
-	Value parser.Token
-	Type  parser.DataType
-	used  bool
-}
-
-type Function struct {
-	Name        parser.Token
-	Params      []parser.FuncParam
-	ProcCode    string
-	ArgumentIDs []string
-	StartLine   int
-	EndLine     int
-	used        bool
-}
-
-type GeneratorResult struct {
-	Blocks    map[string]*blocks.Block
-	Variables map[string]*Variable
-	Lists     map[string]*List
-	Constants map[string]*Constant
-	Functions map[string]*Function
-	Warnings  []error
-	Errors    []error
-}
-
-func GenerateBlocks(statements []parser.Stmt, lines [][]rune) GeneratorResult {
+func GenerateBlocks(statements []parser.Stmt, definitions analyzer.Definitions, lines [][]rune) (map[string]*blocks.Block, []error) {
 	blocks.NewStage()
+
 	g := &generator{
-		blocks:    make(map[string]*blocks.Block),
-		variables: make(map[string]*Variable),
-		lists:     make(map[string]*List),
-		constants: make(map[string]*Constant),
-		functions: make(map[string]*Function),
-		lines:     lines,
-		warnings:  make([]error, 0),
+		blocks:      make(map[string]*blocks.Block),
+		definitions: definitions,
+		lines:       lines,
 	}
+
 	errs := make([]error, 0)
 	for _, stmt := range statements {
 		err := stmt.Accept(g)
@@ -75,39 +31,7 @@ func GenerateBlocks(statements []parser.Stmt, lines [][]rune) GeneratorResult {
 		}
 	}
 
-	for _, v := range g.variables {
-		if !v.used {
-			g.newWarning("This variable is never used.", v.Name)
-		}
-	}
-
-	for _, l := range g.lists {
-		if !l.used {
-			g.newWarning("This variable is never used.", l.Name)
-		}
-	}
-
-	for _, c := range g.constants {
-		if !c.used {
-			g.newWarning("This constant is never used.", c.Name)
-		}
-	}
-
-	for _, f := range g.functions {
-		if !f.used {
-			g.newWarning("This function is never called.", f.Name)
-		}
-	}
-
-	return GeneratorResult{
-		Blocks:    g.blocks,
-		Variables: g.variables,
-		Lists:     g.lists,
-		Constants: g.constants,
-		Functions: g.functions,
-		Warnings:  g.warnings,
-		Errors:    errs,
-	}
+	return g.blocks, errs
 }
 
 type generator struct {
@@ -115,14 +39,10 @@ type generator struct {
 	parent string
 	lines  [][]rune
 
-	blockID  string
-	dataType parser.DataType
+	blockID string
 
 	variableInitializer *blocks.Block
-	variables           map[string]*Variable
-	lists               map[string]*List
-	constants           map[string]*Constant
-	functions           map[string]*Function
+	definitions         analyzer.Definitions
 
 	noNext         bool
 	variableName   string
@@ -130,158 +50,19 @@ type generator struct {
 
 	warnings []error
 
-	currentFunction *Function
+	currentFunction *analyzer.Function
 }
 
 func (g *generator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
-	if err := g.assertNotDeclared(stmt.Name); err != nil {
-		return err
-	}
-
-	if _, ok := stmt.Value.(*parser.ExprListInitializer); ok || strings.HasSuffix(string(stmt.DataType), "[]") {
-		list := &List{
-			ID:            uuid.NewString(),
-			Name:          stmt.Name,
-			DataType:      stmt.DataType,
-			InitialValues: make([]string, 0),
-		}
-
-		if stmt.Value == nil {
-			stmt.Value = &parser.ExprListInitializer{
-				OpenBracket: stmt.Name,
-				Values:      make([]parser.Token, 0),
-			}
-		}
-
-		var init *parser.ExprListInitializer
-		if init, ok = stmt.Value.(*parser.ExprListInitializer); !ok {
-			token := stmt.AssignToken
-			if l, ok := stmt.Value.(*parser.ExprLiteral); ok {
-				token = l.Token
-			}
-			if i, ok := stmt.Value.(*parser.ExprIdentifier); ok {
-				token = i.Name
-			}
-			return g.newError("Expected a list initializer.", token)
-		}
-
-		valueType := parser.DataType(strings.TrimSuffix(string(stmt.DataType), "[]"))
-		for _, v := range init.Values {
-			token := v
-			if v.Type == parser.TkIdentifier {
-				if c, ok := g.constants[v.Lexeme]; ok {
-					v = c.Value
-				} else {
-					return g.newError("Unknown constant.", v)
-				}
-			}
-			if valueType == "" {
-				valueType = v.DataType
-			}
-			if v.DataType != valueType {
-				return g.newError(fmt.Sprintf("Wrong data type. Expected %s.", valueType), token)
-			}
-			list.InitialValues = append(list.InitialValues, fmt.Sprintf("%v", v.Literal))
-		}
-		if valueType != "" {
-			list.DataType = valueType + "[]"
-		}
-
-		if list.DataType == "" {
-			return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
-		}
-
-		g.lists[list.Name.Lexeme] = list
-	} else {
-		if g.variableInitializer == nil {
-			ev := Events["launch"]
-			block, _ := ev.Fn(g, &parser.StmtEvent{})
-			g.variableInitializer = block
-			g.blocks[block.ID] = block
-		}
-
-		variable := &Variable{
-			ID:       uuid.NewString(),
-			Name:     stmt.Name,
-			DataType: stmt.DataType,
-		}
-
-		if variable.DataType != "" && stmt.Value == nil {
-			stmt.AssignToken = parser.Token{
-				Type: parser.TkAssign,
-				Line: stmt.Name.Line,
-			}
-			switch variable.DataType {
-			case parser.DTNumber:
-				stmt.Value = &parser.ExprLiteral{
-					Token: parser.Token{
-						Type:     parser.TkLiteral,
-						Lexeme:   "0",
-						Literal:  0,
-						Line:     stmt.Name.Line,
-						DataType: parser.DTNumber,
-					},
-				}
-			case parser.DTString:
-				stmt.Value = &parser.ExprLiteral{
-					Token: parser.Token{
-						Type:     parser.TkLiteral,
-						Lexeme:   "",
-						Literal:  "",
-						Line:     stmt.Name.Line,
-						DataType: parser.DTString,
-					},
-				}
-			default:
-				return g.newError("Unknown type.", stmt.Name)
-			}
-		}
-
-		g.variables[stmt.Name.Lexeme] = variable
-		if stmt.Value != nil {
-			g.parent = g.variableInitializer.ID
-			assign := &parser.StmtAssignment{
-				Variable: stmt.Name,
-				Operator: stmt.AssignToken,
-				Value:    stmt.Value,
-			}
-			err := assign.Accept(g)
-			if err != nil {
-				delete(g.variables, stmt.Name.Lexeme)
-				return err
-			}
-			variable.DataType = g.dataType
-			g.variableInitializer = g.blocks[g.blockID]
-		}
-
-		if variable.DataType == "" {
-			delete(g.variables, stmt.Name.Lexeme)
-			return g.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
-		}
-
-		variable.Declared = true
-	}
 	return nil
 }
 
 func (g *generator) VisitConstDecl(stmt *parser.StmtConstDecl) error {
-	if err := g.assertNotDeclared(stmt.Name); err != nil {
-		return err
-	}
-
-	g.constants[stmt.Name.Lexeme] = &Constant{
-		Name:  stmt.Name,
-		Value: stmt.Value,
-		Type:  stmt.Value.DataType,
-	}
 	return nil
 }
 
 func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
-	if err := g.assertNotDeclared(stmt.Name); err != nil {
-		return err
-	}
-
+	fn := g.definitions.Functions[stmt.Name.Lexeme]
 	block := blocks.NewBlockTopLevel(blocks.ProceduresDefinition)
 	g.blocks[block.ID] = block
 	g.parent = block.ID
@@ -289,8 +70,6 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	g.noNext = true
 	prototype := g.NewBlock(blocks.ProceduresPrototype, true)
 
-	procCode := stmt.Name.Lexeme
-	argumentIDs := make([]string, 0, len(stmt.Params))
 	argumentNames := make([]string, 0, len(stmt.Params))
 	argumentDefaults := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
@@ -299,7 +78,6 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 		}
 
 		id := uuid.NewString()
-		argumentIDs = append(argumentIDs, id)
 		argumentNames = append(argumentNames, p.Name.Lexeme)
 		argumentDefaults = append(argumentDefaults, "todo")
 
@@ -307,14 +85,8 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 		var reporterBlock *blocks.Block
 		if p.Type.DataType == parser.DTBool {
 			reporterBlock = g.NewBlock(blocks.ArgumentReporterBoolean, true)
-			procCode += " %b"
 		} else {
 			reporterBlock = g.NewBlock(blocks.ArgumentReporterStringNumber, true)
-			if p.Type.DataType == parser.DTNumber {
-				procCode += " %n"
-			} else {
-				procCode += " %s"
-			}
 		}
 		reporterBlock.Fields["VALUE"] = []any{p.Name.Lexeme, nil}
 		prototype.Inputs[id] = []any{1, reporterBlock.ID}
@@ -323,30 +95,30 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	prototype.Mutation = map[string]any{
 		"tagName":          "mutation",
 		"children":         []any{},
-		"proccode":         procCode,
+		"proccode":         fn.ProcCode,
 		"warp":             "false",
 		"argumentids":      "[]",
 		"argumentnames":    "[]",
 		"argumentdefaults": "[]",
 	}
 	if len(stmt.Params) > 0 {
-		prototype.Mutation["argumentids"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentIDs, "\",\""))
+		prototype.Mutation["argumentids"] = fmt.Sprintf("[\"%s\"]", strings.Join(fn.ArgumentIDs, "\",\""))
 		prototype.Mutation["argumentnames"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentNames, "\",\""))
 		prototype.Mutation["argumentdefaults"] = fmt.Sprintf("[\"%s\"]", strings.Join(argumentDefaults, "\",\""))
 	}
 
-	g.functions[stmt.Name.Lexeme] = &Function{
+	g.definitions.Functions[stmt.Name.Lexeme] = &analyzer.Function{
 		Name:        stmt.Name,
 		Params:      stmt.Params,
-		ProcCode:    procCode,
-		ArgumentIDs: argumentIDs,
+		ProcCode:    fn.ProcCode,
+		ArgumentIDs: fn.ArgumentIDs,
 		StartLine:   stmt.StartLine,
 		EndLine:     stmt.EndLine,
 	}
 
 	block.Inputs["custom_block"] = []any{1, prototype.ID}
 
-	g.currentFunction = g.functions[stmt.Name.Lexeme]
+	g.currentFunction = g.definitions.Functions[stmt.Name.Lexeme]
 	g.parent = block.ID
 	for _, s := range stmt.Body {
 		err := s.Accept(g)
@@ -360,27 +132,8 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	return nil
 }
 
-func (g *generator) assertNotDeclared(name parser.Token) error {
-	if v, ok := g.variables[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
-	}
-	if l, ok := g.lists[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Line+1), name)
-	}
-	if c, ok := g.constants[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Line+1), name)
-	}
-	if f, ok := g.functions[name.Lexeme]; ok {
-		return g.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Line+1), name)
-	}
-	return nil
-}
-
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
-	ev, ok := Events[stmt.Name.Lexeme]
-	if !ok {
-		return g.newError("Unknown event.", stmt.Name)
-	}
+	ev := Events[stmt.Name.Lexeme]
 	block, err := ev.Fn(g, stmt)
 	if err != nil {
 		return err
@@ -398,24 +151,12 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 }
 
 func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
-	if parent, ok := g.blocks[g.parent]; ok {
-		if parent.NoNext {
-			g.newWarning("Unreachable code.", stmt.Name)
-			return nil
-		}
-	}
-
-	if f, ok := g.functions[stmt.Name.Lexeme]; ok {
-		f.used = true
+	if f, ok := g.definitions.Functions[stmt.Name.Lexeme]; ok {
 		block := g.NewBlock(blocks.ProceduresCall, false)
-
-		if len(stmt.Parameters) != len(f.Params) {
-			return g.newError("Wrong argument count.", stmt.Name)
-		}
 
 		var err error
 		for i, p := range stmt.Parameters {
-			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, stmt.Name, p, f.Params[i].Type.DataType)
+			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, stmt.Name, p)
 			if err != nil {
 				return err
 			}
@@ -435,18 +176,11 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 
 		g.blockID = block.ID
 	} else {
-		fn, ok := FuncCalls[stmt.Name.Lexeme]
-		if !ok {
-			if _, ok := ExprFuncCalls[stmt.Name.Lexeme]; ok {
-				return g.newError("Only functions which don't return a value are allowed in this context.", stmt.Name)
-			}
-			return g.newError("Unknown function.", stmt.Name)
-		}
+		fn := FuncCalls[stmt.Name.Lexeme]
 		block, err := fn.Fn(g, stmt)
 		if err != nil {
 			return err
 		}
-
 		g.blockID = block.ID
 	}
 
@@ -454,13 +188,6 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 }
 
 func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
-	if parent, ok := g.blocks[g.parent]; ok {
-		if parent.NoNext {
-			g.newWarning("Unreachable code.", stmt.Variable)
-			return nil
-		}
-	}
-
 	var block *blocks.Block
 	if assignment, ok := Assignments[stmt.Variable.Lexeme]; ok {
 		blockType := assignment.AssignType
@@ -469,19 +196,16 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 		}
 
 		block = g.NewBlock(blockType, false)
-		value, err := g.value(block.ID, stmt.Operator, stmt.Value, assignment.DataType)
+		value, err := g.value(block.ID, stmt.Operator, stmt.Value)
 		if err != nil {
 			return err
 		}
 		block.Inputs[assignment.InputName] = value
 	} else {
-		variable, ok := g.variables[stmt.Variable.Lexeme]
-		if !ok {
-			return g.newError("Unknown variable.", stmt.Variable)
-		}
+		variable := g.definitions.Variables[stmt.Variable.Lexeme]
 		block = g.NewBlock(blocks.VariableSetTo, false)
 
-		value, err := g.value(block.ID, stmt.Operator, stmt.Value, variable.DataType)
+		value, err := g.value(block.ID, stmt.Operator, stmt.Value)
 		if err != nil {
 			return err
 		}
@@ -508,13 +232,6 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 }
 
 func (g *generator) VisitIf(stmt *parser.StmtIf) error {
-	if parent, ok := g.blocks[g.parent]; ok {
-		if parent.NoNext {
-			g.newWarning("Unreachable code.", stmt.Keyword)
-			return nil
-		}
-	}
-
 	var block *blocks.Block
 	if stmt.ElseBody == nil {
 		block = g.NewBlock(blocks.ControlIf, false)
@@ -528,9 +245,6 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	err := stmt.Condition.Accept(g)
 	if err != nil {
 		return err
-	}
-	if g.dataType != parser.DTBool {
-		return g.newError("The condition must be a boolean.", stmt.Keyword)
 	}
 	block.Inputs["CONDITION"] = []any{2, g.blockID}
 
@@ -564,13 +278,6 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 }
 
 func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
-	if parent, ok := g.blocks[g.parent]; ok {
-		if parent.NoNext {
-			g.newWarning("Unreachable code.", stmt.Keyword)
-			return nil
-		}
-	}
-
 	var block *blocks.Block
 	var err error
 	parent := g.parent
@@ -579,14 +286,14 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	} else if stmt.Keyword.Type == parser.TkWhile {
 		block = g.NewBlock(blocks.ControlRepeatUntil, false)
 		g.parent = block.ID
-		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTBool)
+		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition)
 		if err != nil {
 			return err
 		}
 	} else if stmt.Keyword.Type == parser.TkFor {
 		block = g.NewBlock(blocks.ControlRepeat, false)
 		g.parent = block.ID
-		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition, parser.DTNumber)
+		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition)
 		if err != nil {
 			return err
 		}
@@ -614,7 +321,6 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 	if g.currentFunction != nil {
 		for _, p := range g.currentFunction.Params {
 			if p.Name.Lexeme == expr.Name.Lexeme {
-				g.dataType = p.Type.DataType
 				var reporterBlock *blocks.Block
 				g.noNext = true
 				if p.Type.DataType == parser.DTBool {
@@ -637,30 +343,22 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		if v.fn != nil {
 			v.fn(g, block)
 		}
-		g.dataType = v.DataType
 		g.blockID = block.ID
 		return nil
 	}
 
-	if variable, ok := g.variables[expr.Name.Lexeme]; ok {
-		if !variable.Declared {
-			return g.newError("Cannot use variable in its own initializer.", expr.Name)
-		}
-		variable.used = true
+	if variable, ok := g.definitions.Variables[expr.Name.Lexeme]; ok {
 		g.variableName = variable.Name.Lexeme
-		g.dataType = variable.DataType
 		return nil
 	}
 
-	if l, ok := g.lists[expr.Name.Lexeme]; ok {
-		l.used = true
+	if l, ok := g.definitions.Lists[expr.Name.Lexeme]; ok {
 		g.variableName = l.Name.Lexeme
 		g.variableIsList = true
-		g.dataType = l.DataType
 		return nil
 	}
 
-	if _, ok := g.constants[expr.Name.Lexeme]; ok {
+	if _, ok := g.definitions.Constants[expr.Name.Lexeme]; ok {
 		return g.newError("Constants are not allowed in this context.", expr.Name)
 	}
 
@@ -675,29 +373,16 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 		}
 		return g.newError("Unknown function.", expr.Name)
 	}
-	block, dataType, err := fn.Fn(g, expr)
+	block, err := fn.Fn(g, expr)
 	if err != nil {
 		return err
 	}
-	g.dataType = dataType
 	g.blockID = block.ID
 	return nil
 }
 
 func (g *generator) VisitTypeCast(expr *parser.ExprTypeCast) error {
-	dataType := expr.Type.DataType
-	err := expr.Value.Accept(g)
-	if err != nil {
-		return err
-	}
-	if expr.Type.DataType == parser.DTBool || g.dataType == parser.DTBool {
-		return g.newError("Cannot cast from or to a boolean.", expr.Type)
-	}
-	if strings.HasSuffix(string(g.dataType), "[]") && expr.Type.DataType != parser.DTString {
-		return g.newError(fmt.Sprintf("Cannot cast list to %s.", expr.Type.DataType), expr.Type)
-	}
-	g.dataType = dataType
-	return nil
+	return expr.Value.Accept(g)
 }
 
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
@@ -710,14 +395,12 @@ func (g *generator) VisitListInitializer(expr *parser.ExprListInitializer) error
 
 func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 	var block *blocks.Block
-	var dataType parser.DataType
 	switch expr.Operator.Type {
 	case parser.TkBang:
-		dataType = parser.DTBool
 		block = g.NewBlock(blocks.OpNot, false)
 	}
 	g.parent = block.ID
-	input, err := g.value(g.parent, expr.Operator, expr.Right, dataType)
+	input, err := g.value(g.parent, expr.Operator, expr.Right)
 	if err != nil {
 		return err
 	}
@@ -730,62 +413,45 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 
 func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	var block *blocks.Block
-	retDataType := parser.DTBool
 	if expr.Operator.Type == parser.TkPlus || expr.Operator.Type == parser.TkEqual {
 		block = g.NewBlock(blocks.OpAdd, false)
 
-		left, err := g.value(block.ID, expr.Operator, expr.Left, "")
+		left, err := g.value(block.ID, expr.Operator, expr.Left)
 		if err != nil {
 			return err
 		}
-		leftType := g.dataType
 
-		right, err := g.value(block.ID, expr.Operator, expr.Right, "")
+		right, err := g.value(block.ID, expr.Operator, expr.Right)
 		if err != nil {
 			return err
-		}
-		rightType := g.dataType
-
-		if leftType == parser.DTBool || rightType == parser.DTBool {
-			return g.newError("Expected number or string operands.", expr.Operator)
 		}
 
 		if expr.Operator.Type == parser.TkEqual {
 			block.Inputs["OPERAND1"] = left
 			block.Inputs["OPERAND2"] = right
 			block.Type = blocks.OpEquals
-			retDataType = parser.DTBool
 		} else {
-			if leftType == parser.DTString || rightType == parser.DTString {
+			if expr.Left.Type() == parser.DTString || expr.Right.Type() == parser.DTString {
 				block.Type = blocks.OpJoin
 				block.Inputs["STRING1"] = left
 				block.Inputs["STRING2"] = right
-				retDataType = parser.DTString
 			} else {
 				block.Inputs["NUM1"] = left
 				block.Inputs["NUM2"] = right
-				retDataType = parser.DTNumber
 			}
 		}
 	} else {
-		var operandDataType parser.DataType
 		operandName := "OPERAND"
 		switch expr.Operator.Type {
 		case parser.TkLess:
 			block = g.NewBlock(blocks.OpLessThan, false)
-			operandDataType = parser.DTNumber
 		case parser.TkGreater:
 			block = g.NewBlock(blocks.OpGreaterThan, false)
-			operandDataType = parser.DTNumber
 		case parser.TkAnd:
 			block = g.NewBlock(blocks.OpAnd, false)
-			operandDataType = parser.DTBool
 		case parser.TkOr:
 			block = g.NewBlock(blocks.OpOr, false)
-			operandDataType = parser.DTBool
 		default:
-			retDataType = parser.DTNumber
-			operandDataType = parser.DTNumber
 			operandName = "NUM"
 			switch expr.Operator.Type {
 			case parser.TkMinus:
@@ -801,38 +467,37 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			}
 		}
 
-		left, err := g.value(block.ID, expr.Operator, expr.Left, operandDataType)
+		left, err := g.value(block.ID, expr.Operator, expr.Left)
 		if err != nil {
 			return err
 		}
 		block.Inputs[operandName+"1"] = left
 
-		right, err := g.value(block.ID, expr.Operator, expr.Right, operandDataType)
+		right, err := g.value(block.ID, expr.Operator, expr.Right)
 		if err != nil {
 			return err
 		}
 		block.Inputs[operandName+"2"] = right
 	}
 
-	g.dataType = retDataType
 	g.blockID = block.ID
 	return nil
 }
 
 var matchAllRegex = regexp.MustCompile(".*")
 
-func (g *generator) value(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType) ([]any, error) {
-	return g.valueWithRegex(parent, token, expr, dataType, matchAllRegex, -1, "")
+func (g *generator) value(parent string, token parser.Token, expr parser.Expr) ([]any, error) {
+	return g.valueWithRegex(parent, token, expr, matchAllRegex, -1, "")
 }
 
-func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validate *regexp.Regexp, valueIntOverride int, errorMessage string) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, dataType, func(v any) bool {
+func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, validate *regexp.Regexp, valueIntOverride int, errorMessage string) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, func(v any) bool {
 		return validate.MatchString(fmt.Sprintf("%v", v))
 	}, valueIntOverride, errorMessage)
 }
 
-func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, valueIntOverride int, min any, max any) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, dataType, func(v any) bool {
+func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, valueIntOverride int, min any, max any) ([]any, error) {
+	return g.valueWithValidator(parent, token, expr, func(v any) bool {
 		switch value := v.(type) {
 		case string:
 			return value >= min.(string) && value <= max.(string)
@@ -846,11 +511,11 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 	}, valueIntOverride, fmt.Sprintf("The value must lie between %v and %v.", min, max))
 }
 
-func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
+func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
-		castType = cast.Type
+		castType = cast.Target
 		castValue = cast.Value
 	}
 
@@ -859,28 +524,20 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		if castValue != expr {
 			literal.Token = castToken(literal.Token, castType.DataType)
 		}
-		if dataType != "" && literal.Token.DataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
-		}
 		if literal.Token.DataType == parser.DTBool {
 			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
 		}
 		if !validate(literal.Token.Literal) {
 			return nil, g.newError(errorMessage, literal.Token)
 		}
-		g.dataType = literal.Token.DataType
-		return []any{1, []any{intFromDT(g.dataType, valueIntOverride), fmt.Sprintf("%v", literal.Token.Literal)}}, nil
+		return []any{1, []any{intFromDT(literal.Token.DataType, valueIntOverride), fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
 		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
-				myConst.used = true
+			if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
 				constant := *myConst
 				if castValue != expr {
 					constant.Type = castType.DataType
 					constant.Value = castToken(constant.Value, castType.DataType)
-				}
-				if dataType != "" && constant.Type != dataType {
-					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
 				}
 				if constant.Type == parser.DTBool {
 					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
@@ -888,8 +545,7 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 				if !validate(constant.Value.Literal) {
 					return nil, g.newError(errorMessage, ident.Name)
 				}
-				g.dataType = constant.Type
-				return []any{1, []any{intFromDT(g.dataType, valueIntOverride), fmt.Sprintf("%v", constant.Value.Literal)}}, nil
+				return []any{1, []any{intFromDT(constant.Type, valueIntOverride), fmt.Sprintf("%v", constant.Value.Literal)}}, nil
 			}
 		}
 		g.parent = parent
@@ -900,21 +556,18 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			return nil, err
 		}
 		g.noNext = false
-		if dataType != "" && g.dataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
-		}
-		if g.dataType == parser.DTBool {
+		if expr.Type() == parser.DTBool {
 			return []any{2, g.blockID}, nil
 		}
 		if g.variableName != "" {
 			if g.variableIsList {
-				list := g.lists[g.variableName]
-				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
+				list := g.definitions.Lists[g.variableName]
+				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil
 			}
-			variable := g.variables[g.variableName]
-			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
+			variable := g.definitions.Variables[g.variableName]
+			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil
 		}
-		return []any{3, g.blockID, []any{intFromDT(g.dataType, valueIntOverride), ""}}, nil
+		return []any{3, g.blockID, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil
 	}
 }
 
@@ -929,11 +582,11 @@ func intFromDT(dataType parser.DataType, valueIntOverride int) int {
 	return 4
 }
 
-func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, dataType parser.DataType, validateValue func(v any, token parser.Token) error) ([]any, error) {
+func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, validateValue func(v any, token parser.Token) error) ([]any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
-		castType = cast.Type
+		castType = cast.Target
 		castValue = cast.Value
 	}
 
@@ -946,9 +599,6 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		literal := *literalExpr
 		if castValue != expr {
 			literal.Token = castToken(literal.Token, castType.DataType)
-		}
-		if dataType != "" && literal.Token.DataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
 		}
 		if literal.Token.DataType == parser.DTBool {
 			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
@@ -966,19 +616,14 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		}
 
 		block.Fields[menuFieldKey] = []any{value, nil}
-		g.dataType = literal.Token.DataType
 		return []any{1, block.ID}, nil
 	} else {
 		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-			if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
-				myConst.used = true
+			if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
 				constant := *myConst
 				if castValue != expr {
 					constant.Type = castType.DataType
 					constant.Value = castToken(constant.Value, castType.DataType)
-				}
-				if dataType != "" && constant.Type != dataType {
-					return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
 				}
 				if constant.Type == parser.DTBool {
 					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
@@ -995,7 +640,6 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 				}
 
 				block.Fields[menuFieldKey] = []any{value, nil}
-				g.dataType = constant.Type
 				return []any{1, block.ID}, nil
 			}
 		}
@@ -1006,26 +650,23 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		if err != nil {
 			return nil, err
 		}
-		if dataType != "" && g.dataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), token)
-		}
 		if g.variableName != "" {
 			if g.variableIsList {
-				list := g.lists[g.variableName]
+				list := g.definitions.Lists[g.variableName]
 				return []any{3, []any{13, list.Name.Lexeme, list.ID}, block.ID}, nil
 			}
-			variable := g.variables[g.variableName]
+			variable := g.definitions.Variables[g.variableName]
 			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, block.ID}, nil
 		}
 		return []any{3, g.blockID, block.ID}, nil
 	}
 }
 
-func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parser.DataType) (any, error) {
+func (g *generator) literal(token parser.Token, expr parser.Expr) (any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
-		castType = cast.Type
+		castType = cast.Target
 		castValue = cast.Value
 	}
 
@@ -1034,21 +675,14 @@ func (g *generator) literal(token parser.Token, expr parser.Expr, dataType parse
 		if castValue != expr {
 			literal.Token = castToken(literal.Token, castType.DataType)
 		}
-		if literal.Token.DataType != dataType {
-			return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), literal.Token)
-		}
 		return literal.Token.Literal, nil
 	}
 	if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-		if myConst, ok := g.constants[ident.Name.Lexeme]; ok {
-			myConst.used = true
+		if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
 			constant := *myConst
 			if castValue != expr {
 				constant.Type = castType.DataType
 				constant.Value = castToken(constant.Value, castType.DataType)
-			}
-			if constant.Type != dataType {
-				return nil, g.newError(fmt.Sprintf("The value must be of type %s.", dataType), ident.Name)
 			}
 			return constant.Value.Literal, nil
 		}

@@ -854,8 +854,8 @@ func (p *parser) primary() (Expr, error) {
 			return nil, p.newError("Expected ')' after value for type cast.")
 		}
 		return &ExprTypeCast{
-			Type:  token,
-			Value: value,
+			Target: token,
+			Value:  value,
 		}, nil
 	}
 

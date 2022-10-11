@@ -8,6 +8,8 @@ import (
 
 	"github.com/mattn/go-colorable"
 
+	"github.com/Bananenpro/embe/analyzer"
+	"github.com/Bananenpro/embe/blocks"
 	"github.com/Bananenpro/embe/generator"
 	"github.com/Bananenpro/embe/parser"
 )
@@ -21,7 +23,9 @@ func main() {
 	}
 
 	var inFileNameBase string
-	results := make([]generator.GeneratorResult, len(os.Args)-1)
+
+	allBlocks := make([]map[string]*blocks.Block, 0, len(os.Args)-1)
+	allDefinitions := make([]analyzer.Definitions, 0, len(os.Args)-1)
 
 	var error bool
 	for i := 1; i < len(os.Args); i++ {
@@ -53,18 +57,28 @@ func main() {
 			continue
 		}
 
-		result := generator.GenerateBlocks(statements, lines)
-		for _, w := range result.Warnings {
+		statements, analyzerResult := analyzer.Analyze(statements, lines)
+		for _, w := range analyzerResult.Warnings {
 			fmt.Fprintln(stderr, w)
 		}
-		if len(result.Errors) > 0 {
-			for _, err := range result.Errors {
+		if len(analyzerResult.Errors) > 0 {
+			for _, err := range analyzerResult.Errors {
 				fmt.Fprintln(stderr, err)
 			}
 			error = true
 			continue
 		}
-		results[i-1] = result
+
+		blocks, errs := generator.GenerateBlocks(statements, analyzerResult.Definitions, lines)
+		if len(errs) > 0 {
+			for _, err := range errs {
+				fmt.Fprintln(stderr, err)
+			}
+			error = true
+			continue
+		}
+		allBlocks = append(allBlocks, blocks)
+		allDefinitions = append(allDefinitions, analyzerResult.Definitions)
 	}
 
 	if error {
@@ -81,7 +95,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer outFile.Close()
-	err = generator.Package(outFile, results)
+	err = generator.Package(outFile, allBlocks, allDefinitions)
 	if err != nil {
 		printError(err)
 		os.Exit(1)

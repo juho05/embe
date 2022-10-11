@@ -12,6 +12,7 @@ import (
 
 	_ "embed"
 
+	"github.com/Bananenpro/embe/analyzer"
 	"github.com/Bananenpro/embe/blocks"
 )
 
@@ -36,24 +37,24 @@ var wav []byte
 //go:embed assets/mscratch.json
 var mscratch []byte
 
-func Package(writer io.Writer, results []GeneratorResult) error {
+func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []analyzer.Definitions) error {
 	w := zip.NewWriter(writer)
 	defer w.Close()
 
 	var err error
-	stages := make([]string, len(results))
-	for i, r := range results {
-		variableMap := make(map[string][]any, len(r.Variables))
-		for _, v := range r.Variables {
+	stages := make([]string, len(blocks))
+	for i := 0; i < len(blocks); i++ {
+		variableMap := make(map[string][]any, len(definitions[i].Variables))
+		for _, v := range definitions[i].Variables {
 			variableMap[v.ID] = []any{v.Name.Lexeme, 0}
 		}
 
-		listMap := make(map[string][]any, len(r.Lists))
-		for _, l := range r.Lists {
+		listMap := make(map[string][]any, len(definitions[i].Lists))
+		for _, l := range definitions[i].Lists {
 			listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
 		}
 
-		stages[i], err = createStage(i, r.Blocks, variableMap, listMap)
+		stages[i], err = createStage(i, blocks[i], variableMap, listMap)
 		stages[i] = strings.TrimSuffix(stages[i], "\n")
 		if err != nil {
 			return err

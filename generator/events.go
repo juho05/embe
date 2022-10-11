@@ -161,7 +161,7 @@ func getParameter[T comparable](g *generator, stmt *parser.StmtEvent, dataType p
 		return value, g.newError(fmt.Sprintf("The '%s' event takes a value of type %s as an argument.", stmt.Name.Lexeme, dataType), stmt.Name)
 	}
 	if stmt.Parameter.Type == parser.TkIdentifier {
-		if constant, ok := g.constants[stmt.Parameter.Lexeme]; ok {
+		if constant, ok := g.definitions.Constants[stmt.Parameter.Lexeme]; ok {
 			if constant.Type != dataType {
 				return value, g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
 			}

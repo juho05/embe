@@ -60,6 +60,7 @@ const (
 	DTNumber DataType = "number"
 	DTBool   DataType = "boolean"
 	DTString DataType = "string"
+	DTImage  DataType = "image"
 
 	DTNumberList DataType = "number[]"
 	DTStringList DataType = "string[]"

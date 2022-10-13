@@ -82,7 +82,7 @@ func (p *parser) varDecl() (Stmt, error) {
 			dataType += "[]"
 		}
 		if dataType == DTBool {
-			return nil, p.newError("Boolean variables are not supported.")
+			return nil, p.newErrorAt("Boolean variables are not supported.", p.previous())
 		}
 	}
 

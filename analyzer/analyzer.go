@@ -192,6 +192,13 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 			return a.newErrorTk("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 		}
 
+		if list.DataType == "boolean[]" {
+			return a.newErrorExpr("Boolean lists are not supported.", stmt.Value)
+		}
+		if list.DataType == "image[]" {
+			return a.newErrorExpr("Image lists are not supported.", stmt.Value)
+		}
+
 		a.lists[list.Name.Lexeme] = list
 	} else {
 		variable := &Variable{
@@ -213,6 +220,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 						Literal:  0,
 						DataType: parser.DTNumber,
 					},
+					ReturnType: parser.DTNumber,
 				}
 			case parser.DTString:
 				stmt.Value = &parser.ExprLiteral{
@@ -222,9 +230,27 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 						Literal:  "",
 						DataType: parser.DTString,
 					},
+					ReturnType: parser.DTString,
+				}
+			case parser.DTImage:
+				stmt.Value = &parser.ExprTypeCast{
+					Target: parser.Token{
+						Type:     parser.TkType,
+						Lexeme:   "image",
+						DataType: parser.DTImage,
+					},
+					Value: &parser.ExprLiteral{
+						Token: parser.Token{
+							Type:     parser.TkLiteral,
+							Lexeme:   "",
+							Literal:  "",
+							DataType: parser.DTString,
+						},
+					},
+					ReturnType: parser.DTImage,
 				}
 			default:
-				return a.newErrorTk("Unknown type.", stmt.Name)
+				return a.newErrorStmt(fmt.Sprintf("%s variables are not supported.", strings.ToTitle(string(variable.DataType))), stmt)
 			}
 		}
 
@@ -478,7 +504,7 @@ func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 		if err != nil {
 			return err
 		}
-		if stmt.Value.Type() != v.DataType {
+		if v.DataType != "" && stmt.Value.Type() != v.DataType {
 			return a.newErrorExpr(fmt.Sprintf("Cannot assign %s value to %s variable.", stmt.Value.Type(), v.DataType), stmt.Value)
 		}
 	}
@@ -639,7 +665,6 @@ signatures:
 }
 
 func (a *analyzer) VisitTypeCast(expr *parser.ExprTypeCast) error {
-	dataType := expr.Target.DataType
 	err := expr.Value.Accept(a)
 	if err != nil {
 		return err
@@ -647,14 +672,56 @@ func (a *analyzer) VisitTypeCast(expr *parser.ExprTypeCast) error {
 	if expr.Target.DataType == parser.DTBool {
 		return a.newErrorTk("Cannot cast to a boolean.", expr.Target)
 	}
+	if expr.Target.DataType == parser.DTImage {
+		if expr.Value.Type() != parser.DTString {
+			return a.newErrorExpr("Expected file path.", expr.Value)
+		}
+		var path string
+		loadEmpty := false
+		if literal, ok := expr.Value.(*parser.ExprLiteral); ok {
+			path = literal.Token.Literal.(string)
+			if literal.Token.Lexeme == "" {
+				loadEmpty = true
+			}
+		} else if ident, ok := expr.Value.(*parser.ExprIdentifier); ok {
+			if c, ok := a.constants[ident.Name.Lexeme]; ok {
+				path = c.Value.Literal.(string)
+			} else {
+				return a.newErrorTk("Unknown constant.", ident.Name)
+			}
+		} else {
+			return a.newErrorExpr("Expected a literal or constant.", expr.Value)
+		}
+		var img string
+		if loadEmpty {
+			img = strings.TrimSuffix(strings.Repeat("#000,", 16*16), ",")
+		} else {
+			img, err = loadImage(path)
+			if err != nil {
+				return a.newErrorExpr("Couldn't load image. Please provide a valid path to a PNG, JPEG or GIF file.", expr.Value)
+			}
+		}
+		token := expr.Target
+		token.Type = parser.TkLiteral
+		token.Literal = img
+		token.Lexeme = "\"" + img + "\""
+		expr.Value = &parser.ExprLiteral{
+			Token:      token,
+			ReturnType: parser.DTString,
+		}
+	}
+
 	if expr.Value.Type() == parser.DTBool {
-		return a.newErrorExpr("Cannot cast from a boolean.", expr.Value)
+		return a.newErrorExpr("Cannot cast a boolean to another type.", expr.Value)
+	}
+	if expr.Value.Type() == parser.DTImage {
+		return a.newErrorExpr("Cannot cast an image to another type.", expr.Value)
 	}
 
 	if strings.HasSuffix(string(expr.Value.Type()), "[]") && expr.Target.DataType != parser.DTString {
 		return a.newErrorExpr(fmt.Sprintf("Cannot cast list to %s.", expr.Target.DataType), expr.Value)
 	}
-	expr.ReturnType = dataType
+	expr.ReturnType = expr.Target.DataType
 	return nil
 }
 

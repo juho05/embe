@@ -29,7 +29,16 @@ func (s *StmtVarDecl) Accept(visitor StmtVisitor) error {
 
 func (s *StmtVarDecl) Position() (start, end Position) {
 	start = s.Name.Pos
-	_, end = s.Value.Position()
+	if s.Value != nil {
+		_, end = s.Value.Position()
+	} else if s.AssignToken.Pos.Line >= start.Line && s.AssignToken.Pos.Column >= start.Column {
+		end = s.AssignToken.Pos
+	} else {
+		end = Position{
+			Line:   start.Line,
+			Column: start.Column + len(s.Name.Lexeme),
+		}
+	}
 	return start, end
 }
 
@@ -145,6 +154,13 @@ func (s *StmtLoop) Accept(visitor StmtVisitor) error {
 }
 
 func (s *StmtLoop) Position() (start, end Position) {
-	_, end = s.Condition.Position()
+	if s.Condition != nil {
+		_, end = s.Condition.Position()
+	} else {
+		end = Position{
+			Line:   s.Keyword.Pos.Line,
+			Column: s.Keyword.Pos.Column + len(s.Keyword.Lexeme),
+		}
+	}
 	return s.Keyword.Pos, end
 }

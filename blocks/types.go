@@ -210,6 +210,11 @@ const (
 	DisplaySetOrientationMenu             BlockType = "cyberpi.cyberpi_display_rotate_to_2_fieldMenu_1_menu"
 )
 
+// Display+
+const (
+	SpriteDrawPixelWithMatrix16 BlockType = "cyberpi_sprite.cyberpi_sprite_draw_pixel_with_matrix16"
+)
+
 // Control
 const (
 	ControlIf            BlockType = "control_if"

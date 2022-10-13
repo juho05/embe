@@ -203,28 +203,37 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 		block.Inputs[assignment.InputName] = value
 	} else {
 		variable := g.definitions.Variables[stmt.Variable.Lexeme]
-		block = g.NewBlock(blocks.VariableSetTo, false)
 
-		value, err := g.value(block.ID, stmt.Operator, stmt.Value)
-		if err != nil {
-			return err
-		}
-		block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
+		if variable.DataType == parser.DTImage {
+			block = g.NewBlock(blocks.SpriteDrawPixelWithMatrix16, false)
+			block.Inputs["string_1"] = []any{2, []any{12, variable.Name.Lexeme, variable.ID}}
+			block.Fields["facePanel_2"] = []any{stmt.Value.(*parser.ExprTypeCast).Value.(*parser.ExprLiteral).Token.Literal, nil}
+		} else {
+			block = g.NewBlock(blocks.VariableSetTo, false)
 
-		if stmt.Operator.Type != parser.TkAssign {
-			if variable.DataType == parser.DTNumber {
-				block.Type = blocks.VariableChangeBy
-			} else {
-				g.noNext = true
-				g.parent = block.ID
-				joinBlock := g.NewBlock(blocks.OpJoin, false)
-				joinBlock.Inputs["STRING1"] = []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{10, ""}}
-				joinBlock.Inputs["STRING2"] = value
-				value = []any{3, joinBlock.ID, []any{10, ""}}
+			value, err := g.value(block.ID, stmt.Operator, stmt.Value)
+			if err != nil {
+				return err
 			}
+			block.Fields["VARIABLE"] = []any{variable.Name.Lexeme, variable.ID}
+
+			if stmt.Operator.Type != parser.TkAssign {
+				if variable.DataType == parser.DTNumber {
+					block.Type = blocks.VariableChangeBy
+				} else if variable.DataType == parser.DTString {
+					g.noNext = true
+					g.parent = block.ID
+					joinBlock := g.NewBlock(blocks.OpJoin, false)
+					joinBlock.Inputs["STRING1"] = []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{10, ""}}
+					joinBlock.Inputs["STRING2"] = value
+					value = []any{3, joinBlock.ID, []any{10, ""}}
+				} else {
+					return g.newErrorStmt(fmt.Sprintf("Cannot assign to %s variables.", variable.DataType), stmt)
+				}
+			}
+			block.Inputs["VALUE"] = value
 		}
 
-		block.Inputs["VALUE"] = value
 	}
 
 	g.blockID = block.ID

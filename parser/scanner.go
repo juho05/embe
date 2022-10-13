@@ -23,6 +23,7 @@ var types = map[string]DataType{
 	"boolean": DTBool,
 	"number":  DTNumber,
 	"string":  DTString,
+	"image":   DTImage,
 }
 
 type scanner struct {

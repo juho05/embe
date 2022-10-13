@@ -32,7 +32,7 @@ func main() {
 		fmt.Printf("Compiling %s...\n", os.Args[i])
 		file, err := os.Open(os.Args[i])
 		if err != nil {
-			printError(err)
+			printError(err, nil)
 			error = true
 			continue
 		}
@@ -43,7 +43,7 @@ func main() {
 		tokens, lines, err := parser.Scan(file)
 		file.Close()
 		if err != nil {
-			fmt.Fprintln(stderr, err)
+			printError(err, lines)
 			error = true
 			continue
 		}
@@ -51,7 +51,7 @@ func main() {
 		statements, errs := parser.Parse(tokens, lines)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				fmt.Fprintln(stderr, err)
+				printError(err, lines)
 			}
 			error = true
 			continue
@@ -59,11 +59,11 @@ func main() {
 
 		statements, analyzerResult := analyzer.Analyze(statements, lines)
 		for _, w := range analyzerResult.Warnings {
-			fmt.Fprintln(stderr, w)
+			printError(w, lines)
 		}
 		if len(analyzerResult.Errors) > 0 {
 			for _, err := range analyzerResult.Errors {
-				fmt.Fprintln(stderr, err)
+				printError(err, lines)
 			}
 			error = true
 			continue
@@ -72,7 +72,7 @@ func main() {
 		blocks, errs := generator.GenerateBlocks(statements, analyzerResult.Definitions, lines)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				fmt.Fprintln(stderr, err)
+				printError(err, lines)
 			}
 			error = true
 			continue
@@ -91,17 +91,13 @@ func main() {
 
 	outFile, err := os.Create(outName)
 	if err != nil {
-		printError(err)
+		printError(err, nil)
 		os.Exit(1)
 	}
 	defer outFile.Close()
 	err = generator.Package(outFile, allBlocks, allDefinitions)
 	if err != nil {
-		printError(err)
+		printError(err, nil)
 		os.Exit(1)
 	}
-}
-
-func printError(err error) {
-	fmt.Fprintf(stderr, "\x1b[31mERROR\x1b[0m: %s\n", err.Error())
 }

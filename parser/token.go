@@ -65,11 +65,15 @@ const (
 	DTStringList DataType = "string[]"
 )
 
+type Position struct {
+	Line   int
+	Column int
+}
+
 type Token struct {
 	Type   TokenType
 	Lexeme string
-	Line   int
-	Column int
+	Pos    Position
 	Indent int
 
 	DataType DataType
@@ -77,5 +81,5 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("([%d:%d:%d]%s)", t.Line+1, t.Column+1, t.Indent, t.Lexeme)
+	return fmt.Sprintf("([%d:%d:%d]%s)", t.Pos.Line+1, t.Pos.Column+1, t.Indent, t.Lexeme)
 }

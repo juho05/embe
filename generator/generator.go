@@ -74,7 +74,7 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	argumentDefaults := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
 		if slices.Contains(argumentNames, p.Name.Lexeme) {
-			return g.newError("Duplicate parameter name.", p.Name)
+			return g.newErrorTk("Duplicate parameter name.", p.Name)
 		}
 
 		id := uuid.NewString()
@@ -298,7 +298,7 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 			return err
 		}
 	} else {
-		return g.newError("Unknown loop type.", stmt.Keyword)
+		return g.newErrorTk("Unknown loop type.", stmt.Keyword)
 	}
 	g.parent = block.ID
 	g.noNext = true
@@ -359,19 +359,19 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 	}
 
 	if _, ok := g.definitions.Constants[expr.Name.Lexeme]; ok {
-		return g.newError("Constants are not allowed in this context.", expr.Name)
+		return g.newErrorTk("Constants are not allowed in this context.", expr.Name)
 	}
 
-	return g.newError("Unknown identifier.", expr.Name)
+	return g.newErrorTk("Unknown identifier.", expr.Name)
 }
 
 func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	fn, ok := ExprFuncCalls[expr.Name.Lexeme]
 	if !ok {
 		if _, ok := FuncCalls[expr.Name.Lexeme]; ok {
-			return g.newError("Only functions which return a value are allowed in this context.", expr.Name)
+			return g.newErrorExpr("Only functions which return a value are allowed in this context.", expr)
 		}
-		return g.newError("Unknown function.", expr.Name)
+		return g.newErrorTk("Unknown function.", expr.Name)
 	}
 	block, err := fn.Fn(g, expr)
 	if err != nil {
@@ -386,11 +386,11 @@ func (g *generator) VisitTypeCast(expr *parser.ExprTypeCast) error {
 }
 
 func (g *generator) VisitLiteral(expr *parser.ExprLiteral) error {
-	return g.newError("Literals are not allowed in this context.", expr.Token)
+	return g.newErrorExpr("Literals are not allowed in this context.", expr)
 }
 
 func (g *generator) VisitListInitializer(expr *parser.ExprListInitializer) error {
-	return g.newError("Literals are not allowed in this context.", expr.OpenBracket)
+	return g.newErrorExpr("Literals are not allowed in this context.", expr)
 }
 
 func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
@@ -463,7 +463,7 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			case parser.TkModulus:
 				block = g.NewBlock(blocks.OpMod, false)
 			default:
-				return g.newError("Unknown binary operator.", expr.Operator)
+				return g.newErrorTk("Unknown binary operator.", expr.Operator)
 			}
 		}
 
@@ -482,6 +482,10 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 
 	g.blockID = block.ID
 	return nil
+}
+
+func (g *generator) VisitGrouping(expr *parser.ExprGrouping) error {
+	return expr.Expr.Accept(g)
 }
 
 var matchAllRegex = regexp.MustCompile(".*")
@@ -525,10 +529,10 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 			literal.Token = castToken(literal.Token, castType.DataType)
 		}
 		if literal.Token.DataType == parser.DTBool {
-			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
+			return nil, g.newErrorTk("Boolean literals are not allowed in this context.", literal.Token)
 		}
 		if !validate(literal.Token.Literal) {
-			return nil, g.newError(errorMessage, literal.Token)
+			return nil, g.newErrorTk(errorMessage, literal.Token)
 		}
 		return []any{1, []any{intFromDT(literal.Token.DataType, valueIntOverride), fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
@@ -540,10 +544,10 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 					constant.Value = castToken(constant.Value, castType.DataType)
 				}
 				if constant.Type == parser.DTBool {
-					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
+					return nil, g.newErrorTk("Boolean constants are not allowed in this context.", ident.Name)
 				}
 				if !validate(constant.Value.Literal) {
-					return nil, g.newError(errorMessage, ident.Name)
+					return nil, g.newErrorTk(errorMessage, ident.Name)
 				}
 				return []any{1, []any{intFromDT(constant.Type, valueIntOverride), fmt.Sprintf("%v", constant.Value.Literal)}}, nil
 			}
@@ -601,7 +605,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 			literal.Token = castToken(literal.Token, castType.DataType)
 		}
 		if literal.Token.DataType == parser.DTBool {
-			return nil, g.newError("Boolean literals are not allowed in this context.", literal.Token)
+			return nil, g.newErrorTk("Boolean literals are not allowed in this context.", literal.Token)
 		}
 
 		if err := validateValue(literal.Token.Literal, literal.Token); err != nil {
@@ -626,7 +630,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 					constant.Value = castToken(constant.Value, castType.DataType)
 				}
 				if constant.Type == parser.DTBool {
-					return nil, g.newError("Boolean constants are not allowed in this context.", ident.Name)
+					return nil, g.newErrorTk("Boolean constants are not allowed in this context.", ident.Name)
 				}
 				if err := validateValue(constant.Value.Literal, ident.Name); err != nil {
 					return nil, err
@@ -687,7 +691,7 @@ func (g *generator) literal(token parser.Token, expr parser.Expr) (any, error) {
 			return constant.Value.Literal, nil
 		}
 	}
-	return nil, g.newError("Only literals are allowed in this context.", token)
+	return nil, g.newErrorTk("Only literals are allowed in this context.", token)
 }
 
 func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Block {
@@ -743,37 +747,81 @@ func castToken(token parser.Token, dataType parser.DataType) parser.Token {
 }
 
 type GenerateError struct {
-	Token   parser.Token
+	Start   parser.Position
+	End     parser.Position
 	Message string
-	Line    []rune
 	Warning bool
 }
 
-func (p GenerateError) Error() string {
-	length := len([]rune(p.Token.Lexeme))
-	if p.Token.Type == parser.TkNewLine {
-		length = 1
-	}
-	if p.Warning {
-		return generateWarningText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+func (e GenerateError) Error() string {
+	if e.Warning {
+		return "WARNING: " + e.Message
 	} else {
-		return generateErrorText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+		return "ERROR: " + e.Message
 	}
 }
 
-func (g *generator) newError(message string, token parser.Token) error {
+func (g *generator) newErrorTk(message string, token parser.Token) error {
+	end := token.Pos
+	end.Column += len(token.Lexeme)
+	if token.Type == parser.TkNewLine {
+		end.Column += 1
+	}
 	return GenerateError{
-		Token:   token,
+		Start:   token.Pos,
+		End:     end,
 		Message: message,
-		Line:    g.lines[token.Line],
 	}
 }
 
-func (g *generator) newWarning(message string, token parser.Token) {
-	g.warnings = append(g.warnings, GenerateError{
-		Token:   token,
+func (g *generator) newErrorExpr(message string, expr parser.Expr) error {
+	start, end := expr.Position()
+	return GenerateError{
+		Start:   start,
+		End:     end,
 		Message: message,
-		Line:    g.lines[token.Line],
+	}
+}
+
+func (g *generator) newErrorStmt(message string, stmt parser.Stmt) error {
+	start, end := stmt.Position()
+	return GenerateError{
+		Start:   start,
+		End:     end,
+		Message: message,
+	}
+}
+
+func (g *generator) newWarningTk(message string, token parser.Token) {
+	end := token.Pos
+	end.Column += len(token.Lexeme)
+	if token.Type == parser.TkNewLine {
+		end.Column += 1
+	}
+	g.warnings = append(g.warnings, GenerateError{
+		Start:   token.Pos,
+		End:     end,
+		Message: message,
+		Warning: true,
+	})
+}
+
+func (g *generator) newWarningExpr(message string, expr parser.Expr) {
+	start, end := expr.Position()
+	g.warnings = append(g.warnings, GenerateError{
+		Start:   start,
+		End:     end,
+		Message: message,
+		Warning: true,
+	})
+}
+
+func (g *generator) newWarningStmt(message string, stmt parser.Stmt) {
+	start, end := stmt.Position()
+	g.warnings = append(g.warnings, GenerateError{
+		Start:   start,
+		End:     end,
+		Message: message,
 		Warning: true,
 	})
 }

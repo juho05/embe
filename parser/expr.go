@@ -8,17 +8,20 @@ type ExprVisitor interface {
 	VisitListInitializer(expr *ExprListInitializer) error
 	VisitUnary(expr *ExprUnary) error
 	VisitBinary(expr *ExprBinary) error
+	VisitGrouping(expr *ExprGrouping) error
 }
 
 type Expr interface {
 	Accept(visitor ExprVisitor) error
 	Type() DataType
+	Position() (start, end Position)
 }
 
 type ExprFuncCall struct {
 	Name       Token
 	Parameters []Expr
 	ReturnType DataType
+	CloseParen Token
 }
 
 func (e *ExprFuncCall) Accept(visitor ExprVisitor) error {
@@ -29,10 +32,15 @@ func (e *ExprFuncCall) Type() DataType {
 	return e.ReturnType
 }
 
+func (e *ExprFuncCall) Position() (start, end Position) {
+	return e.Name.Pos, e.CloseParen.Pos
+}
+
 type ExprTypeCast struct {
 	Target     Token
 	Value      Expr
 	ReturnType DataType
+	CloseParen Token
 }
 
 func (e *ExprTypeCast) Accept(visitor ExprVisitor) error {
@@ -41,6 +49,10 @@ func (e *ExprTypeCast) Accept(visitor ExprVisitor) error {
 
 func (e *ExprTypeCast) Type() DataType {
 	return e.ReturnType
+}
+
+func (e *ExprTypeCast) Position() (start, end Position) {
+	return e.Target.Pos, e.CloseParen.Pos
 }
 
 type ExprIdentifier struct {
@@ -56,6 +68,12 @@ func (e *ExprIdentifier) Type() DataType {
 	return e.ReturnType
 }
 
+func (e *ExprIdentifier) Position() (start, end Position) {
+	end = e.Name.Pos
+	end.Column += len(e.Name.Lexeme) - 1
+	return e.Name.Pos, end
+}
+
 type ExprLiteral struct {
 	Token      Token
 	ReturnType DataType
@@ -69,10 +87,17 @@ func (e *ExprLiteral) Type() DataType {
 	return e.ReturnType
 }
 
+func (e *ExprLiteral) Position() (start, end Position) {
+	end = e.Token.Pos
+	end.Column += len(e.Token.Lexeme) - 1
+	return e.Token.Pos, end
+}
+
 type ExprListInitializer struct {
-	OpenBracket Token
-	Values      []Token
-	ReturnType  DataType
+	OpenBracket  Token
+	CloseBracket Token
+	Values       []Token
+	ReturnType   DataType
 }
 
 func (e *ExprListInitializer) Accept(visitor ExprVisitor) error {
@@ -81,6 +106,10 @@ func (e *ExprListInitializer) Accept(visitor ExprVisitor) error {
 
 func (e *ExprListInitializer) Type() DataType {
 	return e.ReturnType
+}
+
+func (e *ExprListInitializer) Position() (start, end Position) {
+	return e.OpenBracket.Pos, e.CloseBracket.Pos
 }
 
 type ExprUnary struct {
@@ -97,6 +126,11 @@ func (e *ExprUnary) Type() DataType {
 	return e.ReturnType
 }
 
+func (e *ExprUnary) Position() (start, end Position) {
+	_, end = e.Right.Position()
+	return e.Operator.Pos, end
+}
+
 type ExprBinary struct {
 	Operator   Token
 	Left       Expr
@@ -110,4 +144,28 @@ func (e *ExprBinary) Accept(visitor ExprVisitor) error {
 
 func (e *ExprBinary) Type() DataType {
 	return e.ReturnType
+}
+
+func (e *ExprBinary) Position() (start, end Position) {
+	start, _ = e.Left.Position()
+	_, end = e.Right.Position()
+	return start, end
+}
+
+type ExprGrouping struct {
+	OpenParen  Token
+	CloseParen Token
+	Expr       Expr
+}
+
+func (e *ExprGrouping) Accept(visitor ExprVisitor) error {
+	return visitor.VisitGrouping(e)
+}
+
+func (e *ExprGrouping) Type() DataType {
+	return e.Expr.Type()
+}
+
+func (e *ExprGrouping) Position() (start, end Position) {
+	return e.OpenParen.Pos, e.CloseParen.Pos
 }

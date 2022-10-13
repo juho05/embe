@@ -113,16 +113,16 @@ func eventSensor(sensor string) func(g *generator, stmt *parser.StmtEvent) (*blo
 			parts = strings.SplitAfter(param, "<")
 		}
 		if len(parts) != 2 {
-			return nil, g.newError(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
+			return nil, g.newErrorTk(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
 		}
 		parts[0] = strings.TrimSpace(parts[0])
 		parts[1] = strings.TrimSpace(parts[1])
 		if parts[0] != "<" && parts[0] != ">" {
-			return nil, g.newError(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
+			return nil, g.newErrorTk(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
 		}
 		num, err := strconv.ParseFloat(parts[1], 64)
 		if err != nil {
-			return nil, g.newError(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
+			return nil, g.newErrorTk(`Invalid argument. Expected format: "< NUMBER" or "> NUMBER", e.g "< 12.3".`, stmt.Parameter)
 		}
 
 		block := blocks.NewBlockTopLevel(blocks.EventSensorValueBiggerOrSmaller)
@@ -150,7 +150,7 @@ func eventReceive(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 
 func (g *generator) assertNoEventParameter(stmt *parser.StmtEvent) error {
 	if (stmt.Parameter != parser.Token{}) {
-		return g.newError(fmt.Sprintf("The '%s' event does not take any arguments.", stmt.Name.Lexeme), stmt.Parameter)
+		return g.newErrorTk(fmt.Sprintf("The '%s' event does not take any arguments.", stmt.Name.Lexeme), stmt.Parameter)
 	}
 	return nil
 }
@@ -158,20 +158,20 @@ func (g *generator) assertNoEventParameter(stmt *parser.StmtEvent) error {
 func getParameter[T comparable](g *generator, stmt *parser.StmtEvent, dataType parser.DataType, options []T) (T, error) {
 	var value T
 	if (stmt.Parameter == parser.Token{}) {
-		return value, g.newError(fmt.Sprintf("The '%s' event takes a value of type %s as an argument.", stmt.Name.Lexeme, dataType), stmt.Name)
+		return value, g.newErrorStmt(fmt.Sprintf("The '%s' event takes a value of type %s as an argument.", stmt.Name.Lexeme, dataType), stmt)
 	}
 	if stmt.Parameter.Type == parser.TkIdentifier {
 		if constant, ok := g.definitions.Constants[stmt.Parameter.Lexeme]; ok {
 			if constant.Type != dataType {
-				return value, g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
+				return value, g.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
 			}
 			value = constant.Value.Literal.(T)
 		} else {
-			return value, g.newError("Unknown constant.", stmt.Parameter)
+			return value, g.newErrorTk("Unknown constant.", stmt.Parameter)
 		}
 	} else {
 		if stmt.Parameter.DataType != dataType {
-			return value, g.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
+			return value, g.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", dataType), stmt.Parameter)
 		}
 		value = stmt.Parameter.Literal.(T)
 	}
@@ -189,7 +189,7 @@ func getParameter[T comparable](g *generator, stmt *parser.StmtEvent, dataType p
 			for i, o := range options {
 				strOptions[i] = fmt.Sprintf("%v", o)
 			}
-			return value, g.newError(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
+			return value, g.newErrorTk(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
 		}
 	}
 

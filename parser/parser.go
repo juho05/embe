@@ -200,6 +200,7 @@ func (p *parser) funcDecl() (Stmt, error) {
 	if !p.match(TkCloseParen) {
 		return nil, p.newError("Expected ')' after parameter list.")
 	}
+	closeParen := p.previous()
 
 	if !p.match(TkColon) {
 		return nil, p.newError("Expected ':' after function declaration.")
@@ -209,16 +210,17 @@ func (p *parser) funcDecl() (Stmt, error) {
 		return nil, p.newError("Expected '\n' after ':'.")
 	}
 
-	start := name.Line
+	start := name.Pos.Line
 	body := p.statements(name.Indent + 1)
-	end := p.previous().Line + 1
+	end := p.previous().Pos.Line + 1
 
 	return &StmtFuncDecl{
-		Name:      name,
-		Body:      body,
-		Params:    parameters,
-		StartLine: start,
-		EndLine:   end,
+		Name:       name,
+		CloseParen: closeParen,
+		Body:       body,
+		Params:     parameters,
+		StartLine:  start,
+		EndLine:    end,
 	}, nil
 }
 
@@ -226,6 +228,7 @@ func (p *parser) event() (Stmt, error) {
 	if !p.match(TkAt) {
 		return nil, p.newError("Expected event.")
 	}
+	at := p.previous()
 
 	if !p.match(TkIdentifier) {
 		return nil, p.newError("Expected event name after '@'.")
@@ -252,7 +255,6 @@ func (p *parser) event() (Stmt, error) {
 			Name: Token{
 				Type:   TkIdentifier,
 				Lexeme: "time.wait",
-				Line:   name.Line,
 			},
 			Parameters: []Expr{
 				&ExprLiteral{
@@ -261,7 +263,6 @@ func (p *parser) event() (Stmt, error) {
 						Lexeme:   "1",
 						Literal:  1,
 						DataType: DTNumber,
-						Line:     name.Line,
 					},
 				},
 			},
@@ -270,6 +271,7 @@ func (p *parser) event() (Stmt, error) {
 	}
 
 	return &StmtEvent{
+		At:        at,
 		Name:      name,
 		Parameter: parameter,
 		Body:      body,
@@ -334,6 +336,7 @@ func (p *parser) funcCall() (Stmt, error) {
 	if !p.match(TkCloseParen) {
 		return nil, p.newError("Expected ')' after parameter list.")
 	}
+	closeParen := p.previous()
 
 	if !p.match(TkNewLine) {
 		return nil, p.newError("Expected '\n' after statement.")
@@ -341,6 +344,7 @@ func (p *parser) funcCall() (Stmt, error) {
 
 	return &StmtFuncCall{
 		Name:       name,
+		CloseParen: closeParen,
 		Parameters: parameters,
 	}, nil
 }
@@ -402,16 +406,14 @@ func (p *parser) assignment() (Stmt, error) {
 					Operator: Token{
 						Type:   TkMultiply,
 						Lexeme: operator.Lexeme,
-						Line:   operator.Line,
-						Column: operator.Column,
+						Pos:    operator.Pos,
 						Indent: operator.Indent,
 					},
 					Left: &ExprLiteral{
 						Token: Token{
 							Type:     TkLiteral,
 							Lexeme:   operator.Lexeme,
-							Line:     operator.Line,
-							Column:   operator.Column,
+							Pos:      operator.Pos,
 							Indent:   operator.Indent,
 							DataType: DTNumber,
 							Literal:  -1,
@@ -518,8 +520,7 @@ func (p *parser) whileLoop() (Stmt, error) {
 				Operator: Token{
 					Type:   TkBang,
 					Lexeme: keyword.Lexeme,
-					Line:   keyword.Line,
-					Column: keyword.Column,
+					Pos:    keyword.Pos,
 					Indent: keyword.Indent,
 				},
 				Right: condition,
@@ -641,7 +642,6 @@ func (p *parser) equality() (Expr, error) {
 			expr = &ExprUnary{
 				Operator: Token{
 					Type: TkBang,
-					Line: operator.Line,
 				},
 				Right: &ExprBinary{
 					Operator: operator,
@@ -682,17 +682,15 @@ func (p *parser) comparison() (Expr, error) {
 				Operator: Token{
 					Type:   TkOr,
 					Lexeme: operator.Lexeme,
-					Line:   operator.Line,
 					Indent: operator.Indent,
-					Column: operator.Column,
+					Pos:    operator.Pos,
 				},
 				Left: &ExprBinary{
 					Operator: Token{
 						Type:   withoutEqual,
 						Lexeme: operator.Lexeme,
-						Line:   operator.Line,
 						Indent: operator.Indent,
-						Column: operator.Column,
+						Pos:    operator.Pos,
 					},
 					Left:  expr,
 					Right: right,
@@ -701,9 +699,8 @@ func (p *parser) comparison() (Expr, error) {
 					Operator: Token{
 						Type:   TkEqual,
 						Lexeme: operator.Lexeme,
-						Line:   operator.Line,
 						Indent: operator.Indent,
-						Column: operator.Column,
+						Pos:    operator.Pos,
 					},
 					Left:  expr,
 					Right: right,
@@ -781,16 +778,14 @@ func (p *parser) unary() (Expr, error) {
 				Operator: Token{
 					Type:   TkMultiply,
 					Lexeme: operator.Lexeme,
-					Line:   operator.Line,
-					Column: operator.Column,
+					Pos:    operator.Pos,
 					Indent: operator.Indent,
 				},
 				Left: &ExprLiteral{
 					Token: Token{
 						Type:     TkLiteral,
 						Lexeme:   operator.Lexeme,
-						Line:     operator.Line,
-						Column:   operator.Column,
+						Pos:      operator.Pos,
 						Indent:   operator.Indent,
 						DataType: DTNumber,
 						Literal:  -1,
@@ -832,6 +827,7 @@ func (p *parser) primary() (Expr, error) {
 			return &ExprFuncCall{
 				Name:       name,
 				Parameters: parameters,
+				CloseParen: p.previous(),
 			}, nil
 		}
 		return &ExprIdentifier{
@@ -854,8 +850,9 @@ func (p *parser) primary() (Expr, error) {
 			return nil, p.newError("Expected ')' after value for type cast.")
 		}
 		return &ExprTypeCast{
-			Target: token,
-			Value:  value,
+			Target:     token,
+			Value:      value,
+			CloseParen: p.previous(),
 		}, nil
 	}
 
@@ -875,8 +872,9 @@ func (p *parser) primary() (Expr, error) {
 			return nil, p.newError("Expected ']' after value list.")
 		}
 		return &ExprListInitializer{
-			OpenBracket: openBracket,
-			Values:      values,
+			OpenBracket:  openBracket,
+			CloseBracket: p.previous(),
+			Values:       values,
 		}, nil
 	}
 
@@ -887,6 +885,7 @@ func (p *parser) primary() (Expr, error) {
 	}
 
 	if p.match(TkOpenParen) {
+		openParen := p.previous()
 		expr, err := p.expression()
 		if err != nil {
 			return nil, err
@@ -894,7 +893,12 @@ func (p *parser) primary() (Expr, error) {
 		if !p.match(TkCloseParen) {
 			return nil, p.newError("Expected ')' after expression.")
 		}
-		return expr, nil
+		closeParen := p.previous()
+		return &ExprGrouping{
+			OpenParen:  openParen,
+			CloseParen: closeParen,
+			Expr:       expr,
+		}, nil
 	}
 
 	return nil, p.newError(fmt.Sprintf("Unexpected token '%s'", p.peek().Lexeme))
@@ -940,29 +944,19 @@ func (p *parser) synchronize() {
 type ParseError struct {
 	Token   Token
 	Message string
-	Line    []rune
 }
 
 func (p ParseError) Error() string {
-	length := len([]rune(p.Token.Lexeme))
-	if p.Token.Type == TkNewLine {
-		length = 1
-	}
-	return generateErrorText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+	return "ERROR: " + p.Message
 }
 
 func (p *parser) newError(message string) error {
-	return ParseError{
-		Token:   p.peek(),
-		Message: message,
-		Line:    p.lines[p.peek().Line],
-	}
+	return p.newErrorAt(message, p.peek())
 }
 
 func (p *parser) newErrorAt(message string, token Token) error {
 	return ParseError{
 		Token:   token,
 		Message: message,
-		Line:    p.lines[token.Line],
 	}
 }

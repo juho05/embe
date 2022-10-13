@@ -44,7 +44,6 @@ func Scan(source io.Reader) ([]Token, [][]rune, error) {
 	}
 
 	err := srcScanner.scan()
-
 	return srcScanner.tokens, srcScanner.lines, err
 }
 
@@ -181,11 +180,10 @@ func (s *scanner) scan() error {
 	}
 
 	eof := Token{
-		Line: s.line,
 		Type: TkEOF,
 	}
 	if s.line >= 0 && s.line < len(s.lines) {
-		eof.Column = len(s.lines[s.line])
+		eof.Pos.Column = len(s.lines[s.line])
 	}
 
 	s.tokens = append(s.tokens, eof)
@@ -368,12 +366,14 @@ func (s *scanner) addToken(tokenType TokenType) {
 	lexeme := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
 	if tokenType == TkNewLine {
 		prev := s.tokens[len(s.tokens)-1]
-		s.tokenStartColumn = prev.Column + len(prev.Lexeme)
+		s.tokenStartColumn = prev.Pos.Column + len(prev.Lexeme)
 		lexeme = "\\n"
 	}
 	s.tokens = append(s.tokens, Token{
-		Line:   s.line,
-		Column: s.tokenStartColumn,
+		Pos: Position{
+			Line:   s.line,
+			Column: s.tokenStartColumn,
+		},
 		Type:   tokenType,
 		Lexeme: lexeme,
 		Indent: getIndentation(s.lines[s.line]),
@@ -385,8 +385,10 @@ func (s *scanner) addToken(tokenType TokenType) {
 
 func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, value any) {
 	s.tokens = append(s.tokens, Token{
-		Line:     s.line,
-		Column:   s.tokenStartColumn,
+		Pos: Position{
+			Line:   s.line,
+			Column: s.tokenStartColumn,
+		},
 		Type:     tokenType,
 		Lexeme:   string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1]),
 		DataType: dataType,
@@ -429,21 +431,20 @@ func isAlphaNum(char rune) bool {
 }
 
 type ScanError struct {
-	Line     int
-	LineText []rune
-	Column   int
-	Message  string
+	Pos     Position
+	Message string
 }
 
 func (s ScanError) Error() string {
-	return generateErrorText(s.Message, s.LineText, s.Line, s.Column, s.Column+1)
+	return "ERROR: " + s.Message
 }
 
 func (s *scanner) newError(msg string) error {
 	return ScanError{
-		Line:     s.line,
-		LineText: s.lines[s.line],
-		Column:   s.currentColumn,
-		Message:  msg,
+		Pos: Position{
+			Line:   s.line,
+			Column: s.currentColumn,
+		},
+		Message: msg,
 	}
 }

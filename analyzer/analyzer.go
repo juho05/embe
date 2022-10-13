@@ -95,25 +95,25 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 
 	for _, v := range a.variables {
 		if !v.used {
-			a.newWarning("This variable is never used.", v.Name)
+			a.newWarningTk("This variable is never used.", v.Name)
 		}
 	}
 
 	for _, l := range a.lists {
 		if !l.used {
-			a.newWarning("This variable is never used.", l.Name)
+			a.newWarningTk("This variable is never used.", l.Name)
 		}
 	}
 
 	for _, c := range a.constants {
 		if !c.used {
-			a.newWarning("This constant is never used.", c.Name)
+			a.newWarningTk("This constant is never used.", c.Name)
 		}
 	}
 
 	for _, f := range a.functions {
 		if !f.used {
-			a.newWarning("This function is never called.", f.Name)
+			a.newWarningTk("This function is never called.", f.Name)
 		}
 	}
 
@@ -163,14 +163,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 
 		var init *parser.ExprListInitializer
 		if init, ok = stmt.Value.(*parser.ExprListInitializer); !ok {
-			token := stmt.AssignToken
-			if l, ok := stmt.Value.(*parser.ExprLiteral); ok {
-				token = l.Token
-			}
-			if i, ok := stmt.Value.(*parser.ExprIdentifier); ok {
-				token = i.Name
-			}
-			return a.newError("Expected a list initializer.", token)
+			return a.newErrorExpr("Expected a list initializer.", stmt.Value)
 		}
 
 		valueType := parser.DataType(strings.TrimSuffix(string(stmt.DataType), "[]"))
@@ -180,14 +173,14 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 				if c, ok := a.constants[v.Lexeme]; ok {
 					v = c.Value
 				} else {
-					return a.newError("Unknown constant.", v)
+					return a.newErrorTk("Unknown constant.", v)
 				}
 			}
 			if valueType == "" {
 				valueType = v.DataType
 			}
 			if v.DataType != valueType {
-				return a.newError(fmt.Sprintf("Wrong data type. Expected %s.", valueType), token)
+				return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected %s.", valueType), token)
 			}
 			list.InitialValues = append(list.InitialValues, fmt.Sprintf("%v", v.Literal))
 		}
@@ -196,7 +189,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		}
 
 		if list.DataType == "" {
-			return a.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
+			return a.newErrorTk("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 		}
 
 		a.lists[list.Name.Lexeme] = list
@@ -210,7 +203,6 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		if variable.DataType != "" && stmt.Value == nil {
 			stmt.AssignToken = parser.Token{
 				Type: parser.TkAssign,
-				Line: stmt.Name.Line,
 			}
 			switch variable.DataType {
 			case parser.DTNumber:
@@ -219,7 +211,6 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 						Type:     parser.TkLiteral,
 						Lexeme:   "0",
 						Literal:  0,
-						Line:     stmt.Name.Line,
 						DataType: parser.DTNumber,
 					},
 				}
@@ -229,12 +220,11 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 						Type:     parser.TkLiteral,
 						Lexeme:   "",
 						Literal:  "",
-						Line:     stmt.Name.Line,
 						DataType: parser.DTString,
 					},
 				}
 			default:
-				return a.newError("Unknown type.", stmt.Name)
+				return a.newErrorTk("Unknown type.", stmt.Name)
 			}
 		}
 
@@ -256,7 +246,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 
 		if variable.DataType == "" {
 			delete(a.variables, stmt.Name.Lexeme)
-			return a.newError("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
+			return a.newErrorTk("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 		}
 
 		variable.declared = true
@@ -285,7 +275,7 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	argumentNames := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
 		if slices.Contains(argumentNames, p.Name.Lexeme) {
-			return a.newError("Duplicate parameter name.", p.Name)
+			return a.newErrorTk("Duplicate parameter name.", p.Name)
 		}
 
 		id := uuid.NewString()
@@ -325,16 +315,16 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 
 func (a *analyzer) assertNotDeclared(name parser.Token) error {
 	if v, ok := a.variables[name.Lexeme]; ok {
-		return a.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Pos.Line+1), name)
 	}
 	if l, ok := a.lists[name.Lexeme]; ok {
-		return a.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Pos.Line+1), name)
 	}
 	if c, ok := a.constants[name.Lexeme]; ok {
-		return a.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Pos.Line+1), name)
 	}
 	if f, ok := a.functions[name.Lexeme]; ok {
-		return a.newError(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Pos.Line+1), name)
 	}
 	return nil
 }
@@ -342,28 +332,28 @@ func (a *analyzer) assertNotDeclared(name parser.Token) error {
 func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 	ev, ok := Events[stmt.Name.Lexeme]
 	if !ok {
-		return a.newError("Unknown event.", stmt.Name)
+		return a.newErrorStmt("Unknown event.", stmt)
 	}
 	if ev.Param == nil && stmt.Parameter != (parser.Token{}) {
-		return a.newError("This event does not take a parameter.", stmt.Parameter)
+		return a.newErrorTk("This event does not take a parameter.", stmt.Parameter)
 	}
 	if ev.Param != nil {
 		if stmt.Parameter == (parser.Token{}) {
-			return a.newError(fmt.Sprintf("Please provide the %s parameter of type %s.", ev.Param.Name, ev.Param.Type), stmt.Name)
+			return a.newErrorStmt(fmt.Sprintf("Please provide the %s parameter of type %s.", ev.Param.Name, ev.Param.Type), stmt)
 		}
 		var value any
 		if stmt.Parameter.Type == parser.TkIdentifier {
 			if constant, ok := a.constants[stmt.Parameter.Lexeme]; ok {
 				if constant.Type != ev.Param.Type {
-					return a.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
+					return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
 				}
 				value = constant.Value.Literal
 			} else {
-				return a.newError("Unknown constant.", stmt.Parameter)
+				return a.newErrorTk("Unknown constant.", stmt.Parameter)
 			}
 		} else {
 			if stmt.Parameter.DataType != ev.Param.Type {
-				return a.newError(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
+				return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
 			}
 		}
 
@@ -380,7 +370,7 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 				for i, o := range ev.ParamOptions {
 					strOptions[i] = fmt.Sprintf("%v", o)
 				}
-				return a.newError(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
+				return a.newErrorTk(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
 			}
 		}
 	}
@@ -395,7 +385,7 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 
 func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if a.unreachable {
-		a.newWarning("Unreachable code.", stmt.Name)
+		a.newWarningStmt("Unreachable code.", stmt)
 		return nil
 	}
 
@@ -403,7 +393,7 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		f.used = true
 
 		if len(stmt.Parameters) != len(f.Params) {
-			return a.newError("Wrong argument count.", stmt.Name)
+			return a.newErrorStmt("Wrong argument count.", stmt)
 		}
 
 		var err error
@@ -413,23 +403,16 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 				return err
 			}
 			if p.Type() != f.Params[i].Type.DataType {
-				token := stmt.Name
-				if l, ok := p.(*parser.ExprLiteral); ok {
-					token = l.Token
-				}
-				if c, ok := p.(*parser.ExprIdentifier); ok {
-					token = c.Name
-				}
-				return a.newError(fmt.Sprintf("Expected %s parameter '%s'.", f.Params[i].Type.DataType, f.Params[i].Name.Lexeme), token)
+				return a.newErrorExpr(fmt.Sprintf("Expected %s parameter '%s'.", f.Params[i].Type.DataType, f.Params[i].Name.Lexeme), p)
 			}
 		}
 	} else {
 		fn, ok := FuncCalls[stmt.Name.Lexeme]
 		if !ok {
 			if _, ok := ExprFuncCalls[stmt.Name.Lexeme]; ok {
-				return a.newError("Only functions which don't return a value are allowed in this context.", stmt.Name)
+				return a.newErrorStmt("Only functions which don't return a value are allowed in this context.", stmt)
 			}
-			return a.newError("Unknown function.", stmt.Name)
+			return a.newErrorTk("Unknown function.", stmt.Name)
 		}
 		validSignature := false
 
@@ -466,7 +449,7 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 				}
 				signatures[i] = "(" + sig.String() + ")"
 			}
-			return a.newError(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt.Name)
+			return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
 		}
 	}
 	return nil
@@ -474,7 +457,7 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 
 func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 	if a.unreachable {
-		a.newWarning("Unreachable code.", stmt.Operator)
+		a.newWarningStmt("Unreachable code.", stmt)
 		return nil
 	}
 
@@ -484,19 +467,19 @@ func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 			return err
 		}
 		if stmt.Value.Type() != assignment.DataType {
-			return a.newError(fmt.Sprintf("Cannot assign %s value to %s variable.", stmt.Value.Type(), assignment.DataType), stmt.Operator)
+			return a.newErrorExpr(fmt.Sprintf("Cannot assign %s value to %s variable.", stmt.Value.Type(), assignment.DataType), stmt.Value)
 		}
 	} else {
 		v, ok := a.variables[stmt.Variable.Lexeme]
 		if !ok {
-			return a.newError("Unknown variable.", stmt.Variable)
+			return a.newErrorTk("Unknown variable.", stmt.Variable)
 		}
 		err := stmt.Value.Accept(a)
 		if err != nil {
 			return err
 		}
 		if stmt.Value.Type() != v.DataType {
-			return a.newError(fmt.Sprintf("Cannot assign %s value to %s variable.", stmt.Value.Type(), v.DataType), stmt.Operator)
+			return a.newErrorExpr(fmt.Sprintf("Cannot assign %s value to %s variable.", stmt.Value.Type(), v.DataType), stmt.Value)
 		}
 	}
 	return nil
@@ -504,7 +487,7 @@ func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 
 func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 	if a.unreachable {
-		a.newWarning("Unreachable code.", stmt.Keyword)
+		a.newWarningStmt("Unreachable code.", stmt)
 		return nil
 	}
 
@@ -513,7 +496,7 @@ func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 		return err
 	}
 	if stmt.Condition.Type() != parser.DTBool {
-		return a.newError("Expected boolean condition.", stmt.Keyword)
+		return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
 	}
 
 	for _, s := range stmt.Body {
@@ -534,7 +517,7 @@ func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 
 func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 	if a.unreachable {
-		a.newWarning("Unreachable code.", stmt.Keyword)
+		a.newWarningStmt("Unreachable code.", stmt)
 		return nil
 	}
 	switch stmt.Keyword.Type {
@@ -544,7 +527,7 @@ func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 			return err
 		}
 		if stmt.Condition.Type() != parser.DTBool {
-			return a.newError("Expected boolean condition.", stmt.Keyword)
+			return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
 		}
 	case parser.TkFor:
 		err := stmt.Condition.Accept(a)
@@ -552,10 +535,10 @@ func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 			return err
 		}
 		if stmt.Condition.Type() != parser.DTNumber {
-			return a.newError("Expected number.", stmt.Keyword)
+			return a.newErrorExpr("Expected number.", stmt.Condition)
 		}
 	default:
-		return a.newError("Unknown loop type.", stmt.Keyword)
+		return a.newErrorTk("Unknown loop type.", stmt.Keyword)
 	}
 	for _, s := range stmt.Body {
 		err := s.Accept(a)
@@ -583,7 +566,7 @@ func (a *analyzer) VisitIdentifier(expr *parser.ExprIdentifier) error {
 
 	if variable, ok := a.variables[expr.Name.Lexeme]; ok {
 		if !variable.declared {
-			return a.newError("Cannot use variable in its own initializer.", expr.Name)
+			return a.newErrorTk("Cannot use variable in its own initializer.", expr.Name)
 		}
 		variable.used = true
 		expr.ReturnType = variable.DataType
@@ -603,16 +586,16 @@ func (a *analyzer) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		return nil
 	}
 
-	return a.newError("Unknown identifier.", expr.Name)
+	return a.newErrorTk("Unknown identifier.", expr.Name)
 }
 
 func (a *analyzer) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	fn, ok := ExprFuncCalls[expr.Name.Lexeme]
 	if !ok {
 		if _, ok := FuncCalls[expr.Name.Lexeme]; ok {
-			return a.newError("Only functions which return a value are allowed in this context.", expr.Name)
+			return a.newErrorExpr("Only functions which return a value are allowed in this context.", expr)
 		}
-		return a.newError("Unknown function.", expr.Name)
+		return a.newErrorTk("Unknown function.", expr.Name)
 	}
 	validSignature := false
 
@@ -650,7 +633,7 @@ signatures:
 			}
 			signatures[i] = "(" + sig.String() + ")"
 		}
-		return a.newError(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), expr.Name)
+		return a.newErrorExpr(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), expr)
 	}
 	return nil
 }
@@ -661,11 +644,15 @@ func (a *analyzer) VisitTypeCast(expr *parser.ExprTypeCast) error {
 	if err != nil {
 		return err
 	}
-	if expr.Target.DataType == parser.DTBool || expr.Value.Type() == parser.DTBool {
-		return a.newError("Cannot cast from or to a boolean.", expr.Target)
+	if expr.Target.DataType == parser.DTBool {
+		return a.newErrorTk("Cannot cast to a boolean.", expr.Target)
 	}
+	if expr.Value.Type() == parser.DTBool {
+		return a.newErrorExpr("Cannot cast from a boolean.", expr.Value)
+	}
+
 	if strings.HasSuffix(string(expr.Value.Type()), "[]") && expr.Target.DataType != parser.DTString {
-		return a.newError(fmt.Sprintf("Cannot cast list to %s.", expr.Target.DataType), expr.Target)
+		return a.newErrorExpr(fmt.Sprintf("Cannot cast list to %s.", expr.Target.DataType), expr.Value)
 	}
 	expr.ReturnType = dataType
 	return nil
@@ -691,7 +678,7 @@ func (a *analyzer) VisitUnary(expr *parser.ExprUnary) error {
 		return err
 	}
 	if expr.Right.Type() != dataType {
-		return a.newError(fmt.Sprintf("Expected operand of type %s.", dataType), expr.Operator)
+		return a.newErrorExpr(fmt.Sprintf("Expected operand of type %s.", dataType), expr.Right)
 	}
 	expr.ReturnType = dataType
 	return nil
@@ -712,8 +699,11 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 		}
 		rightType := expr.Right.Type()
 
-		if leftType == parser.DTBool || rightType == parser.DTBool {
-			return a.newError("Expected number or string operands.", expr.Operator)
+		if leftType == parser.DTBool {
+			return a.newErrorExpr("Expected number or string operand.", expr.Left)
+		}
+		if rightType == parser.DTBool {
+			return a.newErrorExpr("Expected number or string operand.", expr.Right)
 		}
 
 		if expr.Operator.Type == parser.TkEqual {
@@ -746,7 +736,7 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 			return err
 		}
 		if expr.Left.Type() != operandDataType {
-			return a.newError(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Operator)
+			return a.newErrorExpr(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Left)
 		}
 
 		err = expr.Right.Accept(a)
@@ -754,7 +744,7 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 			return err
 		}
 		if expr.Right.Type() != operandDataType {
-			return a.newError(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Operator)
+			return a.newErrorExpr(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Right)
 		}
 	}
 
@@ -762,38 +752,86 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 	return nil
 }
 
+func (a *analyzer) VisitGrouping(expr *parser.ExprGrouping) error {
+	return expr.Expr.Accept(a)
+}
+
 type AnalyzerError struct {
-	Token   parser.Token
+	Start   parser.Position
+	End     parser.Position
 	Message string
-	Line    []rune
 	Warning bool
 }
 
-func (p AnalyzerError) Error() string {
-	length := len([]rune(p.Token.Lexeme))
-	if p.Token.Type == parser.TkNewLine {
-		length = 1
-	}
-	if p.Warning {
-		return generateWarningText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+func (e AnalyzerError) Error() string {
+	if e.Warning {
+		return "WARNING: " + e.Message
 	} else {
-		return generateErrorText(p.Message, p.Line, p.Token.Line, p.Token.Column, p.Token.Column+length)
+		return "ERROR: " + e.Message
 	}
 }
 
-func (a *analyzer) newError(message string, token parser.Token) error {
+func (a *analyzer) newErrorTk(message string, token parser.Token) error {
+	end := token.Pos
+	end.Column += len(token.Lexeme)
+	if token.Type == parser.TkNewLine {
+		end.Column += 1
+	}
 	return AnalyzerError{
-		Token:   token,
+		Start:   token.Pos,
+		End:     end,
 		Message: message,
-		Line:    a.lines[token.Line],
 	}
 }
 
-func (a *analyzer) newWarning(message string, token parser.Token) {
-	a.warnings = append(a.warnings, AnalyzerError{
-		Token:   token,
+func (a *analyzer) newErrorExpr(message string, expr parser.Expr) error {
+	start, end := expr.Position()
+	return AnalyzerError{
+		Start:   start,
+		End:     end,
 		Message: message,
-		Line:    a.lines[token.Line],
+	}
+}
+
+func (a *analyzer) newErrorStmt(message string, stmt parser.Stmt) error {
+	start, end := stmt.Position()
+	return AnalyzerError{
+		Start:   start,
+		End:     end,
+		Message: message,
+	}
+}
+
+func (a *analyzer) newWarningTk(message string, token parser.Token) {
+	end := token.Pos
+	end.Column += len(token.Lexeme)
+	if token.Type == parser.TkNewLine {
+		end.Column += 1
+	}
+	a.warnings = append(a.warnings, AnalyzerError{
+		Start:   token.Pos,
+		End:     end,
+		Message: message,
+		Warning: true,
+	})
+}
+
+func (a *analyzer) newWarningExpr(message string, expr parser.Expr) {
+	start, end := expr.Position()
+	a.warnings = append(a.warnings, AnalyzerError{
+		Start:   start,
+		End:     end,
+		Message: message,
+		Warning: true,
+	})
+}
+
+func (a *analyzer) newWarningStmt(message string, stmt parser.Stmt) {
+	start, end := stmt.Position()
+	a.warnings = append(a.warnings, AnalyzerError{
+		Start:   start,
+		End:     end,
+		Message: message,
 		Warning: true,
 	})
 }

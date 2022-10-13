@@ -63,7 +63,6 @@ func update() {
 func updateWindows() {
 	fmt.Println("Downloading latest installer...")
 	cmd := exec.Command("Powershell.exe", "-Command", "iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex")
-	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -87,7 +86,6 @@ func updateUnix() {
 	}
 
 	cmd := exec.Command("bash", "-c", installCmd)
-	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()

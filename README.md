@@ -6,7 +6,7 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 ## [Documentation](docs/documentation.md)
 
-## Installation & Updating
+## Installation
 
 ### Windows
 
@@ -26,6 +26,14 @@ curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash
 
 ```bash
 wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash
+```
+
+## Uninstallation
+
+To remove embe from your system run:
+
+```bash
+embe uninstall
 ```
 
 ## Editor Support

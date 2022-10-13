@@ -128,7 +128,3 @@ func run() {
 func printVersion() {
 	fmt.Println("embe", version)
 }
-
-func uninstall() {
-	panic("not implemented")
-}

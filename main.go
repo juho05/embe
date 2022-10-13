@@ -14,13 +14,36 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-var stderr = colorable.NewColorableStderr()
+var (
+	stderr         = colorable.NewColorableStderr()
+	version string = "dev"
+)
 
 func main() {
 	if len(os.Args) == 1 {
-		fmt.Fprintf(os.Stderr, "USAGE: %s <files...>\n", os.Args[0])
+		fmt.Fprintf(stderr, "Compile embe source code to .mblock files.\n\n")
+		fmt.Fprintf(stderr, "USAGE:\n  %s <files...>\n\n", os.Args[0])
+		fmt.Fprintln(stderr, "COMMANDS:")
+		fmt.Fprintln(stderr, "  version    print the embe version number")
+		fmt.Fprintln(stderr, "  update     update embe to the latest release version")
+		fmt.Fprintln(stderr, "  uninstall  uninstall embe")
 		os.Exit(1)
 	}
+
+	switch os.Args[1] {
+	case "version":
+		printVersion()
+	case "update":
+		update()
+	case "uninstall":
+		uninstall()
+	default:
+		run()
+	}
+}
+
+func run() {
+	versionCheck(true, false)
 
 	var inFileNameBase string
 
@@ -100,4 +123,12 @@ func main() {
 		printError(err, nil)
 		os.Exit(1)
 	}
+}
+
+func printVersion() {
+	fmt.Println("embe", version)
+}
+
+func uninstall() {
+	panic("not implemented")
 }

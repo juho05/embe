@@ -64,4 +64,5 @@ jobs:
         asset_name: embe-${{matrix.goos}}-${{matrix.goarch}}
         extra_files: LICENSE README.md
         release_tag: ${{ steps.tags.outputs.tag }}
+        ldflags: -X "main.version=${{ steps.tags.outputs.tag }}"
         md5sum: false

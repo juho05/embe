@@ -36,7 +36,7 @@ func (s *StmtVarDecl) Position() (start, end Position) {
 	} else {
 		end = Position{
 			Line:   start.Line,
-			Column: start.Column + len(s.Name.Lexeme),
+			Column: start.Column + len(s.Name.Lexeme) - 1,
 		}
 	}
 	return start, end
@@ -55,7 +55,7 @@ func (s *StmtConstDecl) Accept(visitor StmtVisitor) error {
 func (s *StmtConstDecl) Position() (start, end Position) {
 	start = s.Name.Pos
 	end = s.Value.Pos
-	end.Column += len(s.Value.Lexeme)
+	end.Column += len(s.Value.Lexeme) - 1
 	return start, end
 }
 
@@ -94,7 +94,7 @@ func (s *StmtEvent) Accept(visitor StmtVisitor) error {
 
 func (s *StmtEvent) Position() (start, end Position) {
 	end = s.Name.Pos
-	end.Column += len(s.Name.Lexeme)
+	end.Column += len(s.Name.Lexeme) - 1
 	return s.At.Pos, end
 }
 
@@ -159,7 +159,7 @@ func (s *StmtLoop) Position() (start, end Position) {
 	} else {
 		end = Position{
 			Line:   s.Keyword.Pos.Line,
-			Column: s.Keyword.Pos.Column + len(s.Keyword.Lexeme),
+			Column: s.Keyword.Pos.Column + len(s.Keyword.Lexeme) - 1,
 		}
 	}
 	return s.Keyword.Pos, end

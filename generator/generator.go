@@ -772,7 +772,7 @@ func (e GenerateError) Error() string {
 
 func (g *generator) newErrorTk(message string, token parser.Token) error {
 	end := token.Pos
-	end.Column += len(token.Lexeme)
+	end.Column += len(token.Lexeme) - 1
 	if token.Type == parser.TkNewLine {
 		end.Column += 1
 	}
@@ -803,7 +803,7 @@ func (g *generator) newErrorStmt(message string, stmt parser.Stmt) error {
 
 func (g *generator) newWarningTk(message string, token parser.Token) {
 	end := token.Pos
-	end.Column += len(token.Lexeme)
+	end.Column += len(token.Lexeme) - 1
 	if token.Type == parser.TkNewLine {
 		end.Column += 1
 	}

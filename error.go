@@ -34,6 +34,9 @@ func generateErrorText(message string, lines [][]rune, start, end parser.Positio
 		if endCol > len(line) {
 			endCol = len(line)
 		}
+		if startCol < 0 || startCol >= endCol {
+			startCol = 0
+		}
 
 		errorLine := string(line[:startCol])
 		errorLine = errorLine + errColor

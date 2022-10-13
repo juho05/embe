@@ -193,9 +193,17 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		}
 
 		if list.DataType == "boolean[]" {
+			if start, _ := stmt.Value.Position(); start == stmt.Name.Pos {
+				stmt.Value = nil
+				return a.newErrorStmt("Boolean lists are not supported", stmt)
+			}
 			return a.newErrorExpr("Boolean lists are not supported.", stmt.Value)
 		}
 		if list.DataType == "image[]" {
+			if start, _ := stmt.Value.Position(); start == stmt.Name.Pos {
+				stmt.Value = nil
+				return a.newErrorStmt("Image lists are not supported", stmt)
+			}
 			return a.newErrorExpr("Image lists are not supported.", stmt.Value)
 		}
 
@@ -840,7 +848,7 @@ func (e AnalyzerError) Error() string {
 
 func (a *analyzer) newErrorTk(message string, token parser.Token) error {
 	end := token.Pos
-	end.Column += len(token.Lexeme)
+	end.Column += len(token.Lexeme) - 1
 	if token.Type == parser.TkNewLine {
 		end.Column += 1
 	}
@@ -871,7 +879,7 @@ func (a *analyzer) newErrorStmt(message string, stmt parser.Stmt) error {
 
 func (a *analyzer) newWarningTk(message string, token parser.Token) {
 	end := token.Pos
-	end.Column += len(token.Lexeme)
+	end.Column += len(token.Lexeme) - 1
 	if token.Type == parser.TkNewLine {
 		end.Column += 1
 	}

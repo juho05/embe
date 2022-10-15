@@ -109,7 +109,7 @@ func (s *StmtFuncCall) Accept(visitor StmtVisitor) error {
 }
 
 func (s *StmtFuncCall) Position() (start, end Position) {
-	return s.Name.Pos, end
+	return s.Name.Pos, s.CloseParen.Pos
 }
 
 type StmtAssignment struct {

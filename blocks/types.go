@@ -212,7 +212,34 @@ const (
 
 // Display+
 const (
-	SpriteDrawPixelWithMatrix16 BlockType = "cyberpi_sprite.cyberpi_sprite_draw_pixel_with_matrix16"
+	SpriteSetBackgroundFillColor     BlockType = "cyberpi_sprite.cyberpi_sprite_background_fill_with_color"
+	SpriteSetBackgroundFillColorRGB  BlockType = "cyberpi_sprite.cyberpi_sprite_background_fill_with_rgb"
+	SpriteDrawPixelWithMatrix16      BlockType = "cyberpi_sprite.cyberpi_sprite_draw_pixel_with_matrix16"
+	SpriteDrawPixelWithIcon          BlockType = "cyberpi_sprite.cyberpi_sprite_draw_pixel_with_icon"
+	SpriteDrawPixelWithIconInputMenu BlockType = "cyberpi_sprite.cyberpi_sprite_draw_pixel_with_icon_inputMenu_2_menu"
+	SpriteDrawText                   BlockType = "cyberpi_sprite.cyberpi_sprite_draw_text"
+	SpriteDrawQR                     BlockType = "cyberpi_sprite.cyberpi_sprite_draw_QR"
+	SpriteMirrorWithAxis             BlockType = "cyberpi_sprite.cyberpi_mirror_with_axis"
+	SpriteDelete                     BlockType = "cyberpi_sprite.cyberpi_sprite_delete"
+	SpriteSetAlign                   BlockType = "cyberpi_sprite.cyberpi_sprite_set_align"
+	SpriteSetAlignInputMenu          BlockType = "cyberpi_sprite.cyberpi_sprite_set_align_inputMenu_2_menu"
+	SpriteMoveXY                     BlockType = "cyberpi_sprite.cyberpi_sprite_move_x_and_y"
+	SpriteMoveTo                     BlockType = "cyberpi_sprite.cyberpi_sprite_move_to"
+	SpriteMoveRandom                 BlockType = "cyberpi_sprite.cyberpi_sprite_move_random"
+	SpriteRotate                     BlockType = "cyberpi_sprite.cyberpi_sprite_rotate"
+	SpriteRotateTo                   BlockType = "cyberpi_sprite.cyberpi_sprite_rotate_to"
+	SpriteSetSize                    BlockType = "cyberpi_sprite.cyberpi_sprite_set_size"
+	SpriteSetColorWithColor          BlockType = "cyberpi_sprite.cyberpi_sprite_set_color_with_color"
+	SpriteSetColorWithRGB            BlockType = "cyberpi_sprite.cyberpi_sprite_set_color_with_rgb"
+	SpriteCloseColor                 BlockType = "cyberpi_sprite.cyberpi_sprite_close_color"
+	SpriteShowAndHide                BlockType = "cyberpi_sprite.cyberpi_sprite_show_and_hide"
+	SpriteZMinMax                    BlockType = "cyberpi_sprite.cyberpi_sprite_z_max_and_min"
+	SpriteZUpDown                    BlockType = "cyberpi_sprite.cyberpi_sprite_z_up_and_down"
+	SpriteScreenRender               BlockType = "cyberpi_sprite.cyberpi_screen_render"
+	SpriteIsTouchOtherSprite         BlockType = "cyberpi_sprite.cyberpi_sprite_is_touch_other_sprite"
+	SpriteIsTouchEdge                BlockType = "cyberpi_sprite.cyberpi_sprite_is_touch_edge"
+	SpriteGetColorEqualWithRGB       BlockType = "cyberpi_sprite.cyberpi_screen_get_color_equal_with_rgb"
+	SpriteGetXYRotationSizeAlign     BlockType = "cyberpi_sprite.cyberpi_sprite_get_x_y_rotation_size_align"
 )
 
 // Control

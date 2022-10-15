@@ -87,4 +87,13 @@ func init() {
 	newExprFuncCall("lists.indexOf", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("lists.length", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("lists.contains", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTBool})
+
+	newExprFuncCall("display.pixelIsColor", Signature{Params: []Param{{Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sprite.touchesSprite", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}, {Name: "other", Type: parser.DTImage}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sprite.touchesEdge", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTBool})
+	newExprFuncCall("sprite.positionX", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sprite.positionY", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sprite.rotation", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sprite.scale", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("sprite.anchor", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTString})
 }

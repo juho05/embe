@@ -177,7 +177,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		g.blockID = block.ID
 	} else {
 		fn := FuncCalls[stmt.Name.Lexeme]
-		block, err := fn.Fn(g, stmt)
+		block, err := fn(g, stmt)
 		if err != nil {
 			return err
 		}
@@ -382,7 +382,7 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 		}
 		return g.newErrorTk("Unknown function.", expr.Name)
 	}
-	block, err := fn.Fn(g, expr)
+	block, err := fn(g, expr)
 	if err != nil {
 		return err
 	}
@@ -391,6 +391,9 @@ func (g *generator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 }
 
 func (g *generator) VisitTypeCast(expr *parser.ExprTypeCast) error {
+	if expr.Target.DataType == parser.DTImage {
+		return g.newErrorExpr("Image literals are not allowed in this context.", expr)
+	}
 	return expr.Value.Accept(g)
 }
 
@@ -578,6 +581,9 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 				return []any{3, []any{13, list.Name.Lexeme, list.ID}, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil
 			}
 			variable := g.definitions.Variables[g.variableName]
+			if variable.DataType == parser.DTImage {
+				return []any{2, []any{12, variable.Name.Lexeme, variable.ID}}, nil
+			}
 			return []any{3, []any{12, variable.Name.Lexeme, variable.ID}, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil
 		}
 		return []any{3, g.blockID, []any{intFromDT(expr.Type(), valueIntOverride), ""}}, nil

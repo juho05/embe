@@ -44,110 +44,113 @@ func (s Signature) String() string {
 	return signature
 }
 
-type FuncCall struct {
-	Name       string
-	Signatures []Signature
-	Fn         func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
-}
+type FuncCall func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
 
-var FuncCalls = make(map[string]FuncCall)
+var FuncCalls = map[string]FuncCall{
+	"audio.stop":           funcAudioStop,
+	"audio.playBuzzer":     funcAudioPlayBuzzer,
+	"audio.playClip":       funcAudioPlayClip,
+	"audio.playInstrument": funcAudioPlayInstrument,
+	"audio.playNote":       funcAudioPlayNote,
+	"audio.record.start":   funcAudioRecordingStart,
+	"audio.record.stop":    funcAudioRecordingStop,
+	"audio.record.play":    funcAudioRecordingPlay,
 
-func newFuncCall(name string, fn func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error), signatures ...[]Param) {
-	if len(signatures) == 0 {
-		signatures = append(signatures, []Param{})
-	}
+	"lights.back.playAnimation":   funcLEDPlayAnimation,
+	"lights.front.setBrightness":  funcLEDSetAmbientBrightness("set"),
+	"lights.front.addBrightness":  funcLEDSetAmbientBrightness("add"),
+	"lights.front.displayEmotion": funcLEDDisplayEmotion,
+	"lights.front.deactivate":     funcLEDDeactivateAmbient,
+	"lights.bottom.deactivate":    funcLEDDeactivateFill,
+	"lights.bottom.setColor":      funcLEDSetFillColor,
+	"lights.back.display":         funcLEDDisplay,
+	"lights.back.displayColor":    funcLEDDisplayColor,
+	"lights.back.displayColorFor": funcLEDDisplayColorFor,
+	"lights.back.deactivate":      funcLEDDeactivate,
+	"lights.back.move":            funcLEDMove,
 
-	call := FuncCall{
-		Name:       name,
-		Signatures: make([]Signature, len(signatures)),
-		Fn:         fn,
-	}
+	"display.print":                 funcDisplayPrint(false),
+	"display.println":               funcDisplayPrint(true),
+	"display.setFontSize":           funcDisplaySetFontSize,
+	"display.setColor":              funcDisplaySetColor,
+	"display.showLabel":             funcDisplayShowLabel,
+	"display.lineChart.addData":     funcDisplayLineChartAddData,
+	"display.lineChart.setInterval": funcDisplayLineChartSetInterval,
+	"display.barChart.addData":      funcDisplayBarChartAddData,
+	"display.table.addData":         funcDisplayTableAddData,
+	"display.setOrientation":        funcDisplaySetOrientation,
+	"display.clear":                 funcDisplayClear,
 
-	for i, s := range signatures {
-		call.Signatures[i].FuncName = name
-		call.Signatures[i].Params = s
-	}
+	"display.setBackgroundColor": funcDisplaySetBackgroundColor,
+	"display.render":             funcDisplayRender,
 
-	FuncCalls[name] = call
-}
+	"sprite.fromIcon":   funcSpriteFromIcon,
+	"sprite.fromText":   funcSpriteFromText,
+	"sprite.fromQR":     funcSpriteFromQR,
+	"sprite.flipH":      funcSpriteFlip("x"),
+	"sprite.flipV":      funcSpriteFlip("y"),
+	"sprite.delete":     funcSpriteDelete,
+	"sprite.setAnchor":  funcSpriteSetAnchor,
+	"sprite.moveLeft":   funcSpriteMove("left"),
+	"sprite.moveRight":  funcSpriteMove("x"),
+	"sprite.moveUp":     funcSpriteMove("up"),
+	"sprite.moveDown":   funcSpriteMove("y"),
+	"sprite.moveTo":     funcSpriteMoveTo,
+	"sprite.moveRandom": funcSpriteMoveRandom,
+	"sprite.rotate":     funcSpriteRotate,
+	"sprite.rotateTo":   funcSpriteRotateTo,
+	"sprite.setScale":   funcSpriteSetScale,
+	"sprite.setColor":   funcSpriteSetColor,
+	"sprite.resetColor": funcSpriteResetColor,
+	"sprite.show":       funcSpriteShowHide("show"),
+	"sprite.hide":       funcSpriteShowHide("hide"),
+	"sprite.toFront":    funcSpriteSetLayer("z_max"),
+	"sprite.toBack":     funcSpriteSetLayer("z_min"),
+	"sprite.layerUp":    funcSpriteChangeLayer("z_up"),
+	"sprite.layerDown":  funcSpriteChangeLayer("z_down"),
 
-func init() {
-	newFuncCall("audio.stop", funcAudioStop)
-	newFuncCall("audio.playBuzzer", funcAudioPlayBuzzer, []Param{{Name: "frequency", Type: parser.DTNumber}}, []Param{{Name: "frequency", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("audio.playClip", funcAudioPlayClip, []Param{{Name: "name", Type: parser.DTString}}, []Param{{Name: "name", Type: parser.DTString}, {Name: "block", Type: parser.DTBool}})
-	newFuncCall("audio.playInstrument", funcAudioPlayInstrument, []Param{{Name: "name", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("audio.playNote", funcAudioPlayNote, []Param{{Name: "name", Type: parser.DTString}, {Name: "octave", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "note", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("audio.record.start", funcAudioRecordingStart)
-	newFuncCall("audio.record.stop", funcAudioRecordingStop)
-	newFuncCall("audio.record.play", funcAudioRecordingPlay, []Param{}, []Param{{Name: "block", Type: parser.DTBool}})
+	"net.broadcast":  funcNetBroadcast,
+	"net.setChannel": funcNetSetChannel,
+	"net.connect":    funcNetConnect,
+	"net.reconnect":  funcNetReconnect,
+	"net.disconnect": funcNetDisconnect,
 
-	newFuncCall("lights.back.playAnimation", funcLEDPlayAnimation, []Param{{Name: "name", Type: parser.DTString}})
-	newFuncCall("lights.front.setBrightness", funcLEDSetAmbientBrightness("set"), []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
-	newFuncCall("lights.front.addBrightness", funcLEDSetAmbientBrightness("add"), []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
-	newFuncCall("lights.front.displayEmotion", funcLEDDisplayEmotion, []Param{{Name: "emotion", Type: parser.DTString}})
-	newFuncCall("lights.front.deactivate", funcLEDDeactivateAmbient, []Param{}, []Param{{Name: "light", Type: parser.DTNumber}})
-	newFuncCall("lights.bottom.deactivate", funcLEDDeactivateFill)
-	newFuncCall("lights.bottom.setColor", funcLEDSetFillColor, []Param{{Name: "color", Type: parser.DTString}})
-	newFuncCall("lights.back.display", funcLEDDisplay, []Param{{Name: "color1", Type: parser.DTString}, {Name: "color2", Type: parser.DTString}, {Name: "color3", Type: parser.DTString}, {Name: "color4", Type: parser.DTString}, {Name: "color5", Type: parser.DTString}})
-	newFuncCall("lights.back.displayColor", funcLEDDisplayColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
-	newFuncCall("lights.back.displayColorFor", funcLEDDisplayColorFor, []Param{{Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "color", Type: parser.DTString}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "led", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("lights.back.deactivate", funcLEDDeactivate, []Param{}, []Param{{Name: "led", Type: parser.DTNumber}})
-	newFuncCall("lights.back.move", funcLEDMove, []Param{{Name: "n", Type: parser.DTNumber}})
+	"sensors.resetAngle":    funcSensorsResetAngle,
+	"sensors.resetYawAngle": funcSensorsResetYawAngle,
+	"sensors.defineColor":   funcSensorsDefineColor,
 
-	newFuncCall("display.print", funcDisplayPrint(false), []Param{{Name: "text", Type: parser.DTString}})
-	newFuncCall("display.println", funcDisplayPrint(true), []Param{{Name: "text", Type: parser.DTString}})
-	newFuncCall("display.setFontSize", funcDisplaySetFontSize, []Param{{Name: "size", Type: parser.DTNumber}})
-	newFuncCall("display.setColor", funcDisplaySetColor, []Param{{Name: "color", Type: parser.DTString}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}})
-	newFuncCall("display.showLabel", funcDisplayShowLabel, []Param{{Name: "label", Type: parser.DTNumber}, {Name: "text", Type: parser.DTString}, {Name: "location", Type: parser.DTString}, {Name: "size", Type: parser.DTNumber}}, []Param{{Name: "label", Type: parser.DTString}, {Name: "text", Type: parser.DTString}, {Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "size", Type: parser.DTNumber}})
-	newFuncCall("display.lineChart.addData", funcDisplayLineChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})
-	newFuncCall("display.lineChart.setInterval", funcDisplayLineChartSetInterval, []Param{{Name: "interval", Type: parser.DTNumber}})
-	newFuncCall("display.barChart.addData", funcDisplayBarChartAddData, []Param{{Name: "value", Type: parser.DTNumber}})
-	newFuncCall("display.table.addData", funcDisplayTableAddData, []Param{{Name: "text", Type: parser.DTString}, {Name: "row", Type: parser.DTNumber}, {Name: "column", Type: parser.DTNumber}})
-	newFuncCall("display.setOrientation", funcDisplaySetOrientation, []Param{{Name: "orientation", Type: parser.DTNumber}})
-	newFuncCall("display.clear", funcDisplayClear)
+	"motors.run":                  funcMotorsRun("forward"),
+	"motors.runBackward":          funcMotorsRun("backward"),
+	"motors.moveDistance":         funcMotorsRunDistance("forward"),
+	"motors.moveDistanceBackward": funcMotorsRunDistance("backward"),
+	"motors.turnLeft":             funcMotorsTurn("cw"),
+	"motors.turnRight":            funcMotorsTurn("ccw"),
+	"motors.rotateRPM":            funcMotorsRotate("speed"),
+	"motors.rotatePower":          funcMotorsRotate("power"),
+	"motors.rotateAngle":          funcMotorsRotateAngle,
+	"motors.driveRPM":             funcMotorsDrive("speed"),
+	"motors.drivePower":           funcMotorsDrive("power"),
+	"motors.stop":                 funcMotorsStop,
+	"motors.resetAngle":           funcMotorsResetAngle,
+	"motors.lock":                 funcMotorsSetLock("1"),
+	"motors.unlock":               funcMotorsSetLock("0"),
 
-	newFuncCall("net.broadcast", funcNetBroadcast, []Param{{Name: "message", Type: parser.DTString}}, []Param{{Name: "message", Type: parser.DTString}, {Name: "value", Type: parser.DTString}})
-	newFuncCall("net.setChannel", funcNetSetChannel, []Param{{Name: "channel", Type: parser.DTNumber}})
-	newFuncCall("net.connect", funcNetConnect, []Param{{Name: "ssid", Type: parser.DTString}, {Name: "password", Type: parser.DTString}})
-	newFuncCall("net.reconnect", funcNetReconnect)
-	newFuncCall("net.disconnect", funcNetDisconnect)
+	"time.wait":       funcTimeWait,
+	"time.resetTimer": funcResetTimer,
 
-	newFuncCall("sensors.resetAngle", funcSensorsResetAngle, []Param{{Name: "axis", Type: parser.DTString}})
-	newFuncCall("sensors.resetYawAngle", funcSensorsResetYawAngle)
-	newFuncCall("sensors.defineColor", funcSensorsDefineColor, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "tolerance", Type: parser.DTNumber}})
+	"mbot.restart":             funcMBotRestart,
+	"mbot.resetParameters":     funcMBotChassisParameters("reset"),
+	"mbot.calibrateParameters": funcMBotChassisParameters("calibrate"),
 
-	newFuncCall("motors.run", funcMotorsRun("forward"), []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("motors.runBackward", funcMotorsRun("backward"), []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("motors.moveDistance", funcMotorsRunDistance("forward"), []Param{{Name: "distance", Type: parser.DTNumber}})
-	newFuncCall("motors.moveDistanceBackward", funcMotorsRunDistance("backward"), []Param{{Name: "distance", Type: parser.DTNumber}})
-	newFuncCall("motors.turnLeft", funcMotorsTurn("cw"), []Param{{Name: "angle", Type: parser.DTNumber}})
-	newFuncCall("motors.turnRight", funcMotorsTurn("ccw"), []Param{{Name: "angle", Type: parser.DTNumber}})
-	newFuncCall("motors.rotateRPM", funcMotorsRotate("speed"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("motors.rotatePower", funcMotorsRotate("power"), []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}}, []Param{{Name: "motor", Type: parser.DTString}, {Name: "power", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
-	newFuncCall("motors.rotateAngle", funcMotorsRotateAngle, []Param{{Name: "motor", Type: parser.DTString}, {Name: "angle", Type: parser.DTNumber}})
-	newFuncCall("motors.driveRPM", funcMotorsDrive("speed"), []Param{{Name: "em1RPM", Type: parser.DTNumber}, {Name: "em2RPM", Type: parser.DTNumber}})
-	newFuncCall("motors.drivePower", funcMotorsDrive("power"), []Param{{Name: "em1Power", Type: parser.DTNumber}, {Name: "em2Power", Type: parser.DTNumber}})
-	newFuncCall("motors.stop", funcMotorsStop, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
-	newFuncCall("motors.resetAngle", funcMotorsResetAngle, []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
-	newFuncCall("motors.lock", funcMotorsSetLock("1"), []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
-	newFuncCall("motors.unlock", funcMotorsSetLock("0"), []Param{}, []Param{{Name: "motor", Type: parser.DTString}})
+	"script.stop":      funcScriptStop("this script"),
+	"script.stopAll":   funcScriptStop("all"),
+	"script.stopOther": funcScriptStop("other scripts in sprite"),
 
-	newFuncCall("time.wait", funcTimeWait, []Param{{Name: "duration", Type: parser.DTNumber}}, []Param{{Name: "continueCondition", Type: parser.DTBool}})
-	newFuncCall("time.resetTimer", funcResetTimer)
-
-	newFuncCall("mbot.restart", funcMBotRestart)
-	newFuncCall("mbot.resetParameters", funcMBotChassisParameters("reset"))
-	newFuncCall("mbot.calibrateParameters", funcMBotChassisParameters("calibrate"))
-
-	newFuncCall("script.stop", funcScriptStop("this script"))
-	newFuncCall("script.stopAll", funcScriptStop("all"))
-	newFuncCall("script.stopOther", funcScriptStop("other scripts in sprite"))
-
-	newFuncCall("lists.append", funcListsAppend, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}})
-	newFuncCall("lists.remove", funcListsRemove, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}})
-	newFuncCall("lists.clear", funcListsClear, []Param{{Name: "list", Type: parser.DTStringList}})
-	newFuncCall("lists.insert", funcListsInsert, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
-	newFuncCall("lists.replace", funcListsReplace, []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
+	"lists.append":  funcListsAppend,
+	"lists.remove":  funcListsRemove,
+	"lists.clear":   funcListsClear,
+	"lists.insert":  funcListsInsert,
+	"lists.replace": funcListsReplace,
 }
 
 func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
@@ -847,6 +850,346 @@ func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks
 func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayClear, false)
 	return block, nil
+}
+
+func funcDisplaySetBackgroundColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteSetBackgroundFillColor, false)
+
+	var err error
+	if len(stmt.Parameters) == 1 {
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		block.Type = blocks.SpriteSetBackgroundFillColorRGB
+
+		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcDisplayRender(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteScreenRender, false)
+	return block, nil
+}
+
+func funcSpriteFromIcon(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteDrawPixelWithIcon, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SpriteDrawPixelWithIconInputMenu, "", "CYBERPI_SPRITE_DRAW_PIXEL_WITH_ICON_INPUTMENU_2", block.ID, stmt.Name, stmt.Parameters[1], func(v any, token parser.Token) error {
+		names := []string{"Music", "Image", "Video", "Clock", "Play", "Pause", "Next", "Prev", "Sound", "Temperature", "Light", "Motion", "Home", "Gear", "List", "Right", "Wrong", "Shut_down", "Refresh", "Trash_can", "Download", "Cloudy", "Rain", "Snow", "Train", "Rocket", "Truck", "Car", "Droplet", "Distance", "Fire", "Magnetic", "Gas", "Vision", "Color", "Overcast", "Sandstorm", "Foggy"}
+		if !slices.Contains(names, v.(string)) {
+			return g.newErrorTk(fmt.Sprintf("Unknown icon name. Available options: %s", strings.Join(names, ", ")), token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteFromText(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteDrawText, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteFromQR(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteDrawQR, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteFlip(axis string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteMirrorWithAxis, false)
+
+		var err error
+		block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_3"] = []any{axis, nil}
+
+		return block, nil
+	}
+}
+
+func funcSpriteDelete(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteDelete, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteSetAnchor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteSetAlign, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SpriteSetAlignInputMenu, "", "CYBERPI_SPRITE_SET_ALIGN_INPUTMENU_2", block.ID, stmt.Name, stmt.Parameters[1], func(v any, token parser.Token) error {
+		locations := []string{"top_left", "top_mid", "top_right", "mid_left", "center", "mid_right", "bottom_left", "bottom_mid", "bottom_right"}
+		if !slices.Contains(locations, v.(string)) {
+			return g.newErrorTk(fmt.Sprintf("Unknown anchor location. Available options: %s", strings.Join(locations, ", ")), token)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteMove(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteMoveXY, false)
+
+		var err error
+		block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_2"] = []any{direction, nil}
+
+		return block, nil
+	}
+}
+
+func funcSpriteMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteMoveTo, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteMoveRandom(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteMoveRandom, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
+}
+
+func funcSpriteRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteRotate, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteRotateTo, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteSetScale(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteSetSize, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteSetColorWithColor, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stmt.Parameters) == 2 {
+		block.Inputs["number_2"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		block.Type = blocks.SpriteSetColorWithRGB
+		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_4"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcSpriteResetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteCloseColor, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcSpriteShowHide(showHide string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteShowAndHide, false)
+
+		var err error
+		block.Inputs["inputVariable_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["string_1"] = []any{showHide, nil}
+
+		return block, nil
+	}
+}
+
+func funcSpriteSetLayer(layer string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteZMinMax, false)
+
+		var err error
+		block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_2"] = []any{layer, nil}
+
+		return block, nil
+	}
+}
+
+func funcSpriteChangeLayer(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteZUpDown, false)
+
+		var err error
+		block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_2"] = []any{direction, nil}
+
+		return block, nil
+	}
 }
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

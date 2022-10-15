@@ -11,91 +11,74 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-type ExprFuncCall struct {
-	Name       string
-	Signatures []Signature
-	Fn         func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error)
-}
+type ExprFuncCall func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error)
 
-var ExprFuncCalls = make(map[string]ExprFuncCall)
+var ExprFuncCalls = map[string]ExprFuncCall{
+	"mbot.isButtonPressed":   exprFuncIsButtonPressed,
+	"mbot.buttonPressCount":  exprFuncButtonPressCount,
+	"mbot.isJoystickPulled":  exprFuncIsJoystickPulled,
+	"mbot.joystickPullCount": exprFuncJoystickPullCount,
 
-func newExprFuncCall(name string, fn func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error), signatures ...Signature) {
-	if len(signatures) == 0 {
-		signatures = append(signatures, Signature{Params: []Param{}})
-	}
+	"lights.front.brightness": exprFuncLEDAmbientBrightness,
 
-	call := ExprFuncCall{
-		Name:       name,
-		Signatures: make([]Signature, len(signatures)),
-		Fn:         fn,
-	}
+	"sensors.isTilted":   exprFuncIsTilted,
+	"sensors.isFaceUp":   exprFuncIsFaceUp,
+	"sensors.isWaving":   exprFuncDetectAction([]string{"up", "down", "left", "right"}, "wave"),
+	"sensors.isRotating": exprFuncDetectAction([]string{"clockwise", "anticlockwise"}, ""),
+	"sensors.isFalling":  exprFuncDetectSingleAction("freefall"),
+	"sensors.isShaking":  exprFuncDetectSingleAction("shake"),
 
-	for i, s := range signatures {
-		call.Signatures[i].FuncName = name
-		call.Signatures[i].Params = s.Params
-		call.Signatures[i].ReturnType = s.ReturnType
-	}
+	"sensors.tiltAngle":     exprFuncTiltAngle([]string{"forward", "backward", "left", "right"}),
+	"sensors.rotationAngle": exprFuncTiltAngle([]string{"clockwise", "anticlockwise"}),
 
-	ExprFuncCalls[name] = call
-}
+	"sensors.acceleration": exprFuncAcceleration,
+	"sensors.rotation":     exprFuncRotation,
+	"sensors.angleSpeed":   exprFuncAngleSpeed,
 
-func init() {
-	newExprFuncCall("mbot.isButtonPressed", exprFuncIsButtonPressed, Signature{Params: []Param{{Name: "button", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("mbot.buttonPressCount", exprFuncButtonPressCount, Signature{Params: []Param{{Name: "button", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("mbot.isJoystickPulled", exprFuncIsJoystickPulled, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("mbot.joystickPullCount", exprFuncJoystickPullCount, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	"sensors.colorStatus":   exprFuncColorStatus,
+	"sensors.getColor":      exprFuncGetColor,
+	"sensors.isColorStatus": exprFuncIsColorStatus,
+	"sensors.detectColor":   exprFuncDetectColor,
+	"motors.rpm":            exprFuncMotorsSpeed("speed"),
+	"motors.power":          exprFuncMotorsSpeed("power"),
+	"motors.angle":          exprFuncMotorsAngle,
 
-	newExprFuncCall("lights.front.brightness", exprFuncLEDAmbientBrightness, Signature{Params: []Param{}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "light", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
+	"net.receive": exprFuncNetReceive,
 
-	newExprFuncCall("sensors.isTilted", exprFuncIsTilted, Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.isFaceUp", exprFuncIsFaceUp, Signature{Params: []Param{}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.isWaving", exprFuncDetectAction([]string{"up", "down", "left", "right"}, "wave"), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.isRotating", exprFuncDetectAction([]string{"clockwise", "anticlockwise"}, ""), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.isFalling", exprFuncDetectSingleAction("freefall"), Signature{Params: []Param{}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.isShaking", exprFuncDetectSingleAction("shake"), Signature{Params: []Param{}, ReturnType: parser.DTBool})
+	"math.round":      exprFuncMathRound,
+	"math.random":     exprFuncMathRandom,
+	"math.abs":        exprFuncMathOp("abs"),
+	"math.floor":      exprFuncMathOp("floor"),
+	"math.ceil":       exprFuncMathOp("ceil"),
+	"math.sqrt":       exprFuncMathOp("sqrt"),
+	"math.sin":        exprFuncMathOp("sin"),
+	"math.cos":        exprFuncMathOp("cos"),
+	"math.tan":        exprFuncMathOp("tan"),
+	"math.asin":       exprFuncMathOp("asin"),
+	"math.acos":       exprFuncMathOp("acos"),
+	"math.atan":       exprFuncMathOp("atan"),
+	"math.ln":         exprFuncMathOp("ln"),
+	"math.log":        exprFuncMathOp("log"),
+	"math.ePowerOf":   exprFuncMathOp("e ^"),
+	"math.tenPowerOf": exprFuncMathOp("10 ^"),
 
-	newExprFuncCall("sensors.tiltAngle", exprFuncTiltAngle([]string{"forward", "backward", "left", "right"}), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("sensors.rotationAngle", exprFuncTiltAngle([]string{"clockwise", "anticlockwise"}), Signature{Params: []Param{{Name: "direction", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	"strings.length":   exprFuncStringsLength,
+	"strings.letter":   exprFuncStringsLetter,
+	"strings.contains": exprFuncStringsContains,
 
-	newExprFuncCall("sensors.acceleration", exprFuncAcceleration, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("sensors.rotation", exprFuncRotation, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("sensors.angleSpeed", exprFuncAngleSpeed, Signature{Params: []Param{{Name: "axis", Type: parser.DTString}}, ReturnType: parser.DTNumber})
+	"lists.get":      exprFuncListsGet,
+	"lists.indexOf":  exprFuncListsIndexOf,
+	"lists.length":   exprFuncListsLength,
+	"lists.contains": exprFuncListsContains,
 
-	newExprFuncCall("sensors.colorStatus", exprFuncColorStatus, Signature{Params: []Param{{Name: "target", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "inner", Type: parser.DTBool}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("sensors.getColor", exprFuncGetColor, Signature{Params: []Param{{Name: "sensor", Type: parser.DTString}, {Name: "valueType", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("sensors.isColorStatus", exprFuncIsColorStatus, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "status", Type: parser.DTNumber}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "target", Type: parser.DTString}, {Name: "status", Type: parser.DTNumber}, {Name: "inner", Type: parser.DTBool}}, ReturnType: parser.DTBool})
-	newExprFuncCall("sensors.detectColor", exprFuncDetectColor, Signature{Params: []Param{{Name: "sensor", Type: parser.DTString}, {Name: "target", Type: parser.DTString}}, ReturnType: parser.DTBool})
-	newExprFuncCall("motors.rpm", exprFuncMotorsSpeed("speed"), Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("motors.power", exprFuncMotorsSpeed("power"), Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("motors.angle", exprFuncMotorsAngle, Signature{Params: []Param{{Name: "motor", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-
-	newExprFuncCall("net.receive", exprFuncNetReceive, Signature{Params: []Param{{Name: "message", Type: parser.DTString}}, ReturnType: parser.DTString})
-
-	newExprFuncCall("math.round", exprFuncMathRound, Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.random", exprFuncMathRandom, Signature{Params: []Param{{Name: "from", Type: parser.DTNumber}, {Name: "to", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.abs", exprFuncMathOp("abs"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.floor", exprFuncMathOp("floor"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.ceil", exprFuncMathOp("ceil"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.sqrt", exprFuncMathOp("sqrt"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.sin", exprFuncMathOp("sin"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.cos", exprFuncMathOp("cos"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.tan", exprFuncMathOp("tan"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.asin", exprFuncMathOp("asin"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.acos", exprFuncMathOp("acos"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.atan", exprFuncMathOp("atan"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.ln", exprFuncMathOp("ln"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.log", exprFuncMathOp("log"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.ePowerOf", exprFuncMathOp("e ^"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("math.tenPowerOf", exprFuncMathOp("10 ^"), Signature{Params: []Param{{Name: "n", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-
-	newExprFuncCall("strings.length", exprFuncStringsLength, Signature{Params: []Param{{Name: "str", Type: parser.DTString}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("strings.letter", exprFuncStringsLetter, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString})
-	newExprFuncCall("strings.contains", exprFuncStringsContains, Signature{Params: []Param{{Name: "str", Type: parser.DTString}, {Name: "substr", Type: parser.DTString}}, ReturnType: parser.DTBool})
-
-	newExprFuncCall("lists.get", exprFuncListsGet, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("lists.indexOf", exprFuncListsIndexOf, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("lists.length", exprFuncListsLength, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("lists.contains", exprFuncListsContains, Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTBool})
+	"display.pixelIsColor": exprFuncDisplayPixelIsColor,
+	"sprite.touchesSprite": exprFuncSpriteTouchesSprite,
+	"sprite.touchesEdge":   exprFuncSpriteTouchesEdge,
+	"sprite.positionX":     exprFuncSpritePosition("get_x"),
+	"sprite.positionY":     exprFuncSpritePosition("get_y"),
+	"sprite.rotation":      exprFuncSpritePosition("get_rotation"),
+	"sprite.scale":         exprFuncSpritePosition("get_size"),
+	"sprite.anchor":        exprFuncSpritePosition("get_align"),
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
@@ -658,4 +641,76 @@ func exprFuncListsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 		return nil, err
 	}
 	return block, nil
+}
+
+func exprFuncDisplayPixelIsColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteGetColorEqualWithRGB, false)
+
+	var err error
+	block.Inputs["number_2"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_3"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_4"], err = g.value(block.ID, expr.Name, expr.Parameters[2])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_5"], err = g.value(block.ID, expr.Name, expr.Parameters[3])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_6"], err = g.value(block.ID, expr.Name, expr.Parameters[4])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func exprFuncSpriteTouchesSprite(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteIsTouchOtherSprite, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["string_2"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func exprFuncSpriteTouchesEdge(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SpriteIsTouchEdge, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func exprFuncSpritePosition(getter string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.SpriteGetXYRotationSizeAlign, false)
+
+		var err error
+		block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_2"] = []any{getter, nil}
+
+		return block, nil
+	}
 }

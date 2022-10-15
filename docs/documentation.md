@@ -22,15 +22,15 @@ Event | Parameter | Triggered when...
 Name | Purpose
 --- | ---
 `audio` | play sounds
-`lights` | control the LED lights of the robot
 `display` | show text on the display of the CyberPi
-`net` | communicate with other robots
-`sensors` | get data from all the different sensors of the robot
-`motors` | control the motors of the robot
-`time` | wait and control timers
-`mbot` | get data like the current battery level or whether a specific button is currently pressed
-`script` | stop the current, all or all other scripts
-`math` | math functions like `random`, `round`, `sin`, `abs`, `floor`, …
-`strings` | work with strings
+`lights` | control the LED lights of the robot
 `lists` | work with lists
-
+`math` | math functions like `random`, `round`, `sin`, `abs`, `floor`, …
+`mbot` | get data like the current battery level or whether a specific button is currently pressed
+`motors` | control the motors of the robot
+`net` | communicate with other robots
+`script` | stop the current, all or all other scripts
+`sensors` | get data from all the different sensors of the robot
+`sprite` | manipulate sprites
+`strings` | work with strings
+`time` | wait and control timers

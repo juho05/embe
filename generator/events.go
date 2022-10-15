@@ -9,44 +9,21 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-type Event struct {
-	Name  string
-	Fn    func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error)
-	Param *Param
-}
-
-func (e Event) String() string {
-	if e.Param == nil {
-		return "@" + e.Name
-	}
-	return fmt.Sprintf("@%s %s: %s", e.Name, e.Param.Name, e.Param.Type)
-}
-
-var Events = make(map[string]Event)
-
-func newEvent(name string, fn func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error), param *Param) {
-	Events[name] = Event{
-		Name:  name,
-		Fn:    fn,
-		Param: param,
-	}
-}
-
-func init() {
-	newEvent("launch", eventLaunch, nil)
-	newEvent("button", eventButton, &Param{Name: "name", Type: parser.DTString})
-	newEvent("joystick", eventDirectionKey, &Param{Name: "direction", Type: parser.DTString})
-	newEvent("tilt", eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"), &Param{Name: "direction", Type: parser.DTString})
-	newEvent("face", eventAction(blocks.EventDetectAttitude, "face", "up", "down"), &Param{Name: "direction", Type: parser.DTString})
-	newEvent("wave", eventAction(blocks.EventDetectAction, "wave", "left", "right"), &Param{Name: "direction", Type: parser.DTString})
-	newEvent("rotate", eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"), &Param{Name: "direction", Type: parser.DTString})
-	newEvent("fall", eventActionSingle(blocks.EventDetectAction, "freefall"), nil)
-	newEvent("shake", eventActionSingle(blocks.EventDetectAction, "shake"), nil)
-	newEvent("light", eventSensor("light_sensor"), &Param{Name: "comparison", Type: parser.DTString})
-	newEvent("sound", eventSensor("microphone"), &Param{Name: "comparison", Type: parser.DTString})
-	newEvent("shakeval", eventSensor("shakeval"), &Param{Name: "comparison", Type: parser.DTString})
-	newEvent("timer", eventSensor("timer"), &Param{Name: "comparison", Type: parser.DTString})
-	newEvent("receive", eventReceive, &Param{Name: "message", Type: parser.DTString})
+var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){
+	"launch":   eventLaunch,
+	"button":   eventButton,
+	"joystick": eventDirectionKey,
+	"tilt":     eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"),
+	"face":     eventAction(blocks.EventDetectAttitude, "face", "up", "down"),
+	"wave":     eventAction(blocks.EventDetectAction, "wave", "left", "right"),
+	"rotate":   eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"),
+	"fall":     eventActionSingle(blocks.EventDetectAction, "freefall"),
+	"shake":    eventActionSingle(blocks.EventDetectAction, "shake"),
+	"light":    eventSensor("light_sensor"),
+	"sound":    eventSensor("microphone"),
+	"shakeval": eventSensor("shakeval"),
+	"timer":    eventSensor("timer"),
+	"receive":  eventReceive,
 }
 
 func eventLaunch(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {

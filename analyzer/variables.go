@@ -46,4 +46,9 @@ func init() {
 	newVar("sensors.lineDeviation", parser.DTNumber)
 
 	newVar("net.connected", parser.DTBool)
+
+	newVar("draw.positionX", parser.DTNumber)
+	newVar("draw.positionY", parser.DTNumber)
+	newVar("draw.rotation", parser.DTNumber)
+	newVar("draw.thickness", parser.DTNumber)
 }

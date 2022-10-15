@@ -240,6 +240,23 @@ const (
 	SpriteIsTouchEdge                BlockType = "cyberpi_sprite.cyberpi_sprite_is_touch_edge"
 	SpriteGetColorEqualWithRGB       BlockType = "cyberpi_sprite.cyberpi_screen_get_color_equal_with_rgb"
 	SpriteGetXYRotationSizeAlign     BlockType = "cyberpi_sprite.cyberpi_sprite_get_x_y_rotation_size_align"
+
+	DrawSketchClear             BlockType = "cyberpi_sprite.cyberpi_sketch_clear"
+	DrawSketchStart             BlockType = "cyberpi_sprite.cyberpi_sketch_start"
+	DrawSketchEnd               BlockType = "cyberpi_sprite.cyberpi_sketch_end"
+	DrawSketchSetColorWithColor BlockType = "cyberpi_sprite.cyberpi_sketch_set_color_with_color"
+	DrawSketchSetColorWithRGB   BlockType = "cyberpi_sprite.cyberpi_sketch_set_color_with_rgb"
+	DrawSketchSetSize           BlockType = "cyberpi_sprite.cyberpi_sketch_set_size"
+	DrawSketchSetSpeed          BlockType = "cyberpi_sprite.cyberpi_sketch_set_speed"
+	DrawSketchCW                BlockType = "cyberpi_sprite.cyberpi_sketch_cw"
+	DrawSketchSetAngle          BlockType = "cyberpi_sprite.cyberpi_sketch_set_angle_2"
+	DrawSketchMove              BlockType = "cyberpi_sprite.cyberpi_sketch_move"
+	DrawSketchMoveToCenter      BlockType = "cyberpi_sprite.cyberpi_sketch_move_to_center"
+	DrawSketchMoveTo            BlockType = "cyberpi_sprite.cyberpi_sketch_move_to"
+	DrawSketchMoveXAndY         BlockType = "cyberpi_sprite.cyberpi_sketch_move_x_and_y"
+	DrawSketchCircle            BlockType = "cyberpi_sprite.cyberpi_sketch_circle"
+	DrawSketchGetXYAngleAndSize BlockType = "cyberpi_sprite.cyberpi_sketch_get_x_y_angle_and_size"
+	DrawSketchSpriteDrawSketch  BlockType = "cyberpi_sprite.cyberpi_sprite_draw_sketch"
 )
 
 // Control

@@ -14,36 +14,6 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-type Param struct {
-	Name string
-	Type parser.DataType
-}
-
-type Signature struct {
-	FuncName   string
-	Params     []Param
-	ReturnType parser.DataType
-}
-
-func (s Signature) String() string {
-	signature := s.FuncName + "("
-
-	for i, p := range s.Params {
-		if i > 0 {
-			signature += ", "
-		}
-		signature = fmt.Sprintf("%s%s: %s", signature, p.Name, p.Type)
-	}
-
-	signature += ")"
-
-	if s.ReturnType != "" {
-		signature += " : " + string(s.ReturnType)
-	}
-
-	return signature
-}
-
 type FuncCall func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
 
 var FuncCalls = map[string]FuncCall{
@@ -108,6 +78,24 @@ var FuncCalls = map[string]FuncCall{
 	"sprite.toBack":     funcSpriteSetLayer("z_min"),
 	"sprite.layerUp":    funcSpriteChangeLayer("z_up"),
 	"sprite.layerDown":  funcSpriteChangeLayer("z_down"),
+
+	"draw.begin":        funcDrawBegin,
+	"draw.finish":       funcDrawFinish,
+	"draw.clear":        funcDrawClear,
+	"draw.setColor":     funcDrawSetColor,
+	"draw.setThickness": funcDrawSetThickness,
+	"draw.setSpeed":     funcDrawSetSpeed,
+	"draw.rotate":       funcDrawRotate,
+	"draw.rotateTo":     funcDrawRotateTo,
+	"draw.line":         funcDrawLine,
+	"draw.circle":       funcDrawCircle,
+	"draw.moveUp":       funcDrawMove("up"),
+	"draw.moveDown":     funcDrawMove("y"),
+	"draw.moveLeft":     funcDrawMove("left"),
+	"draw.moveRight":    funcDrawMove("x"),
+	"draw.moveTo":       funcDrawMoveTo,
+	"draw.moveToCenter": funcDrawMoveToCenter,
+	"draw.save":         funcDrawSave,
 
 	"net.broadcast":  funcNetBroadcast,
 	"net.setChannel": funcNetSetChannel,
@@ -1190,6 +1178,174 @@ func funcSpriteChangeLayer(direction string) func(g *generator, stmt *parser.Stm
 
 		return block, nil
 	}
+}
+
+func funcDrawBegin(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchStart, false)
+	return block, nil
+}
+
+func funcDrawFinish(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchEnd, false)
+	return block, nil
+}
+
+func funcDrawClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchClear, false)
+	return block, nil
+}
+
+func funcDrawSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchSetColorWithColor, false)
+
+	var err error
+	if len(stmt.Parameters) == 1 {
+		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		block.Type = blocks.DrawSketchSetColorWithRGB
+		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
+}
+
+func funcDrawSetThickness(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchSetSize, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawSetSpeed(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchSetSpeed, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchCW, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchSetAngle, false)
+
+	var err error
+	block.Inputs["angle_1"], err = g.valueWithValidator(block.ID, stmt.Name, stmt.Parameters[0], func(v any) bool { return true }, 8, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawLine(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchMove, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawCircle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchCircle, false)
+
+	var err error
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawMove(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.DrawSketchMoveXAndY, false)
+
+		var err error
+		block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_1"] = []any{direction, nil}
+
+		return block, nil
+	}
+}
+
+func funcDrawMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchMoveTo, false)
+
+	var err error
+	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+func funcDrawMoveToCenter(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchMoveToCenter, false)
+	return block, nil
+}
+
+func funcDrawSave(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.DrawSketchSpriteDrawSketch, false)
+
+	var err error
+	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
 }
 
 func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {

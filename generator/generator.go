@@ -134,7 +134,7 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 	ev := Events[stmt.Name.Lexeme]
-	block, err := ev.Fn(g, stmt)
+	block, err := ev(g, stmt)
 	if err != nil {
 		return err
 	}

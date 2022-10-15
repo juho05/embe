@@ -23,6 +23,7 @@ Name | Purpose
 --- | ---
 `audio` | play sounds
 `display` | show text on the display of the CyberPi
+`draw` | draw on the screen
 `lights` | control the LED lights of the robot
 `lists` | work with lists
 `math` | math functions like `random`, `round`, `sin`, `abs`, `floor`, …

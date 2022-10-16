@@ -155,9 +155,12 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		}
 
 		if stmt.Value == nil {
+			closeBracket := stmt.Name
+			closeBracket.Pos.Column += len(stmt.Name.Lexeme) - 1
 			stmt.Value = &parser.ExprListInitializer{
-				OpenBracket: stmt.Name,
-				Values:      make([]parser.Token, 0),
+				OpenBracket:  stmt.Name,
+				CloseBracket: closeBracket,
+				Values:       make([]parser.Token, 0),
 			}
 		}
 
@@ -248,6 +251,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 						DataType: parser.DTImage,
 					},
 					Value: &parser.ExprLiteral{
+						ReturnType: parser.DTString,
 						Token: parser.Token{
 							Type:     parser.TkLiteral,
 							Lexeme:   "",
@@ -420,7 +424,6 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 	if a.unreachable {
 		a.newWarningStmt("Unreachable code.", stmt)
-		return nil
 	}
 
 	if f, ok := a.functions[stmt.Name.Lexeme]; ok {
@@ -486,13 +489,17 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 			return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
 		}
 	}
+
+	endFuncs := []string{"script.stop", "script.stopAll"}
+	if slices.Contains(endFuncs, stmt.Name.Lexeme) {
+		a.unreachable = true
+	}
 	return nil
 }
 
 func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 	if a.unreachable {
 		a.newWarningStmt("Unreachable code.", stmt)
-		return nil
 	}
 
 	if assignment, ok := Assignments[stmt.Variable.Lexeme]; ok {
@@ -522,7 +529,6 @@ func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 	if a.unreachable {
 		a.newWarningStmt("Unreachable code.", stmt)
-		return nil
 	}
 
 	err := stmt.Condition.Accept(a)
@@ -552,33 +558,38 @@ func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 	if a.unreachable {
 		a.newWarningStmt("Unreachable code.", stmt)
-		return nil
 	}
-	switch stmt.Keyword.Type {
-	case parser.TkWhile:
-		err := stmt.Condition.Accept(a)
-		if err != nil {
-			return err
+	forever := stmt.Condition == nil
+	if !forever {
+		switch stmt.Keyword.Type {
+		case parser.TkWhile:
+			err := stmt.Condition.Accept(a)
+			if err != nil {
+				return err
+			}
+			if stmt.Condition.Type() != parser.DTBool {
+				return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
+			}
+		case parser.TkFor:
+			err := stmt.Condition.Accept(a)
+			if err != nil {
+				return err
+			}
+			if stmt.Condition.Type() != parser.DTNumber {
+				return a.newErrorExpr("Expected number.", stmt.Condition)
+			}
+		default:
+			return a.newErrorTk("Unknown loop type.", stmt.Keyword)
 		}
-		if stmt.Condition.Type() != parser.DTBool {
-			return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
-		}
-	case parser.TkFor:
-		err := stmt.Condition.Accept(a)
-		if err != nil {
-			return err
-		}
-		if stmt.Condition.Type() != parser.DTNumber {
-			return a.newErrorExpr("Expected number.", stmt.Condition)
-		}
-	default:
-		return a.newErrorTk("Unknown loop type.", stmt.Keyword)
 	}
 	for _, s := range stmt.Body {
 		err := s.Accept(a)
 		if err != nil {
 			return err
 		}
+	}
+	if forever {
+		a.unreachable = true
 	}
 	return nil
 }

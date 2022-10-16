@@ -292,6 +292,7 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	parent := g.parent
 	if stmt.Condition == nil {
 		block = g.NewBlock(blocks.ControlRepeatForever, false)
+		block.NoNext = true
 	} else if stmt.Keyword.Type == parser.TkWhile {
 		block = g.NewBlock(blocks.ControlRepeatUntil, false)
 		g.parent = block.ID

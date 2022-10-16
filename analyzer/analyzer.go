@@ -16,6 +16,7 @@ type Variable struct {
 	DataType parser.DataType
 	declared bool
 	used     bool
+	changed  bool
 }
 
 type List struct {
@@ -93,27 +94,31 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 		}
 	}
 
-	for _, v := range a.variables {
-		if !v.used {
-			a.newWarningTk("This variable is never used.", v.Name)
+	if len(errs) == 0 {
+		for _, v := range a.variables {
+			if !v.used {
+				a.newWarningTk("This variable is never used.", v.Name)
+			} else if !v.changed {
+				a.newWarningTk("The value of this variable is never used. Consider using 'const' instead.", v.Name)
+			}
 		}
-	}
 
-	for _, l := range a.lists {
-		if !l.used {
-			a.newWarningTk("This variable is never used.", l.Name)
+		for _, l := range a.lists {
+			if !l.used {
+				a.newWarningTk("This variable is never used.", l.Name)
+			}
 		}
-	}
 
-	for _, c := range a.constants {
-		if !c.used {
-			a.newWarningTk("This constant is never used.", c.Name)
+		for _, c := range a.constants {
+			if !c.used {
+				a.newWarningTk("This constant is never used.", c.Name)
+			}
 		}
-	}
 
-	for _, f := range a.functions {
-		if !f.used {
-			a.newWarningTk("This function is never called.", f.Name)
+		for _, f := range a.functions {
+			if !f.used {
+				a.newWarningTk("This function is never called.", f.Name)
+			}
 		}
 	}
 
@@ -513,7 +518,13 @@ func (a *analyzer) VisitAssignment(stmt *parser.StmtAssignment) error {
 	} else {
 		v, ok := a.variables[stmt.Variable.Lexeme]
 		if !ok {
+			if _, ok := a.constants[stmt.Variable.Lexeme]; ok {
+				return a.newErrorStmt("Cannot change the value of a constant. Consider using 'var' instead.", stmt)
+			}
 			return a.newErrorTk("Unknown variable.", stmt.Variable)
+		}
+		if v.declared {
+			v.changed = true
 		}
 		err := stmt.Value.Accept(a)
 		if err != nil {
@@ -614,6 +625,9 @@ func (a *analyzer) VisitIdentifier(expr *parser.ExprIdentifier) error {
 			return a.newErrorTk("Cannot use variable in its own initializer.", expr.Name)
 		}
 		variable.used = true
+		if variable.DataType == parser.DTImage {
+			variable.changed = true
+		}
 		expr.ReturnType = variable.DataType
 		return nil
 	}

@@ -327,3 +327,9 @@ const (
 	ArgumentReporterBoolean      BlockType = "argument_reporter_boolean"
 	ProceduresCall               BlockType = "procedures_call"
 )
+
+// Event Broadcast
+const (
+	BroadcastEvent         BlockType = "event_broadcast"
+	EventBroadcastReceived BlockType = "event_whenbroadcastreceived"
+)

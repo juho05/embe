@@ -249,26 +249,6 @@ func (p *parser) event() (Stmt, error) {
 	}
 
 	body := p.statements(name.Indent + 1)
-	if name.Lexeme == "launch" {
-		newBody := make([]Stmt, 0, len(body)+1)
-		newBody = append(newBody, &StmtFuncCall{
-			Name: Token{
-				Type:   TkIdentifier,
-				Lexeme: "time.wait",
-			},
-			Parameters: []Expr{
-				&ExprLiteral{
-					Token: Token{
-						Type:     TkLiteral,
-						Lexeme:   "1",
-						Literal:  1,
-						DataType: DTNumber,
-					},
-				},
-			},
-		})
-		body = append(newBody, body...)
-	}
 
 	return &StmtEvent{
 		At:        at,

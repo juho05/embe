@@ -47,10 +47,11 @@ type Function struct {
 type analyzer struct {
 	lines [][]rune
 
-	variables map[string]*Variable
-	lists     map[string]*List
-	constants map[string]*Constant
-	functions map[string]*Function
+	variables  map[string]*Variable
+	lists      map[string]*List
+	constants  map[string]*Constant
+	functions  map[string]*Function
+	broadcasts map[string]string
 
 	variableIsList bool
 
@@ -60,14 +61,16 @@ type analyzer struct {
 
 	unreachable bool
 
+	launchEventCount     int
 	variableInitializers []parser.Stmt
 }
 
 type Definitions struct {
-	Variables map[string]*Variable
-	Lists     map[string]*List
-	Constants map[string]*Constant
-	Functions map[string]*Function
+	Variables  map[string]*Variable
+	Lists      map[string]*List
+	Constants  map[string]*Constant
+	Functions  map[string]*Function
+	Broadcasts map[string]string
 }
 
 type AnalyzerResult struct {
@@ -83,6 +86,7 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 		lists:                make(map[string]*List),
 		constants:            make(map[string]*Constant),
 		functions:            make(map[string]*Function),
+		broadcasts:           make(map[string]string),
 		warnings:             make([]error, 0),
 		variableInitializers: make([]parser.Stmt, 0),
 	}
@@ -123,6 +127,49 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 	}
 
 	if len(a.variableInitializers) > 0 {
+		if a.launchEventCount > 1 {
+			startID := uuid.NewString()
+			a.variableInitializers = append(a.variableInitializers, &parser.StmtFuncCall{
+				Name: parser.Token{
+					Lexeme: "internal.broadcastEvent",
+				},
+				Parameters: []parser.Expr{
+					&parser.ExprLiteral{
+						Token: parser.Token{
+							Lexeme:   startID,
+							Literal:  startID,
+							DataType: parser.DTString,
+						},
+						ReturnType: parser.DTString,
+					},
+				},
+			})
+			a.broadcasts[startID] = "start"
+			for _, s := range statements {
+				if e, ok := s.(*parser.StmtEvent); ok {
+					if e.Name.Lexeme == "launch" {
+						e.Name.Lexeme = "receiveEventBroadcast"
+						e.Parameter = parser.Token{
+							Lexeme:   startID,
+							DataType: parser.DTString,
+							Literal:  startID,
+						}
+					}
+				}
+			}
+		} else if a.launchEventCount == 1 {
+			for i, s := range statements {
+				if e, ok := s.(*parser.StmtEvent); ok {
+					if e.Name.Lexeme == "launch" {
+						a.variableInitializers = append(a.variableInitializers, e.Body...)
+						statements[i] = statements[len(statements)-1]
+						statements = statements[:len(statements)-1]
+						break
+					}
+				}
+			}
+		}
+
 		newStatements := make([]parser.Stmt, 0, len(statements)+1)
 		newStatements = append(newStatements, &parser.StmtEvent{
 			Name: parser.Token{
@@ -136,10 +183,11 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 
 	return statements, AnalyzerResult{
 		Definitions: Definitions{
-			Variables: a.variables,
-			Lists:     a.lists,
-			Constants: a.constants,
-			Functions: a.functions,
+			Variables:  a.variables,
+			Lists:      a.lists,
+			Constants:  a.constants,
+			Functions:  a.functions,
+			Broadcasts: a.broadcasts,
 		},
 		Warnings: a.warnings,
 		Errors:   errs,
@@ -398,6 +446,7 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 			if stmt.Parameter.DataType != ev.Param.Type {
 				return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
 			}
+			value = stmt.Parameter.Literal
 		}
 
 		if ev.ParamOptions != nil {
@@ -422,6 +471,9 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 		if err != nil {
 			return err
 		}
+	}
+	if stmt.Name.Lexeme == "launch" {
+		a.launchEventCount++
 	}
 	return nil
 }

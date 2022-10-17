@@ -54,7 +54,7 @@ func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []
 			listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
 		}
 
-		stages[i], err = createStage(i, blocks[i], variableMap, listMap)
+		stages[i], err = createStage(i, blocks[i], variableMap, listMap, definitions[i].Broadcasts)
 		stages[i] = strings.TrimSuffix(stages[i], "\n")
 		if err != nil {
 			return err
@@ -84,7 +84,7 @@ func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []
 	return nil
 }
 
-func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any) (string, error) {
+func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any, broadcasts map[string]string) (string, error) {
 	tmpl, err := template.New("stage").Parse(stageTemplate)
 	if err != nil {
 		return "", err
@@ -105,6 +105,11 @@ func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[s
 		return "", err
 	}
 
+	broadcastsJSON, err := json.Marshal(broadcasts)
+	if err != nil {
+		return "", err
+	}
+
 	name := fmt.Sprintf("mbotneo%d", index+1)
 	if index == 0 {
 		name = "mbotneo"
@@ -112,15 +117,17 @@ func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[s
 
 	data := &bytes.Buffer{}
 	tmpl.Execute(data, struct {
-		Name      string
-		Blocks    string
-		Variables string
-		Lists     string
+		Name       string
+		Blocks     string
+		Variables  string
+		Lists      string
+		Broadcasts string
 	}{
-		Name:      name,
-		Blocks:    string(blockJSON),
-		Variables: string(variableJSON),
-		Lists:     string(listJSON),
+		Name:       name,
+		Blocks:     string(blockJSON),
+		Variables:  string(variableJSON),
+		Lists:      string(listJSON),
+		Broadcasts: string(broadcastsJSON),
 	})
 	return data.String(), nil
 }

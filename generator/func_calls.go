@@ -139,6 +139,8 @@ var FuncCalls = map[string]FuncCall{
 	"lists.clear":   funcListsClear,
 	"lists.insert":  funcListsInsert,
 	"lists.replace": funcListsReplace,
+
+	"internal.broadcastEvent": funcInternalBroadcastEvent,
 }
 
 func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
@@ -1851,4 +1853,22 @@ func selectList(g *generator, block *blocks.Block, param parser.Expr) error {
 		return g.newErrorExpr("Unknown list.", param)
 	}
 	return g.newErrorExpr("Expected list.", param)
+}
+
+func funcInternalBroadcastEvent(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.BroadcastEvent, false)
+
+	id, err := g.literal(stmt.Name, stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	name, ok := g.definitions.Broadcasts[id.(string)]
+	if !ok {
+		return nil, g.newErrorExpr("Undefined broadcast message.", stmt.Parameters[0])
+	}
+
+	block.Inputs["BROADCAST_INPUT"] = []any{1, []any{11, name, id}}
+
+	return block, nil
 }

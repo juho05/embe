@@ -12,14 +12,12 @@ type Constant struct {
 type parser struct {
 	tokens  []Token
 	current int
-	lines   [][]rune
 	errors  []error
 }
 
-func Parse(tokens []Token, lines [][]rune) ([]Stmt, []error) {
+func Parse(tokens []Token) ([]Stmt, []error) {
 	parser := &parser{
 		tokens: tokens,
-		lines:  lines,
 		errors: make([]error, 0),
 	}
 	return parser.parse()
@@ -122,14 +120,12 @@ func (p *parser) constDecl() (Stmt, error) {
 		return nil, p.newErrorAt("Constant names cannot contain a dot.", name)
 	}
 
-	var dataType DataType
 	if p.match(TkColon) {
 		if !p.match(TkType) {
 			return nil, p.newError("Expected type after ':'.")
 		}
-		var ok bool
-		dataType, ok = types[p.previous().Lexeme]
-		if !ok {
+
+		if _, ok := types[p.previous().Lexeme]; !ok {
 			return nil, p.newError("Unknown data type.")
 		}
 	}
@@ -139,12 +135,9 @@ func (p *parser) constDecl() (Stmt, error) {
 	}
 	assignToken := p.previous()
 
-	if !p.match(TkLiteral) {
-		return nil, p.newError("Expected literal as constant value.")
-	}
-	value := p.previous()
-	if dataType != "" && value.DataType != dataType {
-		return nil, p.newErrorAt(fmt.Sprintf("Expected %s.", dataType), value)
+	value, err := p.expression()
+	if err != nil {
+		return nil, err
 	}
 
 	if !p.match(TkNewLine) {
@@ -235,9 +228,13 @@ func (p *parser) event() (Stmt, error) {
 	}
 	name := p.previous()
 
-	var parameter Token
-	if p.match(TkLiteral, TkIdentifier) {
-		parameter = p.previous()
+	var parameter Expr
+	if p.peek().Type != TkColon {
+		var err error
+		parameter, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if !p.match(TkColon) {
@@ -838,12 +835,13 @@ func (p *parser) primary() (Expr, error) {
 
 	if p.match(TkOpenBracket) {
 		openBracket := p.previous()
-		values := make([]Token, 0)
+		values := make([]Expr, 0)
 		for p.peek().Type != TkCloseBracket && p.peek().Type != TkEOF {
-			if !p.match(TkIdentifier, TkLiteral) {
-				return nil, p.newError("Expected literal or constant.")
+			expr, err := p.expression()
+			if err != nil {
+				return nil, err
 			}
-			values = append(values, p.previous())
+			values = append(values, expr)
 			if !p.match(TkComma) {
 				break
 			}

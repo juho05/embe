@@ -71,7 +71,7 @@ func run() {
 			continue
 		}
 
-		statements, errs := parser.Parse(tokens, lines)
+		statements, errs := parser.Parse(tokens)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				printError(err, lines)
@@ -80,7 +80,7 @@ func run() {
 			continue
 		}
 
-		statements, analyzerResult := analyzer.Analyze(statements, lines)
+		statements, analyzerResult := analyzer.Analyze(statements)
 		for _, w := range analyzerResult.Warnings {
 			printError(w, lines)
 		}
@@ -92,7 +92,7 @@ func run() {
 			continue
 		}
 
-		blocks, errs := generator.GenerateBlocks(statements, analyzerResult.Definitions, lines)
+		blocks, errs := generator.GenerateBlocks(statements, analyzerResult.Definitions)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				printError(err, lines)

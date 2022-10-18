@@ -28,10 +28,11 @@ type List struct {
 }
 
 type Constant struct {
-	Name  parser.Token
-	Value parser.Token
-	Type  parser.DataType
-	used  bool
+	Name      parser.Token
+	ValueExpr parser.Expr
+	Value     any
+	Type      parser.DataType
+	used      bool
 }
 
 type Function struct {
@@ -45,8 +46,6 @@ type Function struct {
 }
 
 type analyzer struct {
-	lines [][]rune
-
 	variables  map[string]*Variable
 	lists      map[string]*List
 	constants  map[string]*Constant
@@ -79,9 +78,8 @@ type AnalyzerResult struct {
 	Errors      []error
 }
 
-func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerResult) {
+func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 	a := &analyzer{
-		lines:                lines,
 		variables:            make(map[string]*Variable),
 		lists:                make(map[string]*List),
 		constants:            make(map[string]*Constant),
@@ -149,10 +147,13 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 				if e, ok := s.(*parser.StmtEvent); ok {
 					if e.Name.Lexeme == "launch" {
 						e.Name.Lexeme = "receiveEventBroadcast"
-						e.Parameter = parser.Token{
-							Lexeme:   startID,
-							DataType: parser.DTString,
-							Literal:  startID,
+						e.Parameter = &parser.ExprLiteral{
+							Token: parser.Token{
+								Lexeme:   startID,
+								DataType: parser.DTString,
+								Literal:  startID,
+							},
+							ReturnType: parser.DTString,
 						}
 					}
 				}
@@ -181,16 +182,24 @@ func Analyze(statements []parser.Stmt, lines [][]rune) ([]parser.Stmt, AnalyzerR
 		statements = newStatements
 	}
 
+	definitions := Definitions{
+		Variables:  a.variables,
+		Lists:      a.lists,
+		Constants:  a.constants,
+		Functions:  a.functions,
+		Broadcasts: a.broadcasts,
+	}
+
+	if len(errs) == 0 {
+		cErrs, cWarns := CalculateConstants(statements, definitions)
+		errs = append(errs, cErrs...)
+		a.warnings = append(a.warnings, cWarns...)
+	}
+
 	return statements, AnalyzerResult{
-		Definitions: Definitions{
-			Variables:  a.variables,
-			Lists:      a.lists,
-			Constants:  a.constants,
-			Functions:  a.functions,
-			Broadcasts: a.broadcasts,
-		},
-		Warnings: a.warnings,
-		Errors:   errs,
+		Definitions: definitions,
+		Warnings:    a.warnings,
+		Errors:      errs,
 	}
 }
 
@@ -201,10 +210,9 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 
 	if _, ok := stmt.Value.(*parser.ExprListInitializer); ok || strings.HasSuffix(string(stmt.DataType), "[]") {
 		list := &List{
-			ID:            uuid.NewString(),
-			Name:          stmt.Name,
-			DataType:      stmt.DataType,
-			InitialValues: make([]string, 0),
+			ID:       uuid.NewString(),
+			Name:     stmt.Name,
+			DataType: stmt.DataType,
 		}
 
 		if stmt.Value == nil {
@@ -213,7 +221,7 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 			stmt.Value = &parser.ExprListInitializer{
 				OpenBracket:  stmt.Name,
 				CloseBracket: closeBracket,
-				Values:       make([]parser.Token, 0),
+				Values:       make([]parser.Expr, 0),
 			}
 		}
 
@@ -224,21 +232,16 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 
 		valueType := parser.DataType(strings.TrimSuffix(string(stmt.DataType), "[]"))
 		for _, v := range init.Values {
-			token := v
-			if v.Type == parser.TkIdentifier {
-				if c, ok := a.constants[v.Lexeme]; ok {
-					v = c.Value
-				} else {
-					return a.newErrorTk("Unknown constant.", v)
-				}
+			err := v.Accept(a)
+			if err != nil {
+				return err
 			}
 			if valueType == "" {
-				valueType = v.DataType
+				valueType = v.Type()
 			}
-			if v.DataType != valueType {
-				return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected %s.", valueType), token)
+			if v.Type() != valueType {
+				return a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected %s.", valueType), v)
 			}
-			list.InitialValues = append(list.InitialValues, fmt.Sprintf("%v", v.Literal))
 		}
 		if valueType != "" {
 			list.DataType = valueType + "[]"
@@ -340,6 +343,10 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 			return a.newErrorTk("Cannot infer the data type of the variable. Please explicitly provide type information.", stmt.Name)
 		}
 
+		if variable.DataType == parser.DTBool {
+			return a.newErrorStmt("Boolean variables are not supported.", stmt)
+		}
+
 		variable.declared = true
 	}
 	return nil
@@ -349,10 +356,20 @@ func (a *analyzer) VisitConstDecl(stmt *parser.StmtConstDecl) error {
 	if err := a.assertNotDeclared(stmt.Name); err != nil {
 		return err
 	}
+	err := stmt.Value.Accept(a)
+	if err != nil {
+		return err
+	}
+	if stmt.Value.Type() == parser.DTImage {
+		return a.newErrorStmt("Image constants are not suuported.", stmt)
+	}
+	if stmt.Value.Type() == parser.DTBool {
+		return a.newErrorStmt("Boolean constants are not suuported.", stmt)
+	}
 	a.constants[stmt.Name.Lexeme] = &Constant{
 		Name:  stmt.Name,
 		Value: stmt.Value,
-		Type:  stmt.Value.DataType,
+		Type:  stmt.Value.Type(),
 	}
 	return nil
 }
@@ -425,45 +442,19 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 	if !ok {
 		return a.newErrorStmt("Unknown event.", stmt)
 	}
-	if ev.Param == nil && stmt.Parameter != (parser.Token{}) {
-		return a.newErrorTk("This event does not take a parameter.", stmt.Parameter)
+	if ev.Param == nil && stmt.Parameter != nil {
+		return a.newErrorExpr("This event does not take a parameter.", stmt.Parameter)
 	}
 	if ev.Param != nil {
-		if stmt.Parameter == (parser.Token{}) {
+		if stmt.Parameter == nil {
 			return a.newErrorStmt(fmt.Sprintf("Please provide the %s parameter of type %s.", ev.Param.Name, ev.Param.Type), stmt)
 		}
-		var value any
-		if stmt.Parameter.Type == parser.TkIdentifier {
-			if constant, ok := a.constants[stmt.Parameter.Lexeme]; ok {
-				if constant.Type != ev.Param.Type {
-					return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
-				}
-				value = constant.Value.Literal
-			} else {
-				return a.newErrorTk("Unknown constant.", stmt.Parameter)
-			}
-		} else {
-			if stmt.Parameter.DataType != ev.Param.Type {
-				return a.newErrorTk(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
-			}
-			value = stmt.Parameter.Literal
+		err := stmt.Parameter.Accept(a)
+		if err != nil {
+			return err
 		}
-
-		if ev.ParamOptions != nil {
-			valid := false
-			for _, o := range ev.ParamOptions {
-				if value == o {
-					valid = true
-					break
-				}
-			}
-			if !valid {
-				strOptions := make([]string, len(ev.ParamOptions))
-				for i, o := range ev.ParamOptions {
-					strOptions[i] = fmt.Sprintf("%v", o)
-				}
-				return a.newErrorTk(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
-			}
+		if stmt.Parameter.Type() != ev.Param.Type {
+			return a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
 		}
 	}
 	for _, s := range stmt.Body {
@@ -761,41 +752,7 @@ func (a *analyzer) VisitTypeCast(expr *parser.ExprTypeCast) error {
 		if expr.Value.Type() != parser.DTString {
 			return a.newErrorExpr("Expected file path.", expr.Value)
 		}
-		var path string
-		loadEmpty := false
-		if literal, ok := expr.Value.(*parser.ExprLiteral); ok {
-			path = literal.Token.Literal.(string)
-			if literal.Token.Lexeme == "" {
-				loadEmpty = true
-			}
-		} else if ident, ok := expr.Value.(*parser.ExprIdentifier); ok {
-			if c, ok := a.constants[ident.Name.Lexeme]; ok {
-				path = c.Value.Literal.(string)
-			} else {
-				return a.newErrorTk("Unknown constant.", ident.Name)
-			}
-		} else {
-			return a.newErrorExpr("Expected a literal or constant.", expr.Value)
-		}
-		var img string
-		if loadEmpty {
-			img = strings.TrimSuffix(strings.Repeat("#000,", 16*16), ",")
-		} else {
-			img, err = loadImage(path)
-			if err != nil {
-				return a.newErrorExpr("Couldn't load image. Please provide a valid path to a PNG, JPEG or GIF file.", expr.Value)
-			}
-		}
-		token := expr.Target
-		token.Type = parser.TkLiteral
-		token.Literal = img
-		token.Lexeme = "\"" + img + "\""
-		expr.Value = &parser.ExprLiteral{
-			Token:      token,
-			ReturnType: parser.DTString,
-		}
 	}
-
 	if expr.Value.Type() == parser.DTBool {
 		return a.newErrorExpr("Cannot cast a boolean to another type.", expr.Value)
 	}

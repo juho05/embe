@@ -14,13 +14,12 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-func GenerateBlocks(statements []parser.Stmt, definitions analyzer.Definitions, lines [][]rune) (map[string]*blocks.Block, []error) {
+func GenerateBlocks(statements []parser.Stmt, definitions analyzer.Definitions) (map[string]*blocks.Block, []error) {
 	blocks.NewStage()
 
 	g := &generator{
 		blocks:      make(map[string]*blocks.Block),
 		definitions: definitions,
-		lines:       lines,
 	}
 
 	errs := make([]error, 0)
@@ -368,10 +367,6 @@ func (g *generator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 		return nil
 	}
 
-	if _, ok := g.definitions.Constants[expr.Name.Lexeme]; ok {
-		return g.newErrorTk("Constants are not allowed in this context.", expr.Name)
-	}
-
 	return g.newErrorTk("Unknown identifier.", expr.Name)
 }
 
@@ -549,22 +544,6 @@ func (g *generator) valueWithValidator(parent string, token parser.Token, expr p
 		}
 		return []any{1, []any{intFromDT(literal.Token.DataType, valueIntOverride), fmt.Sprintf("%v", literal.Token.Literal)}}, nil
 	} else {
-		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-			if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
-				constant := *myConst
-				if castValue != expr {
-					constant.Type = castType.DataType
-					constant.Value = castToken(constant.Value, castType.DataType)
-				}
-				if constant.Type == parser.DTBool {
-					return nil, g.newErrorTk("Boolean constants are not allowed in this context.", ident.Name)
-				}
-				if !validate(constant.Value.Literal) {
-					return nil, g.newErrorTk(errorMessage, ident.Name)
-				}
-				return []any{1, []any{intFromDT(constant.Type, valueIntOverride), fmt.Sprintf("%v", constant.Value.Literal)}}, nil
-			}
-		}
 		g.parent = parent
 		g.noNext = true
 		defer func() { g.variableName = ""; g.variableIsList = false }()
@@ -638,31 +617,6 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 		block.Fields[menuFieldKey] = []any{value, nil}
 		return []any{1, block.ID}, nil
 	} else {
-		if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-			if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
-				constant := *myConst
-				if castValue != expr {
-					constant.Type = castType.DataType
-					constant.Value = castToken(constant.Value, castType.DataType)
-				}
-				if constant.Type == parser.DTBool {
-					return nil, g.newErrorTk("Boolean constants are not allowed in this context.", ident.Name)
-				}
-				if err := validateValue(constant.Value.Literal, ident.Name); err != nil {
-					return nil, err
-				}
-
-				block := g.NewBlock(blockType, true)
-
-				value := fmt.Sprintf("%v", constant.Value.Literal)
-				if _, ok := constant.Value.Literal.(string); ok {
-					value = fmt.Sprintf("%s%s%s", surroundStringsWith, constant.Value.Literal, surroundStringsWith)
-				}
-
-				block.Fields[menuFieldKey] = []any{value, nil}
-				return []any{1, block.ID}, nil
-			}
-		}
 		block := g.NewBlock(blockType, true)
 		block.Fields[menuFieldKey] = []any{"", nil}
 		g.noNext = true
@@ -697,17 +651,7 @@ func (g *generator) literal(token parser.Token, expr parser.Expr) (any, error) {
 		}
 		return literal.Token.Literal, nil
 	}
-	if ident, ok := castValue.(*parser.ExprIdentifier); ok {
-		if myConst, ok := g.definitions.Constants[ident.Name.Lexeme]; ok {
-			constant := *myConst
-			if castValue != expr {
-				constant.Type = castType.DataType
-				constant.Value = castToken(constant.Value, castType.DataType)
-			}
-			return constant.Value.Literal, nil
-		}
-	}
-	return nil, g.newErrorTk("Only literals are allowed in this context.", token)
+	return nil, g.newErrorTk("Only constant values are allowed.", token)
 }
 
 func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Block {

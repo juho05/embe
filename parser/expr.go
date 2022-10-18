@@ -76,6 +76,7 @@ func (e *ExprIdentifier) Position() (start, end Position) {
 
 type ExprLiteral struct {
 	Token      Token
+	End        Position
 	ReturnType DataType
 }
 
@@ -88,15 +89,19 @@ func (e *ExprLiteral) Type() DataType {
 }
 
 func (e *ExprLiteral) Position() (start, end Position) {
-	end = e.Token.Pos
-	end.Column += len(e.Token.Lexeme) - 1
+	if e.End.Line == 0 && e.End.Column == 0 {
+		end = e.Token.Pos
+		end.Column += len(e.Token.Lexeme) - 1
+	} else {
+		end = e.End
+	}
 	return e.Token.Pos, end
 }
 
 type ExprListInitializer struct {
 	OpenBracket  Token
 	CloseBracket Token
-	Values       []Token
+	Values       []Expr
 	ReturnType   DataType
 }
 

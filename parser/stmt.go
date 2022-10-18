@@ -45,7 +45,7 @@ func (s *StmtVarDecl) Position() (start, end Position) {
 type StmtConstDecl struct {
 	Name        Token
 	AssignToken Token
-	Value       Token
+	Value       Expr
 }
 
 func (s *StmtConstDecl) Accept(visitor StmtVisitor) error {
@@ -54,8 +54,7 @@ func (s *StmtConstDecl) Accept(visitor StmtVisitor) error {
 
 func (s *StmtConstDecl) Position() (start, end Position) {
 	start = s.Name.Pos
-	end = s.Value.Pos
-	end.Column += len(s.Value.Lexeme) - 1
+	_, end = s.Value.Position()
 	return start, end
 }
 
@@ -84,7 +83,7 @@ func (s *StmtFuncDecl) Position() (start, end Position) {
 type StmtEvent struct {
 	At        Token
 	Name      Token
-	Parameter Token
+	Parameter Expr
 	Body      []Stmt
 }
 

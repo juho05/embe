@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Bananenpro/embe/parser"
 )
@@ -57,14 +58,65 @@ func (c *constCalculator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 }
 
 func (c *constCalculator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
+	constParams := true
 	for i, p := range expr.Parameters {
 		err := p.Accept(c)
 		if err != nil {
 			return err
 		}
 		expr.Parameters[i] = c.newExpr
+		if _, ok := expr.Parameters[i].(*parser.ExprLiteral); !ok {
+			constParams = false
+		}
 	}
-	c.newExpr = expr
+	if !constParams {
+		c.newExpr = expr
+		return nil
+	}
+
+	var value any
+	switch expr.Name.Lexeme {
+	case "math.round":
+		value = math.Round(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.abs":
+		value = math.Abs(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.floor":
+		value = math.Floor(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.ceil":
+		value = math.Ceil(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.sqrt":
+		value = math.Sqrt(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.sin":
+		value = math.Sin(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.cos":
+		value = math.Cos(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.tan":
+		value = math.Tan(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.asin":
+		value = math.Asin(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.acos":
+		value = math.Acos(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.atan":
+		value = math.Atan(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.ln":
+		value = math.Log(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.log":
+		value = math.Log10(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.ePowerOf":
+		value = math.Pow(math.E, expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+	case "math.tenPowerOf":
+		value = math.Pow(10, expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(float64))
+
+	case "strings.length":
+		value = float64(utf8.RuneCountInString(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(string)))
+	case "strings.letter":
+		value = string([]rune(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(string))[int(expr.Parameters[1].(*parser.ExprLiteral).Token.Literal.(float64))])
+
+	default:
+		c.newExpr = expr
+		return nil
+	}
+	c.newExpr = c.newLiteral(value, expr)
 	return nil
 }
 

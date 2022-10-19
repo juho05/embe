@@ -386,13 +386,15 @@ func (c *constCalculator) VisitAssignment(stmt *parser.StmtAssignment) error {
 }
 
 func (c *constCalculator) VisitIf(stmt *parser.StmtIf) error {
-	err := stmt.Condition.Accept(c)
-	if err != nil {
-		return err
+	if stmt.Condition != nil {
+		err := stmt.Condition.Accept(c)
+		if err != nil {
+			return err
+		}
+		stmt.Condition = c.newExpr
 	}
-	stmt.Condition = c.newExpr
 	for _, s := range stmt.Body {
-		err = s.Accept(c)
+		err := s.Accept(c)
 		if err != nil {
 			return err
 		}

@@ -63,10 +63,12 @@ func run() {
 			inFileNameBase = filepath.Base(file.Name())
 		}
 
-		tokens, lines, err := parser.Scan(file)
+		tokens, lines, errs := parser.Scan(file)
 		file.Close()
-		if err != nil {
-			printError(err, lines)
+		if len(errs) > 0 {
+			for _, err := range errs {
+				printError(err, lines)
+			}
 			error = true
 			continue
 		}

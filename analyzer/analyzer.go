@@ -56,6 +56,7 @@ type analyzer struct {
 
 	currentFunction *Function
 
+	errors   []error
 	warnings []error
 
 	unreachable bool
@@ -85,18 +86,18 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 		constants:            make(map[string]*Constant),
 		functions:            make(map[string]*Function),
 		broadcasts:           make(map[string]string),
+		errors:               make([]error, 0),
 		warnings:             make([]error, 0),
 		variableInitializers: make([]parser.Stmt, 0),
 	}
-	errs := make([]error, 0)
 	for _, stmt := range statements {
 		err := stmt.Accept(a)
 		if err != nil {
-			errs = append(errs, err)
+			a.errors = append(a.errors, err)
 		}
 	}
 
-	if len(errs) == 0 {
+	if len(a.errors) == 0 {
 		for _, v := range a.variables {
 			if !v.used {
 				a.newWarningTk("This variable is never used.", v.Name)
@@ -190,16 +191,16 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 		Broadcasts: a.broadcasts,
 	}
 
-	if len(errs) == 0 {
+	if len(a.errors) == 0 {
 		cErrs, cWarns := CalculateConstants(statements, definitions)
-		errs = append(errs, cErrs...)
+		a.errors = append(a.errors, cErrs...)
 		a.warnings = append(a.warnings, cWarns...)
 	}
 
 	return statements, AnalyzerResult{
 		Definitions: definitions,
 		Warnings:    a.warnings,
-		Errors:      errs,
+		Errors:      a.errors,
 	}
 }
 
@@ -234,13 +235,15 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		for _, v := range init.Values {
 			err := v.Accept(a)
 			if err != nil {
-				return err
+				a.errors = append(a.errors, err)
+				continue
 			}
 			if valueType == "" {
 				valueType = v.Type()
 			}
 			if v.Type() != valueType {
-				return a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected %s.", valueType), v)
+				a.errors = append(a.errors, a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected %s.", valueType), v))
+				continue
 			}
 		}
 		if valueType != "" {
@@ -383,7 +386,8 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	argumentNames := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
 		if slices.Contains(argumentNames, p.Name.Lexeme) {
-			return a.newErrorTk("Duplicate parameter name.", p.Name)
+			a.errors = append(a.errors, a.newErrorTk("Duplicate parameter name.", p.Name))
+			continue
 		}
 
 		id := uuid.NewString()
@@ -414,7 +418,7 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	for _, s := range stmt.Body {
 		err := s.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 	}
 	a.currentFunction = nil
@@ -440,27 +444,27 @@ func (a *analyzer) assertNotDeclared(name parser.Token) error {
 func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 	ev, ok := Events[stmt.Name.Lexeme]
 	if !ok {
-		return a.newErrorStmt("Unknown event.", stmt)
-	}
-	if ev.Param == nil && stmt.Parameter != nil {
-		return a.newErrorExpr("This event does not take a parameter.", stmt.Parameter)
-	}
-	if ev.Param != nil {
-		if stmt.Parameter == nil {
-			return a.newErrorStmt(fmt.Sprintf("Please provide the %s parameter of type %s.", ev.Param.Name, ev.Param.Type), stmt)
-		}
-		err := stmt.Parameter.Accept(a)
-		if err != nil {
-			return err
-		}
-		if stmt.Parameter.Type() != ev.Param.Type {
-			return a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter)
+		a.errors = append(a.errors, a.newErrorStmt("Unknown event.", stmt))
+	} else {
+		if ev.Param == nil && stmt.Parameter != nil {
+			a.errors = append(a.errors, a.newErrorExpr("This event does not take a parameter.", stmt.Parameter))
+		} else if ev.Param != nil {
+			if stmt.Parameter == nil {
+				a.errors = append(a.errors, a.newErrorStmt(fmt.Sprintf("Please provide the %s parameter of type %s.", ev.Param.Name, ev.Param.Type), stmt))
+			} else {
+				err := stmt.Parameter.Accept(a)
+				if err != nil {
+					a.errors = append(a.errors, err)
+				} else if stmt.Parameter.Type() != ev.Param.Type {
+					a.errors = append(a.errors, a.newErrorExpr(fmt.Sprintf("Wrong data type. Expected '%s'.", ev.Param.Type), stmt.Parameter))
+				}
+			}
 		}
 	}
 	for _, s := range stmt.Body {
 		err := s.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 	}
 	if stmt.Name.Lexeme == "launch" {
@@ -485,10 +489,11 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		for i, p := range stmt.Parameters {
 			err = p.Accept(a)
 			if err != nil {
-				return err
+				a.errors = append(a.errors, err)
+				continue
 			}
 			if p.Type() != f.Params[i].Type.DataType {
-				return a.newErrorExpr(fmt.Sprintf("Expected %s parameter '%s'.", f.Params[i].Type.DataType, f.Params[i].Name.Lexeme), p)
+				a.errors = append(a.errors, a.newErrorExpr(fmt.Sprintf("Expected %s parameter '%s'.", f.Params[i].Type.DataType, f.Params[i].Name.Lexeme), p))
 			}
 		}
 	} else {
@@ -505,7 +510,8 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		for i, p := range stmt.Parameters {
 			err := p.Accept(a)
 			if err != nil {
-				return err
+				a.errors = append(a.errors, err)
+				continue
 			}
 			types[i] = string(p.Type())
 		}
@@ -596,14 +602,14 @@ func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 	for _, s := range stmt.Body {
 		err = s.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 	}
 
 	for _, s := range stmt.ElseBody {
 		err = s.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 	}
 	return nil
@@ -619,27 +625,25 @@ func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 		case parser.TkWhile:
 			err := stmt.Condition.Accept(a)
 			if err != nil {
-				return err
-			}
-			if stmt.Condition.Type() != parser.DTBool {
-				return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
+				a.errors = append(a.errors, err)
+			} else if stmt.Condition.Type() != parser.DTBool {
+				a.errors = append(a.errors, a.newErrorExpr("Expected boolean condition.", stmt.Condition))
 			}
 		case parser.TkFor:
 			err := stmt.Condition.Accept(a)
 			if err != nil {
-				return err
-			}
-			if stmt.Condition.Type() != parser.DTNumber {
+				a.errors = append(a.errors, err)
+			} else if stmt.Condition.Type() != parser.DTNumber {
 				return a.newErrorExpr("Expected number.", stmt.Condition)
 			}
 		default:
-			return a.newErrorTk("Unknown loop type.", stmt.Keyword)
+			a.errors = append(a.errors, a.newErrorTk("Unknown loop type.", stmt.Keyword))
 		}
 	}
 	for _, s := range stmt.Body {
 		err := s.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 	}
 	if forever {
@@ -705,7 +709,8 @@ func (a *analyzer) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	for i, p := range expr.Parameters {
 		err := p.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
+			continue
 		}
 		types[i] = string(p.Type())
 	}
@@ -798,13 +803,13 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 	if expr.Operator.Type == parser.TkPlus || expr.Operator.Type == parser.TkEqual {
 		err := expr.Left.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 		leftType := expr.Left.Type()
 
 		err = expr.Right.Accept(a)
 		if err != nil {
-			return err
+			a.errors = append(a.errors, err)
 		}
 		rightType := expr.Right.Type()
 
@@ -842,17 +847,15 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 
 		err := expr.Left.Accept(a)
 		if err != nil {
-			return err
-		}
-		if expr.Left.Type() != operandDataType {
+			a.errors = append(a.errors, err)
+		} else if expr.Left.Type() != operandDataType {
 			return a.newErrorExpr(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Left)
 		}
 
 		err = expr.Right.Accept(a)
 		if err != nil {
-			return err
-		}
-		if expr.Right.Type() != operandDataType {
+			a.errors = append(a.errors, err)
+		} else if expr.Right.Type() != operandDataType {
 			return a.newErrorExpr(fmt.Sprintf("Expected operand of type %s.", operandDataType), expr.Right)
 		}
 	}

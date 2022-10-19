@@ -20,17 +20,17 @@ func GenerateBlocks(statements []parser.Stmt, definitions analyzer.Definitions) 
 	g := &generator{
 		blocks:      make(map[string]*blocks.Block),
 		definitions: definitions,
+		errors:      make([]error, 0),
 	}
 
-	errs := make([]error, 0)
 	for _, stmt := range statements {
 		err := stmt.Accept(g)
 		if err != nil {
-			errs = append(errs, err)
+			g.errors = append(g.errors, err)
 		}
 	}
 
-	return g.blocks, errs
+	return g.blocks, g.errors
 }
 
 type generator struct {
@@ -47,7 +47,7 @@ type generator struct {
 	variableName   string
 	variableIsList bool
 
-	warnings []error
+	errors []error
 
 	currentFunction *analyzer.Function
 }
@@ -73,7 +73,8 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	argumentDefaults := make([]string, 0, len(stmt.Params))
 	for _, p := range stmt.Params {
 		if slices.Contains(argumentNames, p.Name.Lexeme) {
-			return g.newErrorTk("Duplicate parameter name.", p.Name)
+			g.errors = append(g.errors, g.newErrorTk("Duplicate parameter name.", p.Name))
+			continue
 		}
 
 		id := uuid.NewString()
@@ -122,7 +123,8 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	for _, s := range stmt.Body {
 		err := s.Accept(g)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
+			continue
 		}
 		g.parent = g.blockID
 	}
@@ -135,14 +137,16 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 	ev := Events[stmt.Name.Lexeme]
 	block, err := ev(g, stmt)
 	if err != nil {
-		return err
+		g.errors = append(g.errors, err)
+	} else {
+		g.blocks[block.ID] = block
+		g.parent = block.ID
 	}
-	g.blocks[block.ID] = block
-	g.parent = block.ID
 	for _, s := range stmt.Body {
 		err = s.Accept(g)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
+			continue
 		}
 		g.parent = g.blockID
 	}
@@ -157,7 +161,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		for i, p := range stmt.Parameters {
 			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, stmt.Name, p)
 			if err != nil {
-				return err
+				g.errors = append(g.errors, err)
 			}
 		}
 
@@ -252,15 +256,16 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	g.noNext = true
 	err := stmt.Condition.Accept(g)
 	if err != nil {
-		return err
+		g.errors = append(g.errors, err)
+	} else {
+		block.Inputs["CONDITION"] = []any{2, g.blockID}
 	}
-	block.Inputs["CONDITION"] = []any{2, g.blockID}
 
 	g.noNext = true
 	for i, s := range stmt.Body {
 		err = s.Accept(g)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 		if i == 0 {
 			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
@@ -272,7 +277,7 @@ func (g *generator) VisitIf(stmt *parser.StmtIf) error {
 	for i, s := range stmt.ElseBody {
 		err = s.Accept(g)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 		if i == 0 {
 			block.Inputs["SUBSTACK2"] = []any{2, g.blockID}
@@ -297,24 +302,24 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 		g.parent = block.ID
 		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 	} else if stmt.Keyword.Type == parser.TkFor {
 		block = g.NewBlock(blocks.ControlRepeat, false)
 		g.parent = block.ID
 		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 	} else {
-		return g.newErrorTk("Unknown loop type.", stmt.Keyword)
+		g.errors = append(g.errors, g.newErrorTk("Unknown loop type.", stmt.Keyword))
 	}
 	g.parent = block.ID
 	g.noNext = true
 	for i, s := range stmt.Body {
 		err = s.Accept(g)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 		if i == 0 {
 			block.Inputs["SUBSTACK"] = []any{2, g.blockID}
@@ -426,12 +431,12 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 
 		left, err := g.value(block.ID, expr.Operator, expr.Left)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 
 		right, err := g.value(block.ID, expr.Operator, expr.Right)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 
 		if expr.Operator.Type == parser.TkEqual {
@@ -477,13 +482,13 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 
 		left, err := g.value(block.ID, expr.Operator, expr.Left)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs[operandName+"1"] = left
 
 		right, err := g.value(block.ID, expr.Operator, expr.Right)
 		if err != nil {
-			return err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs[operandName+"2"] = right
 	}
@@ -750,38 +755,4 @@ func (g *generator) newErrorStmt(message string, stmt parser.Stmt) error {
 		End:     end,
 		Message: message,
 	}
-}
-
-func (g *generator) newWarningTk(message string, token parser.Token) {
-	end := token.Pos
-	end.Column += len(token.Lexeme) - 1
-	if token.Type == parser.TkNewLine {
-		end.Column += 1
-	}
-	g.warnings = append(g.warnings, GenerateError{
-		Start:   token.Pos,
-		End:     end,
-		Message: message,
-		Warning: true,
-	})
-}
-
-func (g *generator) newWarningExpr(message string, expr parser.Expr) {
-	start, end := expr.Position()
-	g.warnings = append(g.warnings, GenerateError{
-		Start:   start,
-		End:     end,
-		Message: message,
-		Warning: true,
-	})
-}
-
-func (g *generator) newWarningStmt(message string, stmt parser.Stmt) {
-	start, end := stmt.Position()
-	g.warnings = append(g.warnings, GenerateError{
-		Start:   start,
-		End:     end,
-		Message: message,
-		Warning: true,
-	})
 }

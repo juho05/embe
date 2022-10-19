@@ -153,7 +153,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 
 	number, err := g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	if len(stmt.Parameters) == 2 {
@@ -161,7 +161,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 		block.Inputs["number_1"] = number
 		block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Inputs["number_2"] = number
@@ -177,9 +177,8 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	if len(stmt.Parameters) == 2 {
 		untilDone, err := g.literal(stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
-		}
-		if untilDone.(bool) {
+			g.errors = append(g.errors, err)
+		} else if untilDone.(bool) {
 			block.Type = blocks.AudioPlayClipUntilDone
 			menuBlockType = blocks.AudioPlayClipUntilDoneFileNameMenu
 		}
@@ -208,12 +207,12 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -230,52 +229,52 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 		durationParameter = 2
 		noteName, err := g.literal(stmt.Name, stmt.Parameters[0])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
+		} else {
+			values := map[string]int{
+				"c":  0,
+				"c#": 1,
+				"db": 1,
+				"d":  2,
+				"d#": 3,
+				"eb": 3,
+				"e":  4,
+				"f":  5,
+				"f#": 6,
+				"gb": 6,
+				"g":  7,
+				"g#": 8,
+				"ab": 8,
+				"a":  9,
+				"a#": 10,
+				"bb": 10,
+				"b":  11,
+			}
+			value, ok := values[strings.ToLower(noteName.(string))]
+			if !ok {
+				g.errors = append(g.errors, g.newErrorExpr("Invalid note name.", stmt.Parameters[0]))
+			}
+			octave, err := g.literal(stmt.Name, stmt.Parameters[1])
+			if err != nil {
+				g.errors = append(g.errors, err)
+			} else {
+				noteValue := int(octave.(float64))*12 + value
+				noteBlock.Fields["NOTE"] = []any{strconv.Itoa(noteValue), nil}
+				block.Inputs["number_1"] = []any{1, noteBlock.ID}
+			}
 		}
-		values := map[string]int{
-			"c":  0,
-			"c#": 1,
-			"db": 1,
-			"d":  2,
-			"d#": 3,
-			"eb": 3,
-			"e":  4,
-			"f":  5,
-			"f#": 6,
-			"gb": 6,
-			"g":  7,
-			"g#": 8,
-			"ab": 8,
-			"a":  9,
-			"a#": 10,
-			"bb": 10,
-			"b":  11,
-		}
-		value, ok := values[strings.ToLower(noteName.(string))]
-		if !ok {
-			return nil, g.newErrorExpr("Invalid note name.", stmt.Parameters[0])
-		}
-		octave, err := g.literal(stmt.Name, stmt.Parameters[1])
-		if err != nil {
-			return nil, err
-		}
-		noteValue := int(octave.(float64))*12 + value
-		noteBlock.Fields["NOTE"] = []any{strconv.Itoa(noteValue), nil}
-		block.Inputs["number_1"] = []any{1, noteBlock.ID}
 	} else if v, ok := stmt.Parameters[0].(*parser.ExprLiteral); ok {
-		if v.Token.DataType != parser.DTNumber {
-			return nil, g.newErrorTk(fmt.Sprintf("The value must be of type %s.", parser.DTNumber), v.Token)
-		}
 		noteBlock.Fields["NOTE"] = []any{strconv.Itoa(int(v.Token.Literal.(float64))), nil}
 		block.Inputs["number_1"] = []any{1, noteBlock.ID}
 	} else {
 		note, err := g.value(block.ID, stmt.Name, stmt.Parameters[0])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
+		} else {
+			noteBlock.Parent = nil
+			noteBlock.Fields["NOTE"] = []any{"0", nil}
+			block.Inputs["number_1"] = []any{3, note[1].(string), noteBlock.ID}
 		}
-		noteBlock.Parent = nil
-		noteBlock.Fields["NOTE"] = []any{"0", nil}
-		block.Inputs["number_1"] = []any{3, note[1].(string), noteBlock.ID}
 	}
 
 	var err error
@@ -345,7 +344,7 @@ func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *pars
 
 		err := selectAmbientLight(g, block, orderType, stmt.Name, stmt.Parameters, 1, "order", "MBUILD_ULTRASONIC2_SET_BRI_ORDER", true)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["bv"], err = g.value(g.blockID, stmt.Name, stmt.Parameters[len(stmt.Parameters)-1])
@@ -438,13 +437,14 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	for i := range names {
 		n, err := g.literal(stmt.Name, stmt.Parameters[i])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
+			continue
 		}
 		colors := []string{"gray", "red", "orange", "yellow", "green", "cyan", "blue", "magenta", "white"}
 		if index := slices.Index(colors, n.(string)); index >= 0 {
 			names[i] = strconv.Itoa(index)
 		} else {
-			return nil, g.newErrorExpr(fmt.Sprintf("Unknown color name. Available options: %s", strings.Join(colors, ", ")), stmt.Parameters[i])
+			g.errors = append(g.errors, g.newErrorExpr(fmt.Sprintf("Unknown color name. Available options: %s", strings.Join(colors, ", ")), stmt.Parameters[i]))
 		}
 	}
 
@@ -461,29 +461,29 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 		block.Type = blocks.LEDDisplaySingleColorWithRGB
 		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithRGBFieldMenu, stmt, 3, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		err := selectLED(g, block, blocks.LEDDisplaySingleColorFieldMenu, stmt, 1, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -496,37 +496,37 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 		block.Type = blocks.LEDDisplaySingleColorWithRGBAndTime
 		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithRGBAndTimeFieldMenu, stmt, 4, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_5"], err = g.value(block.ID, stmt.Name, stmt.Parameters[4])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		err := selectLED(g, block, blocks.LEDDisplaySingleColorWithTimeFieldMenu, stmt, 2, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -669,20 +669,20 @@ func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 		block.Type = blocks.DisplaySetBrushColorRGB
 		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -693,16 +693,17 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	block := g.NewBlock(blocks.DisplayLabelShowSomewhereWithSize, false)
 	number, err := g.literal(stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
+	} else {
+		if math.Mod(number.(float64), 1.0) != 0 || number.(float64) < 0 || number.(float64) > 8 {
+			return nil, g.newErrorExpr("The label number must lie between 0 and 8.", stmt.Parameters[0])
+		}
+		block.Fields["fieldMenu_1"] = []any{fmt.Sprintf("%d", int(number.(float64))-1), nil}
 	}
-	if math.Mod(number.(float64), 1.0) != 0 || number.(float64) < 0 || number.(float64) > 8 {
-		return nil, g.newErrorExpr("The label number must lie between 0 and 8.", stmt.Parameters[0])
-	}
-	block.Fields["fieldMenu_1"] = []any{fmt.Sprintf("%d", int(number.(float64))-1), nil}
 
 	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	sizeIndex := 3
@@ -712,22 +713,23 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 
 		block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[3])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		location, err := g.literal(stmt.Name, stmt.Parameters[2])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
+		} else {
+			locations := []string{"top_left", "top_mid", "top_right", "mid_left", "center", "mid_right", "bottom_left", "bottom_mid", "bottom_right"}
+			if !slices.Contains(locations, location.(string)) {
+				return nil, g.newErrorExpr(fmt.Sprintf("Unknown label location. Available options: %s", strings.Join(locations, ", ")), stmt.Parameters[2])
+			}
+			block.Fields["fieldMenu_2"] = []any{location, nil}
 		}
-		locations := []string{"top_left", "top_mid", "top_right", "mid_left", "center", "mid_right", "bottom_left", "bottom_mid", "bottom_right"}
-		if !slices.Contains(locations, location.(string)) {
-			return nil, g.newErrorExpr(fmt.Sprintf("Unknown label location. Available options: %s", strings.Join(locations, ", ")), stmt.Parameters[2])
-		}
-		block.Fields["fieldMenu_2"] = []any{location, nil}
 	}
 
 	block.Inputs["inputMenu_4"], err = g.fieldMenu(blocks.DisplayLabelShowSomewhereWithSizeMenu, "", "CYBERPI_CONSOLE_SET_FONT_INPUTMENU_1", block.ID, stmt.Name, stmt.Parameters[sizeIndex], func(v any, token parser.Token) error {
@@ -790,7 +792,7 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	var err error
 	block.Inputs["string_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["fieldMenu_1"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_1", block.ID, stmt.Name, stmt.Parameters[1], func(v any, token parser.Token) error {
@@ -800,7 +802,7 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["fieldMenu_2"], err = g.fieldMenu(blocks.DisplayTableAddDataAtRowColumnMenu, "", "CYBERPI_DISPLAY_TABLE_ADD_DATA_AT_ROW_COLUMN_2_FIELDMENU_2", block.ID, stmt.Name, stmt.Parameters[2], func(v any, token parser.Token) error {
@@ -849,24 +851,24 @@ func funcDisplaySetBackgroundColor(g *generator, stmt *parser.StmtFuncCall) (*bl
 	if len(stmt.Parameters) == 1 {
 		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Type = blocks.SpriteSetBackgroundFillColorRGB
 
 		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -907,12 +909,12 @@ func funcSpriteFromText(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -924,12 +926,12 @@ func funcSpriteFromQR(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["string_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -969,7 +971,7 @@ func funcSpriteSetAnchor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SpriteSetAlignInputMenu, "", "CYBERPI_SPRITE_SET_ALIGN_INPUTMENU_2", block.ID, stmt.Name, stmt.Parameters[1], func(v any, token parser.Token) error {
@@ -980,7 +982,7 @@ func funcSpriteSetAnchor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -993,12 +995,12 @@ func funcSpriteMove(direction string) func(g *generator, stmt *parser.StmtFuncCa
 		var err error
 		block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Fields["fieldMenu_2"] = []any{direction, nil}
@@ -1013,15 +1015,15 @@ func funcSpriteMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1044,12 +1046,12 @@ func funcSpriteRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1061,12 +1063,12 @@ func funcSpriteRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1078,12 +1080,12 @@ func funcSpriteSetScale(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1095,27 +1097,27 @@ func funcSpriteSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	if len(stmt.Parameters) == 2 {
 		block.Inputs["number_2"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[1], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Type = blocks.SpriteSetColorWithRGB
 		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_4"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[3], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -1204,21 +1206,21 @@ func funcDrawSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	if len(stmt.Parameters) == 1 {
 		block.Inputs["color_1"], err = g.valueWithRegex(block.ID, stmt.Name, stmt.Parameters[0], hexColorRegex, 9, "The value must be a valid hex color (\"#000000\" - \"#ffffff\").")
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Type = blocks.DrawSketchSetColorWithRGB
 		block.Inputs["number_1"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_2"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 		block.Inputs["number_3"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -1291,11 +1293,11 @@ func funcDrawCircle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	var err error
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1323,11 +1325,11 @@ func funcDrawMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	var err error
 	block.Inputs["number_1"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_2"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1368,14 +1370,14 @@ func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	var err error
 	block.Inputs["message"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	if len(stmt.Parameters) == 2 {
 		block.Type = blocks.NetSetWifiBroadcastWithValue
 		block.Inputs["value"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	}
 
@@ -1403,12 +1405,12 @@ func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	var err error
 	block.Inputs["ssid"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["wifipassword"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -1449,21 +1451,21 @@ func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	var err error
 	block.Inputs["r"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[0], -1, 0, 255)
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["g"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[1], -1, 0, 255)
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["b"], err = g.valueInRange(block.ID, stmt.Name, stmt.Parameters[2], -1, 0, 255)
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	if len(stmt.Parameters) == 4 {
 		block.Inputs["tolerance"], err = g.value(block.ID, stmt.Name, stmt.Parameters[3])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 	} else {
 		block.Inputs["tolerance"] = []any{1, []any{4, "50"}}
@@ -1485,14 +1487,14 @@ func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCal
 		var err error
 		block.Inputs["POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		if len(stmt.Parameters) == 2 {
 			block.Type = blocks.Mbot2MoveDirectionWithTime
 			block.Inputs["TIME"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 			if err != nil {
-				return nil, err
+				g.errors = append(g.errors, err)
 			}
 		}
 
@@ -1553,20 +1555,20 @@ func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall)
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Fields["fieldMenu_4"] = []any{unit, nil}
 
 		block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		if len(stmt.Parameters) == 3 {
 			block.Inputs["number_3"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 			if err != nil {
-				return nil, err
+				g.errors = append(g.errors, err)
 			}
 		}
 
@@ -1586,7 +1588,7 @@ func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
@@ -1605,12 +1607,12 @@ func funcMotorsDrive(unit string) func(g *generator, stmt *parser.StmtFuncCall) 
 		var err error
 		block.Inputs["LEFT_POWER"], err = g.value(block.ID, stmt.Name, stmt.Parameters[0])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		block.Inputs[rightPowerKey], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 		if err != nil {
-			return nil, err
+			g.errors = append(g.errors, err)
 		}
 
 		return block, nil
@@ -1776,11 +1778,11 @@ func funcListsAppend(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	block := g.NewBlock(blocks.ListAdd, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	return block, nil
 }
@@ -1789,11 +1791,11 @@ func funcListsRemove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	block := g.NewBlock(blocks.ListDelete, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	return block, nil
 }
@@ -1811,15 +1813,15 @@ func funcListsInsert(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	block := g.NewBlock(blocks.ListInsert, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	return block, nil
 }
@@ -1828,15 +1830,15 @@ func funcListsReplace(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	block := g.NewBlock(blocks.ListReplace, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Name, stmt.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["ITEM"], err = g.value(block.ID, stmt.Name, stmt.Parameters[2])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	return block, nil
 }

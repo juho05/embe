@@ -34,24 +34,27 @@ type scanner struct {
 	currentColumn     int
 	tokens            []Token
 	lineContainsToken bool
+	errors            []error
 }
 
-func Scan(source io.Reader) ([]Token, [][]rune, error) {
+func Scan(source io.Reader) ([]Token, [][]rune, []error) {
 	fileScanner := bufio.NewScanner(source)
 
 	srcScanner := &scanner{
 		inputScanner: fileScanner,
 		line:         -1,
+		errors:       make([]error, 0),
 	}
 
-	err := srcScanner.scan()
-	return srcScanner.tokens, srcScanner.lines, err
+	srcScanner.scan()
+	return srcScanner.tokens, srcScanner.lines, srcScanner.errors
 }
 
-func (s *scanner) scan() error {
+func (s *scanner) scan() {
 	c, err := s.nextCharacter()
 	if err != nil {
-		return err
+		s.errors = append(s.errors, err)
+		return
 	}
 
 	for c != '\000' {
@@ -94,10 +97,7 @@ func (s *scanner) scan() error {
 			if s.match('/') {
 				s.comment()
 			} else if s.match('*') {
-				err = s.blockComment()
-				if err != nil {
-					return err
-				}
+				s.blockComment()
 			} else if s.match('=') {
 				s.addToken(TkDivideAssign)
 			} else {
@@ -137,39 +137,39 @@ func (s *scanner) scan() error {
 
 		case '|':
 			if !s.match('|') {
-				return s.newError(fmt.Sprintf("Unexpected character '%c'.", c))
+				s.errors = append(s.errors, s.newError(fmt.Sprintf("Unexpected character '%c'.", c)))
+				s.synchronize(true)
+				break
 			}
 			s.addToken(TkOr)
 		case '&':
 			if !s.match('&') {
-				return s.newError(fmt.Sprintf("Unexpected character '%c'.", c))
+				s.errors = append(s.errors, s.newError(fmt.Sprintf("Unexpected character '%c'.", c)))
+				s.synchronize(true)
+				break
 			}
 			s.addToken(TkAnd)
 
 		case '"':
-			err = s.string()
-			if err != nil {
-				return err
-			}
+			s.string()
 
 		case ' ', '\t':
 
 		default:
 			if isDigit(c, 10) {
-				err = s.number()
-				if err != nil {
-					return err
-				}
+				s.number()
 			} else if isAlpha(c) {
 				s.identifier()
 			} else {
-				return s.newError(fmt.Sprintf("Unexpected character '%c'.", c))
+				s.errors = append(s.errors, s.newError(fmt.Sprintf("Unexpected character '%c'.", c)))
+				s.synchronize(true)
 			}
 		}
 
 		c, err = s.nextCharacter()
 		if err != nil {
-			return err
+			s.errors = append(s.errors, err)
+			return
 		}
 		s.tokenStartColumn = s.currentColumn
 	}
@@ -188,8 +188,6 @@ func (s *scanner) scan() error {
 	}
 
 	s.tokens = append(s.tokens, eof)
-
-	return nil
 }
 
 func (s *scanner) identifier() {
@@ -224,7 +222,7 @@ func (s *scanner) identifier() {
 	}
 }
 
-func (s *scanner) number() error {
+func (s *scanner) number() {
 	base := 10
 
 	if string(s.lines[s.line][s.currentColumn:s.currentColumn+1]) == "0" {
@@ -252,7 +250,7 @@ func (s *scanner) number() error {
 		}
 		value, _ := strconv.ParseFloat(string(s.lines[s.line][s.tokenStartColumn:s.currentColumn+1]), 64)
 		s.addTokenWithValue(TkLiteral, DTNumber, value)
-		return nil
+		return
 	}
 
 	lexeme := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
@@ -265,11 +263,12 @@ func (s *scanner) number() error {
 		lexeme = strings.TrimPrefix(lexeme, "0b")
 	}
 	if lexeme == "" {
-		return s.newError("There must be at least one digit after a number prefix.")
+		s.errors = append(s.errors, s.newError("There must be at least one digit after a number prefix."))
+		s.synchronize(true)
+		return
 	}
 	value, _ := strconv.ParseInt(lexeme, base, 64)
 	s.addTokenWithValue(TkLiteral, DTNumber, float64(value))
-	return nil
 }
 
 func (s *scanner) comment() {
@@ -278,26 +277,28 @@ func (s *scanner) comment() {
 	}
 }
 
-func (s *scanner) string() error {
+func (s *scanner) string() {
 	characters := make([]rune, 0)
 	for s.peek() != '"' && s.peek() != '\n' {
 		c, _ := s.nextCharacter()
 		characters = append(characters, c)
 	}
 	if !s.match('"') {
-		return s.newError("Unterminated string.")
+		s.errors = append(s.errors, s.newError("Unterminated string."))
+		s.synchronize(false)
+		return
 	}
 	s.addTokenWithValue(TkLiteral, DTString, string(characters))
-	return nil
+	return
 }
 
-func (s *scanner) blockComment() error {
+func (s *scanner) blockComment() {
 	nestingLevel := 1
 	for nestingLevel > 0 {
 		c, err := s.nextCharacter()
 
 		if c == '\000' || err != nil {
-			return err
+			return
 		}
 		if c == '/' && s.match('*') {
 			nestingLevel++
@@ -308,7 +309,6 @@ func (s *scanner) blockComment() error {
 			continue
 		}
 	}
-	return nil
 }
 
 func (s *scanner) nextCharacter() (rune, error) {
@@ -361,6 +361,15 @@ func (s *scanner) nextLine() (bool, error) {
 	s.tokenStartColumn = 0
 
 	return true, nil
+}
+
+func (s *scanner) synchronize(spaceAsSeparator bool) {
+	for s.peek() != '\n' && s.peek() != '\000' {
+		if spaceAsSeparator && s.peek() == ' ' {
+			return
+		}
+		s.nextCharacter()
+	}
 }
 
 func (s *scanner) addToken(tokenType TokenType) {

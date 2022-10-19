@@ -317,15 +317,14 @@ func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 
 	target, err := g.literal(expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
+	} else {
+		options := []string{"line", "ground", "white", "red", "yellow", "green", "cyan", "blue", "purple", "black", "custom"}
+		if !slices.Contains(options, target.(string)) {
+			return nil, g.newErrorExpr(fmt.Sprintf("Unknown target. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0])
+		}
+		block.Fields["inputMenu_1"] = []any{target, nil}
 	}
-
-	options := []string{"line", "ground", "white", "red", "yellow", "green", "cyan", "blue", "purple", "black", "custom"}
-	if !slices.Contains(options, target.(string)) {
-		return nil, g.newErrorExpr(fmt.Sprintf("Unknown target. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0])
-	}
-
-	block.Fields["inputMenu_1"] = []any{target, nil}
 
 	g.noNext = true
 	indexMenu := g.NewBlock(blocks.SensorColorStatusIndex, true)
@@ -358,7 +357,7 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput3, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_3", block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
@@ -369,7 +368,7 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	g.noNext = true
@@ -401,15 +400,15 @@ func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 
 	target, err := g.literal(expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
-	}
+		g.errors = append(g.errors, err)
+	} else {
+		options := []string{"line", "ground", "white", "red", "yellow", "green", "cyan", "blue", "purple", "black", "custom"}
+		if !slices.Contains(options, target.(string)) {
+			return nil, g.newErrorExpr(fmt.Sprintf("Unknown target. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0])
+		}
 
-	options := []string{"line", "ground", "white", "red", "yellow", "green", "cyan", "blue", "purple", "black", "custom"}
-	if !slices.Contains(options, target.(string)) {
-		return nil, g.newErrorExpr(fmt.Sprintf("Unknown target. Available options: %s", strings.Join(options, ", ")), expr.Parameters[0])
+		block.Fields["inputMenu_1"] = []any{target, nil}
 	}
-
-	block.Fields["inputMenu_1"] = []any{target, nil}
 
 	block.Inputs["inputMenu_2"], err = g.fieldMenu(inputType, "", inputMenuKey, block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
 		value := int(v.(float64))
@@ -448,7 +447,7 @@ func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorIsLineAndBackgroundInput3, "", "MBUILD_QUAD_COLOR_SENSOR_IS_LINE_AND_BACKGROUND_INPUTMENU_3", block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
@@ -459,7 +458,7 @@ func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	g.noNext = true
@@ -539,12 +538,12 @@ func exprFuncMathRandom(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	var err error
 	block.Inputs["FROM"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	block.Inputs["TO"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -578,7 +577,7 @@ func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 	var err error
 	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["LETTER"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	return block, err
@@ -589,7 +588,7 @@ func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 	var err error
 	block.Inputs["STRING1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["STRING2"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	return block, err
@@ -599,7 +598,7 @@ func exprFuncListsGet(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 	block := g.NewBlock(blocks.ListItem, false)
 	err := selectList(g, block, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["INDEX"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
@@ -612,7 +611,7 @@ func exprFuncListsIndexOf(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 	block := g.NewBlock(blocks.ListItemIndex, false)
 	err := selectList(g, block, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
@@ -634,7 +633,7 @@ func exprFuncListsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 	block := g.NewBlock(blocks.ListContains, false)
 	err := selectList(g, block, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
@@ -649,23 +648,23 @@ func exprFuncDisplayPixelIsColor(g *generator, expr *parser.ExprFuncCall) (*bloc
 	var err error
 	block.Inputs["number_2"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_3"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_4"], err = g.value(block.ID, expr.Name, expr.Parameters[2])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_5"], err = g.value(block.ID, expr.Name, expr.Parameters[3])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["number_6"], err = g.value(block.ID, expr.Name, expr.Parameters[4])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil
@@ -677,11 +676,11 @@ func exprFuncSpriteTouchesSprite(g *generator, expr *parser.ExprFuncCall) (*bloc
 	var err error
 	block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 	block.Inputs["string_2"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
 	if err != nil {
-		return nil, err
+		g.errors = append(g.errors, err)
 	}
 
 	return block, nil

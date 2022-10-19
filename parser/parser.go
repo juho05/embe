@@ -229,20 +229,23 @@ func (p *parser) event() (Stmt, error) {
 	name := p.previous()
 
 	var parameter Expr
-	if p.peek().Type != TkColon {
-		var err error
+	var err error
+	if p.peek().Type != TkColon && p.peek().Type != TkNewLine {
 		parameter, err = p.expression()
 		if err != nil {
-			return nil, err
+			p.errors = append(p.errors, err)
+			p.synchronize()
 		}
 	}
 
-	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' after parameter.")
-	}
-
-	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after ':'.")
+	if err == nil {
+		if !p.match(TkColon) {
+			p.errors = append(p.errors, p.newError("Expected ':' after parameter."))
+			p.synchronize()
+		} else if !p.match(TkNewLine) {
+			p.errors = append(p.errors, p.newError("Expected '\n' after ':'."))
+			p.synchronize()
+		}
 	}
 
 	body := p.statements(name.Indent + 1)
@@ -417,15 +420,18 @@ func (p *parser) ifStmt() (Stmt, error) {
 
 	condition, err := p.expression()
 	if err != nil {
-		return nil, err
+		p.errors = append(p.errors, err)
+		p.synchronize()
 	}
 
-	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' after if condition.")
-	}
-
-	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\\n' after ':'.")
+	if err == nil {
+		if !p.match(TkColon) {
+			p.errors = append(p.errors, p.newError("Expected ':' after if condition."))
+			p.synchronize()
+		} else if !p.match(TkNewLine) {
+			p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
+			p.synchronize()
+		}
 	}
 
 	body := p.statements(keyword.Indent + 1)
@@ -441,15 +447,18 @@ func (p *parser) ifStmt() (Stmt, error) {
 		elifKeyword := p.previous()
 		elifCondition, err := p.expression()
 		if err != nil {
-			return nil, err
+			p.errors = append(p.errors, err)
+			p.synchronize()
 		}
 
-		if !p.match(TkColon) {
-			return nil, p.newError("Expected ':' after if condition.")
-		}
-
-		if !p.match(TkNewLine) {
-			return nil, p.newError("Expected '\\n' after ':'.")
+		if err == nil {
+			if !p.match(TkColon) {
+				p.errors = append(p.errors, p.newError("Expected ':' after if condition."))
+				p.synchronize()
+			} else if !p.match(TkNewLine) {
+				p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
+				p.synchronize()
+			}
 		}
 
 		elifBody := p.statements(elifKeyword.Indent + 1)
@@ -465,10 +474,11 @@ func (p *parser) ifStmt() (Stmt, error) {
 	if p.match(TkElse) {
 		elseKeyword := p.previous()
 		if !p.match(TkColon) {
-			return nil, p.newError("Expected ':' after 'else'.")
-		}
-		if !p.match(TkNewLine) {
-			return nil, p.newError("Expected '\\n' after ':'.")
+			p.errors = append(p.errors, p.newError("Expected ':' after 'else'."))
+			p.synchronize()
+		} else if !p.match(TkNewLine) {
+			p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
+			p.synchronize()
 		}
 		elifStmt.ElseBody = p.statements(elseKeyword.Indent + 1)
 	}
@@ -487,30 +497,34 @@ func (p *parser) whileLoop() (Stmt, error) {
 	if p.peek().Type != TkColon {
 		condition, err = p.expression()
 		if err != nil {
-			return nil, err
-		}
-		// invert 'while' to 'until'
-		if c, ok := condition.(*ExprUnary); ok && c.Operator.Type == TkBang {
-			condition = c.Right
+			p.errors = append(p.errors, err)
+			p.synchronize()
 		} else {
-			condition = &ExprUnary{
-				Operator: Token{
-					Type:   TkBang,
-					Lexeme: keyword.Lexeme,
-					Pos:    keyword.Pos,
-					Indent: keyword.Indent,
-				},
-				Right: condition,
+			// invert 'while' to 'until'
+			if c, ok := condition.(*ExprUnary); ok && c.Operator.Type == TkBang {
+				condition = c.Right
+			} else {
+				condition = &ExprUnary{
+					Operator: Token{
+						Type:   TkBang,
+						Lexeme: keyword.Lexeme,
+						Pos:    keyword.Pos,
+						Indent: keyword.Indent,
+					},
+					Right: condition,
+				}
 			}
 		}
 	}
 
-	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' at the end of the while statement.")
-	}
-
-	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\\n' after ':'.")
+	if err == nil {
+		if !p.match(TkColon) {
+			p.errors = append(p.errors, p.newError("Expected ':' at the end of the while statement."))
+			p.synchronize()
+		} else if !p.match(TkNewLine) {
+			p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
+			p.synchronize()
+		}
 	}
 
 	body := p.statements(keyword.Indent + 1)
@@ -533,16 +547,19 @@ func (p *parser) forLoop() (Stmt, error) {
 	if p.peek().Type != TkColon {
 		condition, err = p.expression()
 		if err != nil {
-			return nil, err
+			p.errors = append(p.errors, err)
+			p.synchronize()
 		}
 	}
 
-	if !p.match(TkColon) {
-		return nil, p.newError("Expected ':' at the end of the for statement.")
-	}
-
-	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\\n' after ':'.")
+	if err == nil {
+		if !p.match(TkColon) {
+			p.errors = append(p.errors, p.newError("Expected ':' at the end of the for statement."))
+			p.synchronize()
+		} else if !p.match(TkNewLine) {
+			p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
+			p.synchronize()
+		}
 	}
 
 	body := p.statements(keyword.Indent + 1)
@@ -561,14 +578,22 @@ func (p *parser) expression() (Expr, error) {
 func (p *parser) or() (Expr, error) {
 	expr, err := p.and()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkOr) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkOr) {
 		operator := p.previous()
 		right, err := p.and()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkOr) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		expr = &ExprBinary{
 			Operator: operator,
@@ -583,14 +608,22 @@ func (p *parser) or() (Expr, error) {
 func (p *parser) and() (Expr, error) {
 	expr, err := p.equality()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkAnd) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkAnd) {
 		operator := p.previous()
 		right, err := p.equality()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkAnd) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		expr = &ExprBinary{
 			Operator: operator,
@@ -605,14 +638,22 @@ func (p *parser) and() (Expr, error) {
 func (p *parser) equality() (Expr, error) {
 	expr, err := p.comparison()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkEqual, TkNotEqual) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkEqual, TkNotEqual) {
 		operator := p.previous()
 		right, err := p.comparison()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkEqual, TkNotEqual) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		if operator.Type == TkNotEqual {
 			operator.Type = TkEqual
@@ -641,14 +682,22 @@ func (p *parser) equality() (Expr, error) {
 func (p *parser) comparison() (Expr, error) {
 	expr, err := p.term()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkLess, TkLessEqual, TkGreater, TkGreaterEqual) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkLess, TkLessEqual, TkGreater, TkGreaterEqual) {
 		operator := p.previous()
 		right, err := p.term()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkLess, TkLessEqual, TkGreater, TkGreaterEqual) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		if operator.Type == TkLessEqual || operator.Type == TkGreaterEqual {
 			withoutEqual := TkLess
@@ -698,14 +747,22 @@ func (p *parser) comparison() (Expr, error) {
 func (p *parser) term() (Expr, error) {
 	expr, err := p.factor()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkPlus, TkMinus) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkPlus, TkMinus) {
 		operator := p.previous()
 		right, err := p.factor()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkPlus, TkMinus) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		expr = &ExprBinary{
 			Operator: operator,
@@ -720,14 +777,22 @@ func (p *parser) term() (Expr, error) {
 func (p *parser) factor() (Expr, error) {
 	expr, err := p.unary()
 	if err != nil {
-		return nil, err
+		if !p.synchronize(TkMultiply, TkDivide, TkModulus) {
+			p.current--
+			return nil, err
+		}
+		p.errors = append(p.errors, err)
 	}
 
 	for p.match(TkMultiply, TkDivide, TkModulus) {
 		operator := p.previous()
 		right, err := p.unary()
 		if err != nil {
-			return nil, err
+			if !p.synchronize(TkMultiply, TkDivide, TkModulus) {
+				p.current--
+				return nil, err
+			}
+			p.errors = append(p.errors, err)
 		}
 		expr = &ExprBinary{
 			Operator: operator,
@@ -839,7 +904,11 @@ func (p *parser) primary() (Expr, error) {
 		for p.peek().Type != TkCloseBracket && p.peek().Type != TkEOF {
 			expr, err := p.expression()
 			if err != nil {
-				return nil, err
+				if !p.synchronize(TkComma, TkCloseBracket) {
+					p.current--
+					return nil, err
+				}
+				p.errors = append(p.errors, err)
 			}
 			values = append(values, expr)
 			if !p.match(TkComma) {
@@ -904,19 +973,28 @@ func (p *parser) peekNext() Token {
 	return p.tokens[p.current+1]
 }
 
-func (p *parser) synchronize() {
+func (p *parser) synchronize(tokens ...TokenType) bool {
 	if p.peek().Type == TkEOF {
-		return
+		return false
 	}
 	p.current++
+	if p.previous().Type == TkNewLine {
+		return false
+	}
 	for p.peek().Type != TkEOF {
 		switch p.peek().Type {
 		case TkNewLine:
 			p.current++
-			return
+			return false
+		}
+		for _, t := range tokens {
+			if p.peek().Type == t {
+				return true
+			}
 		}
 		p.current++
 	}
+	return false
 }
 
 type ParseError struct {

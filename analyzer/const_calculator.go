@@ -110,7 +110,12 @@ func (c *constCalculator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 	case "strings.length":
 		value = float64(utf8.RuneCountInString(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(string)))
 	case "strings.letter":
-		value = string([]rune(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(string))[int(expr.Parameters[1].(*parser.ExprLiteral).Token.Literal.(float64))])
+		str := []rune(expr.Parameters[0].(*parser.ExprLiteral).Token.Literal.(string))
+		index := int(expr.Parameters[1].(*parser.ExprLiteral).Token.Literal.(float64))
+		if index < 0 || index >= len(str) {
+			return c.newErrorExpr(fmt.Sprintf("Index out of range. Index: %d, length: %d", index, len(str)), expr.Parameters[1])
+		}
+		value = str
 
 	default:
 		c.newExpr = expr

@@ -349,7 +349,7 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 	block := g.NewBlock(blocks.SensorColorGetRGBGrayLight, false)
 
 	var err error
-	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput2, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_2", block.ID, expr.Name, expr.Parameters[0], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput2, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_2", block.ID, expr.Parameters[0], func(v any, token parser.Token) error {
 		sensors := []string{"L1", "L2", "R1", "R2"}
 		if !slices.Contains(sensors, v.(string)) {
 			return g.newErrorTk(fmt.Sprintf("Unknown sensor. Available options: %s", strings.Join(sensors, ", ")), token)
@@ -360,7 +360,7 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 		g.errors = append(g.errors, err)
 	}
 
-	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput3, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_3", block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput3, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_3", block.ID, expr.Parameters[1], func(v any, token parser.Token) error {
 		types := []string{"red", "green", "blue", "gray", "light", "color_sta"}
 		if !slices.Contains(types, v.(string)) {
 			return g.newErrorTk(fmt.Sprintf("Unknown value type. Available options: %s", strings.Join(types, ", ")), token)
@@ -410,7 +410,7 @@ func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 		block.Fields["inputMenu_1"] = []any{target, nil}
 	}
 
-	block.Inputs["inputMenu_2"], err = g.fieldMenu(inputType, "", inputMenuKey, block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(inputType, "", inputMenuKey, block.ID, expr.Parameters[1], func(v any, token parser.Token) error {
 		value := int(v.(float64))
 		if blockType == blocks.SensorColorIsStatusL1R1 {
 			if math.Mod(v.(float64), 1.0) != 0 || value < 0 || value > 3 {
@@ -439,7 +439,7 @@ func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 	block := g.NewBlock(blocks.SensorColorIsLineAndBackground, false)
 
 	var err error
-	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SensorColorIsLineAndBackgroundInput2, "", "MBUILD_QUAD_COLOR_SENSOR_IS_LINE_AND_BACKGROUND_INPUTMENU_2", block.ID, expr.Name, expr.Parameters[0], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SensorColorIsLineAndBackgroundInput2, "", "MBUILD_QUAD_COLOR_SENSOR_IS_LINE_AND_BACKGROUND_INPUTMENU_2", block.ID, expr.Parameters[0], func(v any, token parser.Token) error {
 		sensors := []string{"any", "L1", "L2", "R1", "R2"}
 		if !slices.Contains(sensors, v.(string)) {
 			return g.newErrorTk(fmt.Sprintf("Unknown sensor. Available options: %s", strings.Join(sensors, ", ")), token)
@@ -450,7 +450,7 @@ func exprFuncDetectColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 		g.errors = append(g.errors, err)
 	}
 
-	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorIsLineAndBackgroundInput3, "", "MBUILD_QUAD_COLOR_SENSOR_IS_LINE_AND_BACKGROUND_INPUTMENU_3", block.ID, expr.Name, expr.Parameters[1], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorIsLineAndBackgroundInput3, "", "MBUILD_QUAD_COLOR_SENSOR_IS_LINE_AND_BACKGROUND_INPUTMENU_3", block.ID, expr.Parameters[1], func(v any, token parser.Token) error {
 		types := []string{"line", "ground", "white", "red", "green", "blue", "yellow", "cyan", "purple", "black"}
 		if !slices.Contains(types, v.(string)) {
 			return g.newErrorTk(fmt.Sprintf("Unknown target. Available options: %s", strings.Join(types, ", ")), token)
@@ -473,7 +473,7 @@ func exprFuncMotorsSpeed(unit string) func(g *generator, expr *parser.ExprFuncCa
 		block := g.NewBlock(blocks.Mbot2EncoderMotorGetSpeed, false)
 
 		var err error
-		block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.Mbot2EncoderMotorGetSpeedMenu, "", "MBOT2_ENCODER_MOTOR_GET_SPEED_INPUTMENU_2", block.ID, expr.Name, expr.Parameters[0], func(v any, token parser.Token) error {
+		block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.Mbot2EncoderMotorGetSpeedMenu, "", "MBOT2_ENCODER_MOTOR_GET_SPEED_INPUTMENU_2", block.ID, expr.Parameters[0], func(v any, token parser.Token) error {
 			encoderMotor := v.(string)
 			if encoderMotor != "EM1" && encoderMotor != "EM2" {
 				return g.newErrorTk("Unknown encoder motor. Available options: EM1, EM2", token)
@@ -494,7 +494,7 @@ func exprFuncMotorsAngle(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 	block := g.NewBlock(blocks.Mbot2EncoderMotorGetAngle, false)
 
 	var err error
-	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.Mbot2EncoderMotorGetAngleMenu, "", "MBOT2_ENCODER_MOTOR_GET_SPEED_INPUTMENU_2", block.ID, expr.Name, expr.Parameters[0], func(v any, token parser.Token) error {
+	block.Inputs["inputMenu_1"], err = g.fieldMenu(blocks.Mbot2EncoderMotorGetAngleMenu, "", "MBOT2_ENCODER_MOTOR_GET_SPEED_INPUTMENU_2", block.ID, expr.Parameters[0], func(v any, token parser.Token) error {
 		encoderMotor := v.(string)
 		if encoderMotor != "EM1" && encoderMotor != "EM2" {
 			return g.newErrorTk("Unknown encoder motor. Available options: EM1, EM2", token)
@@ -512,7 +512,7 @@ func exprFuncNetReceive(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	block := g.NewBlock(blocks.NetWifiGetValue, false)
 
 	var err error
-	block.Inputs["message"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["message"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +524,7 @@ func exprFuncMathRound(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, 
 	block := g.NewBlock(blocks.OpRound, false)
 
 	var err error
-	block.Inputs["NUM"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["NUM"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -536,12 +536,12 @@ func exprFuncMathRandom(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 	block := g.NewBlock(blocks.OpRandom, false)
 
 	var err error
-	block.Inputs["FROM"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["FROM"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
 
-	block.Inputs["TO"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["TO"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -556,7 +556,7 @@ func exprFuncMathOp(operator string) func(g *generator, expr *parser.ExprFuncCal
 		block.Fields["OPERATOR"] = []any{operator, nil}
 
 		var err error
-		block.Inputs["NUM"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+		block.Inputs["NUM"], err = g.value(block.ID, expr.Parameters[0])
 		if err != nil {
 			return nil, err
 		}
@@ -568,29 +568,29 @@ func exprFuncMathOp(operator string) func(g *generator, expr *parser.ExprFuncCal
 func exprFuncStringsLength(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.OpLength, false)
 	var err error
-	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["STRING"], err = g.value(block.ID, expr.Parameters[0])
 	return block, err
 }
 
 func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.OpLetterOf, false)
 	var err error
-	block.Inputs["STRING"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["STRING"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["LETTER"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["LETTER"], err = g.value(block.ID, expr.Parameters[1])
 	return block, err
 }
 
 func exprFuncStringsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.OpContains, false)
 	var err error
-	block.Inputs["STRING1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["STRING1"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["STRING2"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["STRING2"], err = g.value(block.ID, expr.Parameters[1])
 	return block, err
 }
 
@@ -600,7 +600,7 @@ func exprFuncListsGet(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["INDEX"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +613,7 @@ func exprFuncListsIndexOf(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["ITEM"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		return nil, err
 	}
@@ -635,7 +635,7 @@ func exprFuncListsContains(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["ITEM"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["ITEM"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		return nil, err
 	}
@@ -646,23 +646,23 @@ func exprFuncDisplayPixelIsColor(g *generator, expr *parser.ExprFuncCall) (*bloc
 	block := g.NewBlock(blocks.SpriteGetColorEqualWithRGB, false)
 
 	var err error
-	block.Inputs["number_2"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["number_2"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["number_3"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["number_3"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["number_4"], err = g.value(block.ID, expr.Name, expr.Parameters[2])
+	block.Inputs["number_4"], err = g.value(block.ID, expr.Parameters[2])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["number_5"], err = g.value(block.ID, expr.Name, expr.Parameters[3])
+	block.Inputs["number_5"], err = g.value(block.ID, expr.Parameters[3])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["number_6"], err = g.value(block.ID, expr.Name, expr.Parameters[4])
+	block.Inputs["number_6"], err = g.value(block.ID, expr.Parameters[4])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -674,11 +674,11 @@ func exprFuncSpriteTouchesSprite(g *generator, expr *parser.ExprFuncCall) (*bloc
 	block := g.NewBlock(blocks.SpriteIsTouchOtherSprite, false)
 
 	var err error
-	block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["string_1"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["string_2"], err = g.value(block.ID, expr.Name, expr.Parameters[1])
+	block.Inputs["string_2"], err = g.value(block.ID, expr.Parameters[1])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -690,7 +690,7 @@ func exprFuncSpriteTouchesEdge(g *generator, expr *parser.ExprFuncCall) (*blocks
 	block := g.NewBlock(blocks.SpriteIsTouchEdge, false)
 
 	var err error
-	block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+	block.Inputs["string_1"], err = g.value(block.ID, expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +703,7 @@ func exprFuncSpritePosition(getter string) func(g *generator, expr *parser.ExprF
 		block := g.NewBlock(blocks.SpriteGetXYRotationSizeAlign, false)
 
 		var err error
-		block.Inputs["string_1"], err = g.value(block.ID, expr.Name, expr.Parameters[0])
+		block.Inputs["string_1"], err = g.value(block.ID, expr.Parameters[0])
 		if err != nil {
 			return nil, err
 		}

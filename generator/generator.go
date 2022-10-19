@@ -159,7 +159,7 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 
 		var err error
 		for i, p := range stmt.Parameters {
-			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, stmt.Name, p)
+			block.Inputs[f.ArgumentIDs[i]], err = g.value(block.ID, p)
 			if err != nil {
 				g.errors = append(g.errors, err)
 			}
@@ -199,7 +199,7 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 		}
 
 		block = g.NewBlock(blockType, false)
-		value, err := g.value(block.ID, stmt.Operator, stmt.Value)
+		value, err := g.value(block.ID, stmt.Value)
 		if err != nil {
 			return err
 		}
@@ -214,7 +214,7 @@ func (g *generator) VisitAssignment(stmt *parser.StmtAssignment) error {
 		} else {
 			block = g.NewBlock(blocks.VariableSetTo, false)
 
-			value, err := g.value(block.ID, stmt.Operator, stmt.Value)
+			value, err := g.value(block.ID, stmt.Value)
 			if err != nil {
 				return err
 			}
@@ -300,14 +300,14 @@ func (g *generator) VisitLoop(stmt *parser.StmtLoop) error {
 	} else if stmt.Keyword.Type == parser.TkWhile {
 		block = g.NewBlock(blocks.ControlRepeatUntil, false)
 		g.parent = block.ID
-		block.Inputs["CONDITION"], err = g.value(parent, stmt.Keyword, stmt.Condition)
+		block.Inputs["CONDITION"], err = g.value(parent, stmt.Condition)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
 	} else if stmt.Keyword.Type == parser.TkFor {
 		block = g.NewBlock(blocks.ControlRepeat, false)
 		g.parent = block.ID
-		block.Inputs["TIMES"], err = g.value(parent, stmt.Keyword, stmt.Condition)
+		block.Inputs["TIMES"], err = g.value(parent, stmt.Condition)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
@@ -413,7 +413,7 @@ func (g *generator) VisitUnary(expr *parser.ExprUnary) error {
 		block = g.NewBlock(blocks.OpNot, false)
 	}
 	g.parent = block.ID
-	input, err := g.value(g.parent, expr.Operator, expr.Right)
+	input, err := g.value(g.parent, expr.Right)
 	if err != nil {
 		return err
 	}
@@ -429,12 +429,12 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 	if expr.Operator.Type == parser.TkPlus || expr.Operator.Type == parser.TkEqual {
 		block = g.NewBlock(blocks.OpAdd, false)
 
-		left, err := g.value(block.ID, expr.Operator, expr.Left)
+		left, err := g.value(block.ID, expr.Left)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
 
-		right, err := g.value(block.ID, expr.Operator, expr.Right)
+		right, err := g.value(block.ID, expr.Right)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
@@ -480,13 +480,13 @@ func (g *generator) VisitBinary(expr *parser.ExprBinary) error {
 			}
 		}
 
-		left, err := g.value(block.ID, expr.Operator, expr.Left)
+		left, err := g.value(block.ID, expr.Left)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
 		block.Inputs[operandName+"1"] = left
 
-		right, err := g.value(block.ID, expr.Operator, expr.Right)
+		right, err := g.value(block.ID, expr.Right)
 		if err != nil {
 			g.errors = append(g.errors, err)
 		}
@@ -503,18 +503,18 @@ func (g *generator) VisitGrouping(expr *parser.ExprGrouping) error {
 
 var matchAllRegex = regexp.MustCompile(".*")
 
-func (g *generator) value(parent string, token parser.Token, expr parser.Expr) ([]any, error) {
-	return g.valueWithRegex(parent, token, expr, matchAllRegex, -1, "")
+func (g *generator) value(parent string, expr parser.Expr) ([]any, error) {
+	return g.valueWithRegex(parent, expr, matchAllRegex, -1, "")
 }
 
-func (g *generator) valueWithRegex(parent string, token parser.Token, expr parser.Expr, validate *regexp.Regexp, valueIntOverride int, errorMessage string) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, func(v any) bool {
+func (g *generator) valueWithRegex(parent string, expr parser.Expr, validate *regexp.Regexp, valueIntOverride int, errorMessage string) ([]any, error) {
+	return g.valueWithValidator(parent, expr, func(v any) bool {
 		return validate.MatchString(fmt.Sprintf("%v", v))
 	}, valueIntOverride, errorMessage)
 }
 
-func (g *generator) valueInRange(parent string, token parser.Token, expr parser.Expr, valueIntOverride int, min any, max any) ([]any, error) {
-	return g.valueWithValidator(parent, token, expr, func(v any) bool {
+func (g *generator) valueInRange(parent string, expr parser.Expr, valueIntOverride int, min any, max any) ([]any, error) {
+	return g.valueWithValidator(parent, expr, func(v any) bool {
 		switch value := v.(type) {
 		case string:
 			return value >= min.(string) && value <= max.(string)
@@ -528,7 +528,7 @@ func (g *generator) valueInRange(parent string, token parser.Token, expr parser.
 	}, valueIntOverride, fmt.Sprintf("The value must lie between %v and %v.", min, max))
 }
 
-func (g *generator) valueWithValidator(parent string, token parser.Token, expr parser.Expr, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
+func (g *generator) valueWithValidator(parent string, expr parser.Expr, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
@@ -586,7 +586,7 @@ func intFromDT(dataType parser.DataType, valueIntOverride int) int {
 	return 4
 }
 
-func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, token parser.Token, expr parser.Expr, validateValue func(v any, token parser.Token) error) ([]any, error) {
+func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, menuFieldKey string, parent string, expr parser.Expr, validateValue func(v any, token parser.Token) error) ([]any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {

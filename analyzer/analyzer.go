@@ -172,15 +172,12 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 			}
 		}
 
-		newStatements := make([]parser.Stmt, 0, len(statements)+1)
-		newStatements = append(newStatements, &parser.StmtEvent{
+		statements = append(statements, &parser.StmtEvent{
 			Name: parser.Token{
 				Lexeme: "launch",
 			},
 			Body: a.variableInitializers,
 		})
-		newStatements = append(newStatements, statements...)
-		statements = newStatements
 	}
 
 	definitions := Definitions{

@@ -137,7 +137,7 @@ func (c *constCalculator) VisitTypeCast(expr *parser.ExprTypeCast) error {
 		loadEmpty := false
 		if literal, ok := expr.Value.(*parser.ExprLiteral); ok {
 			path = literal.Token.Literal.(string)
-			if literal.Token.Lexeme == "" {
+			if path == "" && literal.Token.Lexeme == "" {
 				loadEmpty = true
 			}
 		} else {
@@ -283,12 +283,6 @@ func (c *constCalculator) VisitGrouping(expr *parser.ExprGrouping) error {
 }
 
 func (c *constCalculator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
-	err := stmt.Value.Accept(c)
-	if err != nil {
-		return err
-	}
-	stmt.Value = c.newExpr
-
 	if init, ok := stmt.Value.(*parser.ExprListInitializer); ok {
 		if l, ok := c.definitions.Lists[stmt.Name.Lexeme]; ok {
 			l.InitialValues = make([]string, len(init.Values))

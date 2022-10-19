@@ -641,7 +641,7 @@ func (g *generator) fieldMenu(blockType blocks.BlockType, surroundStringsWith, m
 	}
 }
 
-func (g *generator) literal(token parser.Token, expr parser.Expr) (any, error) {
+func (g *generator) literal(expr parser.Expr) (any, error) {
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {
@@ -656,7 +656,7 @@ func (g *generator) literal(token parser.Token, expr parser.Expr) (any, error) {
 		}
 		return literal.Token.Literal, nil
 	}
-	return nil, g.newErrorTk("Only constant values are allowed.", token)
+	return nil, g.newErrorExpr("Only constant values are allowed for this parameter.", expr)
 }
 
 func (g *generator) NewBlock(blockType blocks.BlockType, shadow bool) *blocks.Block {

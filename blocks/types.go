@@ -47,6 +47,8 @@ const (
 	SensorColorIsLineAndBackgroundIndex  BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_index_menu"
 	SensorColorIsLineAndBackgroundInput2 BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_inputMenu_2_menu"
 	SensorColorIsLineAndBackgroundInput3 BlockType = "mbuild_quad_color_sensor.mbuild_quad_color_sensor_is_line_and_background_inputMenu_3_menu"
+	SensorColorCalibrate                 BlockType = "mbuild_quad_color_sensor.BLOCK_1663048571053"
+	SensorColorDetectionMode             BlockType = "mbuild_quad_color_sensor.BLOCK_1663048571165"
 
 	SensorShakingStrength BlockType = "cyberpi.cyberpi_shaked_value"
 

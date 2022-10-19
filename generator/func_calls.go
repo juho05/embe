@@ -103,9 +103,11 @@ var FuncCalls = map[string]FuncCall{
 	"net.reconnect":  funcNetReconnect,
 	"net.disconnect": funcNetDisconnect,
 
-	"sensors.resetAngle":    funcSensorsResetAngle,
-	"sensors.resetYawAngle": funcSensorsResetYawAngle,
-	"sensors.defineColor":   funcSensorsDefineColor,
+	"sensors.resetAngle":             funcSensorsResetAngle,
+	"sensors.resetYawAngle":          funcSensorsResetYawAngle,
+	"sensors.defineColor":            funcSensorsDefineColor,
+	"sensors.calibrateColors":        funcSensorsCalibrateColors,
+	"sensors.enhancedColorDetection": funcSensorsEnhancedColorDetection,
 
 	"motors.run":                  funcMotorsRun("forward"),
 	"motors.runBackward":          funcMotorsRun("backward"),
@@ -175,7 +177,7 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 
 	menuBlockType := blocks.AudioPlayClipFileNameMenu
 	if len(stmt.Parameters) == 2 {
-		untilDone, err := g.literal(stmt.Name, stmt.Parameters[1])
+		untilDone, err := g.literal(stmt.Parameters[1])
 		if err != nil {
 			g.errors = append(g.errors, err)
 		} else if untilDone.(bool) {
@@ -227,7 +229,7 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	durationParameter := 1
 	if len(stmt.Parameters) == 3 {
 		durationParameter = 2
-		noteName, err := g.literal(stmt.Name, stmt.Parameters[0])
+		noteName, err := g.literal(stmt.Parameters[0])
 		if err != nil {
 			g.errors = append(g.errors, err)
 		} else {
@@ -254,7 +256,7 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 			if !ok {
 				g.errors = append(g.errors, g.newErrorExpr("Invalid note name.", stmt.Parameters[0]))
 			}
-			octave, err := g.literal(stmt.Name, stmt.Parameters[1])
+			octave, err := g.literal(stmt.Parameters[1])
 			if err != nil {
 				g.errors = append(g.errors, err)
 			} else {
@@ -300,7 +302,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	block := g.NewBlock(blocks.AudioRecordPlay, false)
 
 	if len(stmt.Parameters) == 1 {
-		untilDone, err := g.literal(stmt.Name, stmt.Parameters[0])
+		untilDone, err := g.literal(stmt.Parameters[0])
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +317,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDPlayAnimation, false)
 
-	name, err := g.literal(stmt.Name, stmt.Parameters[0])
+	name, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +415,7 @@ func funcLEDDeactivateFill(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 func funcLEDSetFillColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorSetFillColor, false)
 
-	color, err := g.literal(stmt.Name, stmt.Parameters[0])
+	color, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +437,7 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 
 	names := make([]string, 5)
 	for i := range names {
-		n, err := g.literal(stmt.Name, stmt.Parameters[i])
+		n, err := g.literal(stmt.Parameters[i])
 		if err != nil {
 			g.errors = append(g.errors, err)
 			continue
@@ -691,7 +693,7 @@ func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 
 func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayLabelShowSomewhereWithSize, false)
-	number, err := g.literal(stmt.Name, stmt.Parameters[0])
+	number, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	} else {
@@ -720,7 +722,7 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 			g.errors = append(g.errors, err)
 		}
 	} else {
-		location, err := g.literal(stmt.Name, stmt.Parameters[2])
+		location, err := g.literal(stmt.Parameters[2])
 		if err != nil {
 			g.errors = append(g.errors, err)
 		} else {
@@ -1387,7 +1389,7 @@ func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetSetWifiChannel, false)
 
-	channel, err := g.literal(stmt.Name, stmt.Parameters[0])
+	channel, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -1428,7 +1430,7 @@ func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 
 func funcSensorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorsResetAxisRotationAngle, false)
-	value, err := g.literal(stmt.Name, stmt.Parameters[0])
+	value, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -1475,6 +1477,29 @@ func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	indexMenu := g.NewBlock(blocks.SensorColorDefineColorIndex, true)
 	indexMenu.Fields["MBUILD_QUAD_COLOR_SENSOR_GET_STA_WITH_INPUTMENU_INDEX"] = []any{"1", nil}
 	block.Inputs["index"] = []any{1, indexMenu.ID}
+	return block, nil
+}
+
+func funcSensorsCalibrateColors(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SensorColorCalibrate, false)
+	block.Fields["index"] = []any{"1", nil}
+	return block, nil
+}
+
+func funcSensorsEnhancedColorDetection(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SensorColorDetectionMode, false)
+
+	enable, err := g.literal(stmt.Parameters[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if enable.(bool) {
+		block.Fields["mode"] = []any{"enhance", nil}
+	} else {
+		block.Fields["mode"] = []any{"standard", nil}
+	}
+
 	return block, nil
 }
 
@@ -1624,7 +1649,7 @@ func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 
 	encoderMotor := "ALL"
 	if len(stmt.Parameters) == 1 {
-		motor, err := g.literal(stmt.Name, stmt.Parameters[0])
+		motor, err := g.literal(stmt.Parameters[0])
 		if err != nil {
 			return nil, err
 		}
@@ -1860,7 +1885,7 @@ func selectList(g *generator, block *blocks.Block, param parser.Expr) error {
 func funcInternalBroadcastEvent(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.BroadcastEvent, false)
 
-	id, err := g.literal(stmt.Name, stmt.Parameters[0])
+	id, err := g.literal(stmt.Parameters[0])
 	if err != nil {
 		return nil, err
 	}

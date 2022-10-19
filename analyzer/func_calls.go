@@ -133,6 +133,8 @@ func init() {
 	newFuncCall("sensors.resetAngle", []Param{{Name: "axis", Type: parser.DTString}})
 	newFuncCall("sensors.resetYawAngle")
 	newFuncCall("sensors.defineColor", []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, []Param{{Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}, {Name: "tolerance", Type: parser.DTNumber}})
+	newFuncCall("sensors.calibrateColors")
+	newFuncCall("sensors.enhancedColorDetection", []Param{{Name: "enable", Type: parser.DTBool}})
 
 	newFuncCall("motors.run", []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})
 	newFuncCall("motors.runBackward", []Param{{Name: "rpm", Type: parser.DTNumber}}, []Param{{Name: "rpm", Type: parser.DTNumber}, {Name: "duration", Type: parser.DTNumber}})

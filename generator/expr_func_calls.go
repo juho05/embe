@@ -84,7 +84,7 @@ var ExprFuncCalls = map[string]ExprFuncCall{
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorButtonPress, false)
 
-	btn, err := g.literal(expr.Name, expr.Parameters[0])
+	btn, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.B
 func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorButtonPressCount, false)
 
-	btn, err := g.literal(expr.Name, expr.Parameters[0])
+	btn, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func exprFuncButtonPressCount(g *generator, expr *parser.ExprFuncCall) (*blocks.
 func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorDirectionKeyPress, false)
 
-	direction, err := g.literal(expr.Name, expr.Parameters[0])
+	direction, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func exprFuncIsJoystickPulled(g *generator, expr *parser.ExprFuncCall) (*blocks.
 func exprFuncJoystickPullCount(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorDirectionKeyPressCount, false)
 
-	direction, err := g.literal(expr.Name, expr.Parameters[0])
+	direction, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func exprFuncLEDAmbientBrightness(g *generator, expr *parser.ExprFuncCall) (*blo
 func exprFuncIsTilted(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorDetectAttitude, false)
 
-	param, err := g.literal(expr.Name, expr.Parameters[0])
+	param, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func exprFuncDetectAction(options []string, prefix string) func(g *generator, ex
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SensorDetectAction, false)
 
-		param, err := g.literal(expr.Name, expr.Parameters[0])
+		param, err := g.literal(expr.Parameters[0])
 		if err != nil {
 			return nil, err
 		}
@@ -235,7 +235,7 @@ func exprFuncTiltAngle(options []string) func(g *generator, expr *parser.ExprFun
 	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SensorTiltDegree, false)
 
-		param, err := g.literal(expr.Name, expr.Parameters[0])
+		param, err := g.literal(expr.Parameters[0])
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +261,7 @@ func exprFuncTiltAngle(options []string) func(g *generator, expr *parser.ExprFun
 func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorAcceleration, false)
 
-	axis, err := g.literal(expr.Name, expr.Parameters[0])
+	axis, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func exprFuncAcceleration(g *generator, expr *parser.ExprFuncCall) (*blocks.Bloc
 func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorRotationAngle, false)
 
-	axis, err := g.literal(expr.Name, expr.Parameters[0])
+	axis, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func exprFuncRotation(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorAngleSpeed, false)
 
-	axis, err := g.literal(expr.Name, expr.Parameters[0])
+	axis, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func exprFuncAngleSpeed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block,
 func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorStatus, false)
 
-	target, err := g.literal(expr.Name, expr.Parameters[0])
+	target, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	} else {
@@ -332,7 +332,7 @@ func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 	block.Inputs["index"] = []any{1, indexMenu.ID}
 
 	if len(expr.Parameters) == 2 {
-		inner, err := g.literal(expr.Name, expr.Parameters[1])
+		inner, err := g.literal(expr.Parameters[1])
 		if err != nil {
 			return nil, err
 		}
@@ -384,7 +384,7 @@ func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 	inputType := blocks.SensorColorIsStatusInput
 	inputMenuKey := "BLOCK_1618364921511_INPUTMENU_2"
 	if len(expr.Parameters) == 3 {
-		inner, err := g.literal(expr.Name, expr.Parameters[2])
+		inner, err := g.literal(expr.Parameters[2])
 		if err != nil {
 			return nil, err
 		}
@@ -398,7 +398,7 @@ func exprFuncIsColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 
 	block := g.NewBlock(blockType, false)
 
-	target, err := g.literal(expr.Name, expr.Parameters[0])
+	target, err := g.literal(expr.Parameters[0])
 	if err != nil {
 		g.errors = append(g.errors, err)
 	} else {

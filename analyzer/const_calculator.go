@@ -391,6 +391,12 @@ func (c *constCalculator) VisitIf(stmt *parser.StmtIf) error {
 			return err
 		}
 	}
+	for _, s := range stmt.ElseBody {
+		err = s.Accept(c)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

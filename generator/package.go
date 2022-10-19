@@ -54,7 +54,12 @@ func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []
 			listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
 		}
 
-		stages[i], err = createStage(i, blocks[i], variableMap, listMap, definitions[i].Broadcasts)
+		eventsMap := make(map[string]string, len(definitions[i].Events))
+		for _, e := range definitions[i].Events {
+			eventsMap[e.ID] = e.Name.Lexeme
+		}
+
+		stages[i], err = createStage(i, blocks[i], variableMap, listMap, eventsMap)
 		stages[i] = strings.TrimSuffix(stages[i], "\n")
 		if err != nil {
 			return err
@@ -84,7 +89,7 @@ func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []
 	return nil
 }
 
-func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any, broadcasts map[string]string) (string, error) {
+func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[string][]any, listMap map[string][]any, eventsMap map[string]string) (string, error) {
 	tmpl, err := template.New("stage").Parse(stageTemplate)
 	if err != nil {
 		return "", err
@@ -105,7 +110,7 @@ func createStage(index int, blockMap map[string]*blocks.Block, variableMap map[s
 		return "", err
 	}
 
-	broadcastsJSON, err := json.Marshal(broadcasts)
+	broadcastsJSON, err := json.Marshal(eventsMap)
 	if err != nil {
 		return "", err
 	}

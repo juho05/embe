@@ -43,6 +43,8 @@ func (p *parser) topLevel() Stmt {
 		stmt, err = p.funcDecl()
 	case TkAt:
 		stmt, err = p.event()
+	case TkEvent:
+		stmt, err = p.eventDecl()
 	default:
 		err = p.newError("Expected event or declaration.")
 	}
@@ -258,6 +260,27 @@ func (p *parser) event() (Stmt, error) {
 	}, nil
 }
 
+func (p *parser) eventDecl() (Stmt, error) {
+	if !p.match(TkEvent) {
+		return nil, p.newError("Expected event keyword.")
+	}
+	keyword := p.previous()
+	if !p.match(TkIdentifier) {
+		return nil, p.newError("Expected variable name.")
+	}
+	name := p.previous()
+	if strings.Contains(name.Lexeme, ".") {
+		return nil, p.newErrorAt("Event names cannot contain a dot.", name)
+	}
+	if !p.match(TkNewLine) {
+		return nil, p.newError("Expected '\n' after event declaration.")
+	}
+	return &StmtEventDecl{
+		Keyword: keyword,
+		Name:    name,
+	}, nil
+}
+
 func (p *parser) statements(indent int) []Stmt {
 	statements := make([]Stmt, 0, 10)
 	for p.peek().Indent >= indent {
@@ -322,7 +345,7 @@ func (p *parser) funcCall() (Stmt, error) {
 		return nil, p.newError("Expected '\n' after statement.")
 	}
 
-	return &StmtFuncCall{
+	return &StmtCall{
 		Name:       name,
 		CloseParen: closeParen,
 		Parameters: parameters,

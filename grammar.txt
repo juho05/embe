@@ -6,9 +6,11 @@ event-> '@' IDENTIFIER LITERAL? ':' '\n' statement*
 variableDecl-> 'var' IDENTIFIER (':' TYPE) ('=' expression)? '\n'
 constDecl-> 'const' IDENTIFIER (':' TYPE) '=' expression '\n'
 funcDecl-> 'func' IDENTIFIER '(' (IDENTIFIER ':' TYPE (',' IDENTIFIER ':' TYPE)*)? ')' ':' '\n' statement*
+eventDecl-> 'event' IDENTIFIER
 
 statement-> (funcCall|assignment|if|while|for)
 funcCall->identifier '(' ((expression) (',' (expression))*)? ')' '\n'
+eventCall->identifier '(' ')'
 assignment->identifier ('='|'+='|'-='|'*='|'/=') expression '\n'
 if-> 'if' expression ':' '\n' statement* ('elif' ':' expression ':' '\n' statement*)* ('else' ':' '\n' statement*)?
 while-> 'while' expression? ':' '\n' statement*

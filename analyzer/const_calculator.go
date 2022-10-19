@@ -359,7 +359,11 @@ func (c *constCalculator) VisitEvent(stmt *parser.StmtEvent) error {
 	return nil
 }
 
-func (c *constCalculator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
+func (c *constCalculator) VisitEventDecl(stmt *parser.StmtEventDecl) error {
+	return nil
+}
+
+func (c *constCalculator) VisitCall(stmt *parser.StmtCall) error {
 	for i, p := range stmt.Parameters {
 		err := p.Accept(c)
 		if err != nil {

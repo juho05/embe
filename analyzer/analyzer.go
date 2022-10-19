@@ -45,12 +45,18 @@ type Function struct {
 	used        bool
 }
 
+type CustomEvent struct {
+	ID   string
+	Name parser.Token
+	used bool
+}
+
 type analyzer struct {
-	variables  map[string]*Variable
-	lists      map[string]*List
-	constants  map[string]*Constant
-	functions  map[string]*Function
-	broadcasts map[string]string
+	variables map[string]*Variable
+	lists     map[string]*List
+	constants map[string]*Constant
+	functions map[string]*Function
+	events    map[string]*CustomEvent
 
 	variableIsList bool
 
@@ -66,11 +72,11 @@ type analyzer struct {
 }
 
 type Definitions struct {
-	Variables  map[string]*Variable
-	Lists      map[string]*List
-	Constants  map[string]*Constant
-	Functions  map[string]*Function
-	Broadcasts map[string]string
+	Variables map[string]*Variable
+	Lists     map[string]*List
+	Constants map[string]*Constant
+	Functions map[string]*Function
+	Events    map[string]*CustomEvent
 }
 
 type AnalyzerResult struct {
@@ -85,7 +91,7 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 		lists:                make(map[string]*List),
 		constants:            make(map[string]*Constant),
 		functions:            make(map[string]*Function),
-		broadcasts:           make(map[string]string),
+		events:               make(map[string]*CustomEvent),
 		errors:               make([]error, 0),
 		warnings:             make([]error, 0),
 		variableInitializers: make([]parser.Stmt, 0),
@@ -123,39 +129,33 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 				a.newWarningTk("This function is never called.", f.Name)
 			}
 		}
+
+		for _, e := range a.events {
+			if !e.used {
+				a.newWarningTk("This event is never triggered.", e.Name)
+			}
+		}
 	}
 
 	if len(a.variableInitializers) > 0 {
 		if a.launchEventCount > 1 {
 			startID := uuid.NewString()
-			a.variableInitializers = append(a.variableInitializers, &parser.StmtFuncCall{
+			a.variableInitializers = append(a.variableInitializers, &parser.StmtCall{
 				Name: parser.Token{
-					Lexeme: "internal.broadcastEvent",
-				},
-				Parameters: []parser.Expr{
-					&parser.ExprLiteral{
-						Token: parser.Token{
-							Lexeme:   startID,
-							Literal:  startID,
-							DataType: parser.DTString,
-						},
-						ReturnType: parser.DTString,
-					},
+					Lexeme: "$start",
 				},
 			})
-			a.broadcasts[startID] = "start"
+			a.events["$start"] = &CustomEvent{
+				ID: startID,
+				Name: parser.Token{
+					Lexeme: "$start",
+				},
+				used: true,
+			}
 			for _, s := range statements {
 				if e, ok := s.(*parser.StmtEvent); ok {
 					if e.Name.Lexeme == "launch" {
-						e.Name.Lexeme = "receiveEventBroadcast"
-						e.Parameter = &parser.ExprLiteral{
-							Token: parser.Token{
-								Lexeme:   startID,
-								DataType: parser.DTString,
-								Literal:  startID,
-							},
-							ReturnType: parser.DTString,
-						}
+						e.Name.Lexeme = "$start"
 					}
 				}
 			}
@@ -181,11 +181,11 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 	}
 
 	definitions := Definitions{
-		Variables:  a.variables,
-		Lists:      a.lists,
-		Constants:  a.constants,
-		Functions:  a.functions,
-		Broadcasts: a.broadcasts,
+		Variables: a.variables,
+		Lists:     a.lists,
+		Constants: a.constants,
+		Functions: a.functions,
+		Events:    a.events,
 	}
 
 	if len(a.errors) == 0 {
@@ -417,27 +417,12 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	return nil
 }
 
-func (a *analyzer) assertNotDeclared(name parser.Token) error {
-	if v, ok := a.variables[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Pos.Line+1), name)
-	}
-	if l, ok := a.lists[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Pos.Line+1), name)
-	}
-	if c, ok := a.constants[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Pos.Line+1), name)
-	}
-	if f, ok := a.functions[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Pos.Line+1), name)
-	}
-	return nil
-}
-
 func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
-	ev, ok := Events[stmt.Name.Lexeme]
-	if !ok {
-		a.errors = append(a.errors, a.newErrorStmt("Unknown event.", stmt))
-	} else {
+	if _, ok := a.events[stmt.Name.Lexeme]; ok {
+		if stmt.Parameter != nil {
+			a.errors = append(a.errors, a.newErrorExpr("This event does not take a parameter.", stmt.Parameter))
+		}
+	} else if ev, ok := Events[stmt.Name.Lexeme]; ok {
 		if ev.Param == nil && stmt.Parameter != nil {
 			a.errors = append(a.errors, a.newErrorExpr("This event does not take a parameter.", stmt.Parameter))
 		} else if ev.Param != nil {
@@ -452,6 +437,8 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 				}
 			}
 		}
+	} else {
+		a.errors = append(a.errors, a.newErrorStmt("Unknown event.", stmt))
 	}
 
 	a.visitBody(stmt.Body)
@@ -462,7 +449,41 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 	return nil
 }
 
-func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
+func (a *analyzer) VisitEventDecl(stmt *parser.StmtEventDecl) error {
+	if err := a.assertNotDeclared(stmt.Name); err != nil {
+		return err
+	}
+	if _, ok := Events[stmt.Name.Lexeme]; ok {
+		return a.newErrorTk("An event with this name already exists.", stmt.Name)
+	}
+
+	a.events[stmt.Name.Lexeme] = &CustomEvent{
+		ID:   uuid.NewString(),
+		Name: stmt.Name,
+	}
+	return nil
+}
+
+func (a *analyzer) assertNotDeclared(name parser.Token) error {
+	if v, ok := a.variables[name.Lexeme]; ok {
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Pos.Line+1), name)
+	}
+	if l, ok := a.lists[name.Lexeme]; ok {
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Pos.Line+1), name)
+	}
+	if c, ok := a.constants[name.Lexeme]; ok {
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Pos.Line+1), name)
+	}
+	if f, ok := a.functions[name.Lexeme]; ok {
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Pos.Line+1), name)
+	}
+	if e, ok := a.events[name.Lexeme]; ok {
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, e.Name.Pos.Line+1), name)
+	}
+	return nil
+}
+
+func (a *analyzer) VisitCall(stmt *parser.StmtCall) error {
 	if a.unreachable {
 		a.newWarningStmt("Unreachable code.", stmt)
 	}
@@ -485,14 +506,7 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 				a.errors = append(a.errors, a.newErrorExpr(fmt.Sprintf("Expected %s parameter '%s'.", f.Params[i].Type.DataType, f.Params[i].Name.Lexeme), p))
 			}
 		}
-	} else {
-		fn, ok := FuncCalls[stmt.Name.Lexeme]
-		if !ok {
-			if _, ok := ExprFuncCalls[stmt.Name.Lexeme]; ok {
-				return a.newErrorStmt("Only functions which don't return a value are allowed in this context.", stmt)
-			}
-			return a.newErrorTk("Unknown function.", stmt.Name)
-		}
+	} else if fn, ok := FuncCalls[stmt.Name.Lexeme]; ok {
 		validSignature := false
 
 		types := make([]string, len(stmt.Parameters))
@@ -531,6 +545,16 @@ func (a *analyzer) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 			}
 			return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
 		}
+	} else if ev, ok := a.events[stmt.Name.Lexeme]; ok {
+		ev.used = true
+		if len(stmt.Parameters) > 0 {
+			return a.newErrorStmt("Events don't take any arguments.", stmt)
+		}
+	} else {
+		if _, ok := ExprFuncCalls[stmt.Name.Lexeme]; ok {
+			return a.newErrorStmt("Only functions which don't return a value are allowed in this context.", stmt)
+		}
+		return a.newErrorTk("Unknown function.", stmt.Name)
 	}
 
 	endFuncs := []string{"script.stop", "script.stopAll"}

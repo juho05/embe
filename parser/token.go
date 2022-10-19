@@ -46,6 +46,7 @@ const (
 	TkVar
 	TkConst
 	TkFunc
+	TkEvent
 
 	TkIdentifier
 	TkLiteral

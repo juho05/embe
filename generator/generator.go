@@ -134,16 +134,23 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 }
 
 func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
-	ev := Events[stmt.Name.Lexeme]
-	block, err := ev(g, stmt)
-	if err != nil {
-		g.errors = append(g.errors, err)
-	} else {
+	if e, ok := g.definitions.Events[stmt.Name.Lexeme]; ok {
+		block := blocks.NewBlockTopLevel(blocks.EventBroadcastReceived)
+		block.Fields["BROADCAST_OPTION"] = []any{e.Name, e.ID}
 		g.blocks[block.ID] = block
 		g.parent = block.ID
+	} else {
+		ev := Events[stmt.Name.Lexeme]
+		block, err := ev(g, stmt)
+		if err != nil {
+			g.errors = append(g.errors, err)
+		} else {
+			g.blocks[block.ID] = block
+			g.parent = block.ID
+		}
 	}
 	for _, s := range stmt.Body {
-		err = s.Accept(g)
+		err := s.Accept(g)
 		if err != nil {
 			g.errors = append(g.errors, err)
 			continue
@@ -153,7 +160,11 @@ func (g *generator) VisitEvent(stmt *parser.StmtEvent) error {
 	return nil
 }
 
-func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
+func (g *generator) VisitEventDecl(stmt *parser.StmtEventDecl) error {
+	return nil
+}
+
+func (g *generator) VisitCall(stmt *parser.StmtCall) error {
 	if f, ok := g.definitions.Functions[stmt.Name.Lexeme]; ok {
 		block := g.NewBlock(blocks.ProceduresCall, false)
 
@@ -178,12 +189,16 @@ func (g *generator) VisitFuncCall(stmt *parser.StmtFuncCall) error {
 		}
 
 		g.blockID = block.ID
-	} else {
-		fn := FuncCalls[stmt.Name.Lexeme]
+	} else if fn, ok := FuncCalls[stmt.Name.Lexeme]; ok {
 		block, err := fn(g, stmt)
 		if err != nil {
 			return err
 		}
+		g.blockID = block.ID
+	} else {
+		e := g.definitions.Events[stmt.Name.Lexeme]
+		block := g.NewBlock(blocks.BroadcastEvent, false)
+		block.Inputs["BROADCAST_INPUT"] = []any{1, []any{11, e.Name.Lexeme, e.ID}}
 		g.blockID = block.ID
 	}
 

@@ -10,21 +10,20 @@ import (
 )
 
 var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){
-	"launch":                eventLaunch,
-	"button":                eventButton,
-	"joystick":              eventDirectionKey,
-	"tilt":                  eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"),
-	"face":                  eventAction(blocks.EventDetectAttitude, "face", "up", "down"),
-	"wave":                  eventAction(blocks.EventDetectAction, "wave", "left", "right"),
-	"rotate":                eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"),
-	"fall":                  eventActionSingle(blocks.EventDetectAction, "freefall"),
-	"shake":                 eventActionSingle(blocks.EventDetectAction, "shake"),
-	"light":                 eventSensor("light_sensor"),
-	"sound":                 eventSensor("microphone"),
-	"shakeval":              eventSensor("shakeval"),
-	"timer":                 eventSensor("timer"),
-	"receive":               eventReceive,
-	"receiveEventBroadcast": eventReceiveEventBroadcast,
+	"launch":   eventLaunch,
+	"button":   eventButton,
+	"joystick": eventDirectionKey,
+	"tilt":     eventAction(blocks.EventDetectAttitude, "tilt", "left", "right", "forward", "backward"),
+	"face":     eventAction(blocks.EventDetectAttitude, "face", "up", "down"),
+	"wave":     eventAction(blocks.EventDetectAction, "wave", "left", "right"),
+	"rotate":   eventAction(blocks.EventDetectAction, "", "clockwise", "anticlockwise"),
+	"fall":     eventActionSingle(blocks.EventDetectAction, "freefall"),
+	"shake":    eventActionSingle(blocks.EventDetectAction, "shake"),
+	"light":    eventSensor("light_sensor"),
+	"sound":    eventSensor("microphone"),
+	"shakeval": eventSensor("shakeval"),
+	"timer":    eventSensor("timer"),
+	"receive":  eventReceive,
 }
 
 func eventLaunch(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
@@ -123,22 +122,6 @@ func eventReceive(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
 	}
 	block := blocks.NewBlockTopLevel(blocks.EventReceivedMessage)
 	block.Inputs["message"] = []any{1, []any{10, param}}
-	return block, nil
-}
-
-func eventReceiveEventBroadcast(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error) {
-	param, err := getParameter[string](g, stmt, parser.DTString, nil)
-	if err != nil {
-		return nil, err
-	}
-	block := blocks.NewBlockTopLevel(blocks.EventBroadcastReceived)
-
-	name, ok := g.definitions.Broadcasts[param]
-	if !ok {
-		return nil, g.newErrorExpr("Undefined broadcast message.", stmt.Parameter)
-	}
-
-	block.Fields["BROADCAST_OPTION"] = []any{name, param}
 	return block, nil
 }
 

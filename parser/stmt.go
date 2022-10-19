@@ -4,8 +4,9 @@ type StmtVisitor interface {
 	VisitVarDecl(stmt *StmtVarDecl) error
 	VisitConstDecl(stmt *StmtConstDecl) error
 	VisitFuncDecl(stmt *StmtFuncDecl) error
+	VisitEventDecl(stmt *StmtEventDecl) error
 	VisitEvent(stmt *StmtEvent) error
-	VisitFuncCall(stmt *StmtFuncCall) error
+	VisitCall(stmt *StmtCall) error
 	VisitAssignment(stmt *StmtAssignment) error
 	VisitIf(stmt *StmtIf) error
 	VisitLoop(stmt *StmtLoop) error
@@ -80,6 +81,21 @@ func (s *StmtFuncDecl) Position() (start, end Position) {
 	return s.Name.Pos, s.CloseParen.Pos
 }
 
+type StmtEventDecl struct {
+	Keyword Token
+	Name    Token
+}
+
+func (s *StmtEventDecl) Accept(visitor StmtVisitor) error {
+	return visitor.VisitEventDecl(s)
+}
+
+func (s *StmtEventDecl) Position() (start, end Position) {
+	end = s.Name.Pos
+	end.Column += len(s.Name.Lexeme) - 1
+	return s.Keyword.Pos, end
+}
+
 type StmtEvent struct {
 	At        Token
 	Name      Token
@@ -97,17 +113,17 @@ func (s *StmtEvent) Position() (start, end Position) {
 	return s.At.Pos, end
 }
 
-type StmtFuncCall struct {
+type StmtCall struct {
 	Name       Token
 	CloseParen Token
 	Parameters []Expr
 }
 
-func (s *StmtFuncCall) Accept(visitor StmtVisitor) error {
-	return visitor.VisitFuncCall(s)
+func (s *StmtCall) Accept(visitor StmtVisitor) error {
+	return visitor.VisitCall(s)
 }
 
-func (s *StmtFuncCall) Position() (start, end Position) {
+func (s *StmtCall) Position() (start, end Position) {
 	return s.Name.Pos, s.CloseParen.Pos
 }
 

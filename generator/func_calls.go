@@ -14,7 +14,7 @@ import (
 	"github.com/Bananenpro/embe/parser"
 )
 
-type FuncCall func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
+type FuncCall func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)
 
 var FuncCalls = map[string]FuncCall{
 	"audio.stop":           funcAudioStop,
@@ -141,16 +141,14 @@ var FuncCalls = map[string]FuncCall{
 	"lists.clear":   funcListsClear,
 	"lists.insert":  funcListsInsert,
 	"lists.replace": funcListsReplace,
-
-	"internal.broadcastEvent": funcInternalBroadcastEvent,
 }
 
-func funcAudioStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioStop(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioStop, false)
 	return block, nil
 }
 
-func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioPlayBuzzerTone, false)
 
 	number, err := g.value(block.ID, stmt.Parameters[0])
@@ -172,7 +170,7 @@ func funcAudioPlayBuzzer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioPlayClip(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioPlayClip, false)
 
 	menuBlockType := blocks.AudioPlayClipFileNameMenu
@@ -197,7 +195,7 @@ func funcAudioPlayClip(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	return block, err
 }
 
-func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioPlayInstrument(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioPlayMusicInstrument, false)
 
 	var err error
@@ -220,7 +218,7 @@ func funcAudioPlayInstrument(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	return block, nil
 }
 
-func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioPlayNote(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioPlayNote, false)
 
 	noteBlock := blocks.NewShadowBlock(blocks.AudioNote, block.ID)
@@ -288,17 +286,17 @@ func funcAudioPlayNote(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	return block, nil
 }
 
-func funcAudioRecordingStart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioRecordingStart(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioRecordStart, false)
 	return block, nil
 }
 
-func funcAudioRecordingStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioRecordingStop(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioRecordStop, false)
 	return block, nil
 }
 
-func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcAudioRecordingPlay(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.AudioRecordPlay, false)
 
 	if len(stmt.Parameters) == 1 {
@@ -314,7 +312,7 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	return block, nil
 }
 
-func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDPlayAnimation(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDPlayAnimation, false)
 
 	name, err := g.literal(stmt.Parameters[0])
@@ -332,8 +330,8 @@ func funcLEDPlayAnimation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		blockType := blocks.UltrasonicSetBrightness
 		indexType := blocks.UltrasonicSetBrightnessIndex
 		orderType := blocks.UltrasonicSetBrightnessOrder
@@ -363,7 +361,7 @@ func funcLEDSetAmbientBrightness(operation string) func(g *generator, stmt *pars
 	}
 }
 
-func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.UltrasonicShowEmotion, false)
 
 	g.noNext = true
@@ -386,7 +384,7 @@ func funcLEDDisplayEmotion(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 	return block, nil
 }
 
-func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.UltrasonicOffLED, false)
 
 	err := selectAmbientLight(g, block, blocks.UltrasonicOffLEDInput, stmt.Name, stmt.Parameters, 0, "inputMenu_3", "MBUILD_ULTRASONIC2_SET_BRI_ORDER", true)
@@ -402,7 +400,7 @@ func funcLEDDeactivateAmbient(g *generator, stmt *parser.StmtFuncCall) (*blocks.
 	return block, nil
 }
 
-func funcLEDDeactivateFill(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDeactivateFill(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorDisableFillColor, false)
 
 	g.noNext = true
@@ -412,7 +410,7 @@ func funcLEDDeactivateFill(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 	return block, nil
 }
 
-func funcLEDSetFillColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDSetFillColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorSetFillColor, false)
 
 	color, err := g.literal(stmt.Parameters[0])
@@ -432,7 +430,7 @@ func funcLEDSetFillColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDisplay(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDDisplay, false)
 
 	names := make([]string, 5)
@@ -457,7 +455,7 @@ func funcLEDDisplay(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 
 var hexColorRegex = regexp.MustCompile("^#[a-fA-F0-9]{6}$")
 
-func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDisplayColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDDisplaySingleColor, false)
 	if len(stmt.Parameters) > 2 {
 		block.Type = blocks.LEDDisplaySingleColorWithRGB
@@ -492,7 +490,7 @@ func funcLEDDisplayColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDDisplaySingleColorWithTime, false)
 	if len(stmt.Parameters) > 3 {
 		block.Type = blocks.LEDDisplaySingleColorWithRGBAndTime
@@ -535,7 +533,7 @@ func funcLEDDisplayColorFor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	return block, nil
 }
 
-func funcLEDDeactivate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDDeactivate(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDOff, false)
 
 	err := selectLED(g, block, blocks.LEDOffFieldMenu, stmt, 0, "CYBERPI_LED_SHOW_SINGLE_WITH_COLOR_AND_TIME_2_FIELDMENU_1")
@@ -543,7 +541,7 @@ func funcLEDDeactivate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	return block, err
 }
 
-func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType, stmt *parser.StmtFuncCall, paramCountWithoutLED int, menuFieldKey string) error {
+func selectLED(g *generator, block *blocks.Block, menuBlockType blocks.BlockType, stmt *parser.StmtCall, paramCountWithoutLED int, menuFieldKey string) error {
 	if len(stmt.Parameters) == paramCountWithoutLED {
 		stmt.Parameters = append([]parser.Expr{&parser.ExprLiteral{
 			Token: parser.Token{
@@ -625,8 +623,8 @@ func selectAmbientLight(g *generator, block *blocks.Block, menuBlockType blocks.
 	return err
 }
 
-func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.DisplayPrint, false)
 		if newLine {
 			block.Type = blocks.DisplayPrintln
@@ -642,7 +640,7 @@ func funcDisplayPrint(newLine bool) func(g *generator, stmt *parser.StmtFuncCall
 	}
 }
 
-func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplaySetFontSize(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplaySetFont, false)
 
 	var err error
@@ -664,7 +662,7 @@ func funcDisplaySetFontSize(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	return block, nil
 }
 
-func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplaySetColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplaySetBrushColor, false)
 	var err error
 	if len(stmt.Parameters) == 3 {
@@ -691,7 +689,7 @@ func funcDisplaySetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayShowLabel(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayLabelShowSomewhereWithSize, false)
 	number, err := g.literal(stmt.Parameters[0])
 	if err != nil {
@@ -752,7 +750,7 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayLineChartAddData, false)
 
 	var err error
@@ -764,7 +762,7 @@ func funcDisplayLineChartAddData(g *generator, stmt *parser.StmtFuncCall) (*bloc
 	return block, nil
 }
 
-func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayLineChartSetInterval, false)
 
 	var err error
@@ -776,7 +774,7 @@ func funcDisplayLineChartSetInterval(g *generator, stmt *parser.StmtFuncCall) (*
 	return block, nil
 }
 
-func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayBarChartAddData, false)
 
 	var err error
@@ -788,7 +786,7 @@ func funcDisplayBarChartAddData(g *generator, stmt *parser.StmtFuncCall) (*block
 	return block, nil
 }
 
-func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayTableAddData(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayTableAddDataAtRowColumn, false)
 
 	var err error
@@ -820,7 +818,7 @@ func funcDisplayTableAddData(g *generator, stmt *parser.StmtFuncCall) (*blocks.B
 	return block, nil
 }
 
-func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplaySetOrientation(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplaySetOrientation, false)
 
 	var err error
@@ -841,12 +839,12 @@ func funcDisplaySetOrientation(g *generator, stmt *parser.StmtFuncCall) (*blocks
 	return block, nil
 }
 
-func funcDisplayClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayClear(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DisplayClear, false)
 	return block, nil
 }
 
-func funcDisplaySetBackgroundColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplaySetBackgroundColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteSetBackgroundFillColor, false)
 
 	var err error
@@ -877,12 +875,12 @@ func funcDisplaySetBackgroundColor(g *generator, stmt *parser.StmtFuncCall) (*bl
 	return block, nil
 }
 
-func funcDisplayRender(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDisplayRender(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteScreenRender, false)
 	return block, nil
 }
 
-func funcSpriteFromIcon(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteFromIcon(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteDrawPixelWithIcon, false)
 
 	var err error
@@ -905,7 +903,7 @@ func funcSpriteFromIcon(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	return block, nil
 }
 
-func funcSpriteFromText(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteFromText(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteDrawText, false)
 
 	var err error
@@ -922,7 +920,7 @@ func funcSpriteFromText(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	return block, nil
 }
 
-func funcSpriteFromQR(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteFromQR(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteDrawQR, false)
 
 	var err error
@@ -939,8 +937,8 @@ func funcSpriteFromQR(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcSpriteFlip(axis string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteFlip(axis string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SpriteMirrorWithAxis, false)
 
 		var err error
@@ -955,7 +953,7 @@ func funcSpriteFlip(axis string) func(g *generator, stmt *parser.StmtFuncCall) (
 	}
 }
 
-func funcSpriteDelete(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteDelete(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteDelete, false)
 
 	var err error
@@ -967,7 +965,7 @@ func funcSpriteDelete(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcSpriteSetAnchor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteSetAnchor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteSetAlign, false)
 
 	var err error
@@ -990,8 +988,8 @@ func funcSpriteSetAnchor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func funcSpriteMove(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteMove(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SpriteMoveXY, false)
 
 		var err error
@@ -1011,7 +1009,7 @@ func funcSpriteMove(direction string) func(g *generator, stmt *parser.StmtFuncCa
 	}
 }
 
-func funcSpriteMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteMoveTo(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteMoveTo, false)
 
 	var err error
@@ -1031,7 +1029,7 @@ func funcSpriteMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcSpriteMoveRandom(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteMoveRandom(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteMoveRandom, false)
 
 	var err error
@@ -1042,7 +1040,7 @@ func funcSpriteMoveRandom(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcSpriteRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteRotate(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteRotate, false)
 
 	var err error
@@ -1059,7 +1057,7 @@ func funcSpriteRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcSpriteRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteRotateTo(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteRotateTo, false)
 
 	var err error
@@ -1076,7 +1074,7 @@ func funcSpriteRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	return block, nil
 }
 
-func funcSpriteSetScale(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteSetScale(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteSetSize, false)
 
 	var err error
@@ -1093,7 +1091,7 @@ func funcSpriteSetScale(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	return block, nil
 }
 
-func funcSpriteSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteSetColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteSetColorWithColor, false)
 
 	var err error
@@ -1126,7 +1124,7 @@ func funcSpriteSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block,
 	return block, nil
 }
 
-func funcSpriteResetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteResetColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SpriteCloseColor, false)
 
 	var err error
@@ -1138,8 +1136,8 @@ func funcSpriteResetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcSpriteShowHide(showHide string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteShowHide(showHide string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SpriteShowAndHide, false)
 
 		var err error
@@ -1154,8 +1152,8 @@ func funcSpriteShowHide(showHide string) func(g *generator, stmt *parser.StmtFun
 	}
 }
 
-func funcSpriteSetLayer(layer string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteSetLayer(layer string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SpriteZMinMax, false)
 
 		var err error
@@ -1170,8 +1168,8 @@ func funcSpriteSetLayer(layer string) func(g *generator, stmt *parser.StmtFuncCa
 	}
 }
 
-func funcSpriteChangeLayer(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSpriteChangeLayer(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.SpriteZUpDown, false)
 
 		var err error
@@ -1186,22 +1184,22 @@ func funcSpriteChangeLayer(direction string) func(g *generator, stmt *parser.Stm
 	}
 }
 
-func funcDrawBegin(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawBegin(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchStart, false)
 	return block, nil
 }
 
-func funcDrawFinish(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawFinish(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchEnd, false)
 	return block, nil
 }
 
-func funcDrawClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawClear(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchClear, false)
 	return block, nil
 }
 
-func funcDrawSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawSetColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchSetColorWithColor, false)
 
 	var err error
@@ -1229,7 +1227,7 @@ func funcDrawSetColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcDrawSetThickness(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawSetThickness(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchSetSize, false)
 
 	var err error
@@ -1241,7 +1239,7 @@ func funcDrawSetThickness(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcDrawSetSpeed(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawSetSpeed(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchSetSpeed, false)
 
 	var err error
@@ -1253,7 +1251,7 @@ func funcDrawSetSpeed(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcDrawRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawRotate(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchCW, false)
 
 	var err error
@@ -1265,7 +1263,7 @@ func funcDrawRotate(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcDrawRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawRotateTo(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchSetAngle, false)
 
 	var err error
@@ -1277,7 +1275,7 @@ func funcDrawRotateTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcDrawLine(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawLine(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchMove, false)
 
 	var err error
@@ -1289,7 +1287,7 @@ func funcDrawLine(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error
 	return block, nil
 }
 
-func funcDrawCircle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawCircle(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchCircle, false)
 
 	var err error
@@ -1305,8 +1303,8 @@ func funcDrawCircle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcDrawMove(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawMove(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.DrawSketchMoveXAndY, false)
 
 		var err error
@@ -1321,7 +1319,7 @@ func funcDrawMove(direction string) func(g *generator, stmt *parser.StmtFuncCall
 	}
 }
 
-func funcDrawMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawMoveTo(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchMoveTo, false)
 
 	var err error
@@ -1337,12 +1335,12 @@ func funcDrawMoveTo(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcDrawMoveToCenter(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawMoveToCenter(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchMoveToCenter, false)
 	return block, nil
 }
 
-func funcDrawSave(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcDrawSave(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.DrawSketchSpriteDrawSketch, false)
 
 	var err error
@@ -1354,7 +1352,7 @@ func funcDrawSave(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error
 	return block, nil
 }
 
-func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcLEDMove(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.LEDMove, false)
 
 	var err error
@@ -1366,7 +1364,7 @@ func funcLEDMove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error)
 	return block, nil
 }
 
-func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcNetBroadcast(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetSetWifiBroadcast, false)
 
 	var err error
@@ -1386,7 +1384,7 @@ func funcNetBroadcast(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, e
 	return block, nil
 }
 
-func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcNetSetChannel(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetSetWifiChannel, false)
 
 	channel, err := g.literal(stmt.Parameters[0])
@@ -1401,7 +1399,7 @@ func funcNetSetChannel(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, 
 	return block, nil
 }
 
-func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcNetConnect(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetConnectWifi, false)
 
 	var err error
@@ -1418,17 +1416,17 @@ func funcNetConnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcNetReconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcNetReconnect(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetWifiReconnect, false)
 	return block, nil
 }
 
-func funcNetDisconnect(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcNetDisconnect(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.NetWifiDisconnect, false)
 	return block, nil
 }
 
-func funcSensorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSensorsResetAngle(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorsResetAxisRotationAngle, false)
 	value, err := g.literal(stmt.Parameters[0])
 	if err != nil {
@@ -1442,12 +1440,12 @@ func funcSensorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 	return block, nil
 }
 
-func funcSensorsResetYawAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSensorsResetYawAngle(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorsResetYaw, false)
 	return block, nil
 }
 
-func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSensorsDefineColor(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorDefineColor, false)
 
 	var err error
@@ -1480,13 +1478,13 @@ func funcSensorsDefineColor(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bl
 	return block, nil
 }
 
-func funcSensorsCalibrateColors(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSensorsCalibrateColors(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorCalibrate, false)
 	block.Fields["index"] = []any{"1", nil}
 	return block, nil
 }
 
-func funcSensorsEnhancedColorDetection(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcSensorsEnhancedColorDetection(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorDetectionMode, false)
 
 	enable, err := g.literal(stmt.Parameters[0])
@@ -1503,8 +1501,8 @@ func funcSensorsEnhancedColorDetection(g *generator, stmt *parser.StmtFuncCall) 
 	return block, nil
 }
 
-func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2MoveDirectionWithRPM, false)
 
 		block.Fields["DIRECTION"] = []any{direction, nil}
@@ -1527,8 +1525,8 @@ func funcMotorsRun(direction string) func(g *generator, stmt *parser.StmtFuncCal
 	}
 }
 
-func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2MoveMoveWithCmAndInch, false)
 
 		block.Fields["DIRECTION"] = []any{direction, nil}
@@ -1543,8 +1541,8 @@ func funcMotorsRunDistance(direction string) func(g *generator, stmt *parser.Stm
 	}
 }
 
-func funcMotorsTurn(direction string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsTurn(direction string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2CwAndCcwWithAngle, false)
 		block.Fields["fieldMenu_1"] = []any{direction, nil}
 
@@ -1558,8 +1556,8 @@ func funcMotorsTurn(direction string) func(g *generator, stmt *parser.StmtFuncCa
 	}
 }
 
-func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		blockType := blocks.Mbot2EncoderMotorSet
 		menuType := blocks.Mbot2EncoderMotorSetMenu
 		inputField := "inputMenu_1"
@@ -1601,7 +1599,7 @@ func funcMotorsRotate(unit string) func(g *generator, stmt *parser.StmtFuncCall)
 	}
 }
 
-func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsRotateAngle(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.Mbot2EncoderMotorSetWithTimeAngleAndCircle, false)
 
 	var err error
@@ -1620,8 +1618,8 @@ func funcMotorsRotateAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Blo
 	return block, err
 }
 
-func funcMotorsDrive(unit string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsDrive(unit string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2EncoderMotorDrivePower, false)
 		rightPowerKey := "number_2"
 		if unit == "speed" {
@@ -1644,7 +1642,7 @@ func funcMotorsDrive(unit string) func(g *generator, stmt *parser.StmtFuncCall) 
 	}
 }
 
-func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsStop(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.Mbot2EncoderMotorStop, false)
 
 	encoderMotor := "ALL"
@@ -1664,7 +1662,7 @@ func funcMotorsStop(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcMotorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsResetAngle(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.Mbot2EncoderMotorResetAngle, false)
 
 	var motor parser.Expr
@@ -1695,8 +1693,8 @@ func funcMotorsResetAngle(g *generator, stmt *parser.StmtFuncCall) (*blocks.Bloc
 	return block, nil
 }
 
-func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2EncoderMotorLockUnlock, false)
 
 		block.Fields["fieldMenu_2"] = []any{value, nil}
@@ -1730,7 +1728,7 @@ func funcMotorsSetLock(value string) func(g *generator, stmt *parser.StmtFuncCal
 	}
 }
 
-func funcTimeWait(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcTimeWait(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ControlWaitUntil, false)
 
 	condition, err := g.value(block.ID, stmt.Parameters[0])
@@ -1753,18 +1751,18 @@ func funcTimeWait(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error
 	return block, nil
 }
 
-func funcResetTimer(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcResetTimer(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.Mbot2TimerReset, false)
 	return block, nil
 }
 
-func funcMBotRestart(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMBotRestart(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ControlRestart, false)
 	return block, nil
 }
 
-func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.Mbot2SetParameters, false)
 
 		if parameter == "calibrate" {
@@ -1777,8 +1775,8 @@ func funcMBotChassisParameters(parameter string) func(g *generator, stmt *parser
 	}
 }
 
-func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	return func(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	return func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 		block := g.NewBlock(blocks.ControlStop, false)
 		block.NoNext = true
 
@@ -1799,7 +1797,7 @@ func funcScriptStop(stopOption string) func(g *generator, stmt *parser.StmtFuncC
 	}
 }
 
-func funcListsAppend(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcListsAppend(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ListAdd, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
@@ -1812,7 +1810,7 @@ func funcListsAppend(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	return block, nil
 }
 
-func funcListsRemove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcListsRemove(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ListDelete, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
@@ -1825,7 +1823,7 @@ func funcListsRemove(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	return block, nil
 }
 
-func funcListsClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcListsClear(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ListClear, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
@@ -1834,7 +1832,7 @@ func funcListsClear(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, err
 	return block, nil
 }
 
-func funcListsInsert(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcListsInsert(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ListInsert, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
@@ -1851,7 +1849,7 @@ func funcListsInsert(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, er
 	return block, nil
 }
 
-func funcListsReplace(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
+func funcListsReplace(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.ListReplace, false)
 	err := selectList(g, block, stmt.Parameters[0])
 	if err != nil {
@@ -1880,22 +1878,4 @@ func selectList(g *generator, block *blocks.Block, param parser.Expr) error {
 		return g.newErrorExpr("Unknown list.", param)
 	}
 	return g.newErrorExpr("Expected list.", param)
-}
-
-func funcInternalBroadcastEvent(g *generator, stmt *parser.StmtFuncCall) (*blocks.Block, error) {
-	block := g.NewBlock(blocks.BroadcastEvent, false)
-
-	id, err := g.literal(stmt.Parameters[0])
-	if err != nil {
-		return nil, err
-	}
-
-	name, ok := g.definitions.Broadcasts[id.(string)]
-	if !ok {
-		return nil, g.newErrorExpr("Undefined broadcast message.", stmt.Parameters[0])
-	}
-
-	block.Inputs["BROADCAST_INPUT"] = []any{1, []any{11, name, id}}
-
-	return block, nil
 }

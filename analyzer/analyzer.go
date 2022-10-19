@@ -415,12 +415,7 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 	}
 
 	a.currentFunction = a.functions[stmt.Name.Lexeme]
-	for _, s := range stmt.Body {
-		err := s.Accept(a)
-		if err != nil {
-			a.errors = append(a.errors, err)
-		}
-	}
+	a.visitBody(stmt.Body)
 	a.currentFunction = nil
 	return nil
 }
@@ -461,12 +456,9 @@ func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
 			}
 		}
 	}
-	for _, s := range stmt.Body {
-		err := s.Accept(a)
-		if err != nil {
-			a.errors = append(a.errors, err)
-		}
-	}
+
+	a.visitBody(stmt.Body)
+
 	if stmt.Name.Lexeme == "launch" {
 		a.launchEventCount++
 	}
@@ -599,19 +591,8 @@ func (a *analyzer) VisitIf(stmt *parser.StmtIf) error {
 		return a.newErrorExpr("Expected boolean condition.", stmt.Condition)
 	}
 
-	for _, s := range stmt.Body {
-		err = s.Accept(a)
-		if err != nil {
-			a.errors = append(a.errors, err)
-		}
-	}
-
-	for _, s := range stmt.ElseBody {
-		err = s.Accept(a)
-		if err != nil {
-			a.errors = append(a.errors, err)
-		}
-	}
+	a.visitBody(stmt.Body)
+	a.visitBody(stmt.ElseBody)
 	return nil
 }
 
@@ -640,12 +621,7 @@ func (a *analyzer) VisitLoop(stmt *parser.StmtLoop) error {
 			a.errors = append(a.errors, a.newErrorTk("Unknown loop type.", stmt.Keyword))
 		}
 	}
-	for _, s := range stmt.Body {
-		err := s.Accept(a)
-		if err != nil {
-			a.errors = append(a.errors, err)
-		}
-	}
+	a.visitBody(stmt.Body)
 	if forever {
 		a.unreachable = true
 	}
@@ -866,6 +842,17 @@ func (a *analyzer) VisitBinary(expr *parser.ExprBinary) error {
 
 func (a *analyzer) VisitGrouping(expr *parser.ExprGrouping) error {
 	return expr.Expr.Accept(a)
+}
+
+func (a *analyzer) visitBody(body []parser.Stmt) {
+	unreachable := a.unreachable
+	for _, s := range body {
+		err := s.Accept(a)
+		if err != nil {
+			a.errors = append(a.errors, err)
+		}
+	}
+	a.unreachable = unreachable
 }
 
 type AnalyzerError struct {

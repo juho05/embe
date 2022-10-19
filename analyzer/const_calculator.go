@@ -115,7 +115,7 @@ func (c *constCalculator) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 		if index < 0 || index >= len(str) {
 			return c.newErrorExpr(fmt.Sprintf("Index out of range. Index: %d, length: %d", index, len(str)), expr.Parameters[1])
 		}
-		value = str
+		value = string(str[index])
 
 	default:
 		c.newExpr = expr
@@ -350,7 +350,7 @@ func (c *constCalculator) VisitEvent(stmt *parser.StmtEvent) error {
 					for i, o := range ev.ParamOptions {
 						strOptions[i] = fmt.Sprintf("%v", o)
 					}
-					return c.newErrorExpr(fmt.Sprintf("Invalid value. Available options: %s", strings.Join(strOptions, ", ")), stmt.Parameter)
+					return c.newErrorExpr(fmt.Sprintf("Invalid value '%v'. Available options: %s", l.Token.Literal, strings.Join(strOptions, ", ")), stmt.Parameter)
 				}
 			}
 		}

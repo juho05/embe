@@ -386,6 +386,21 @@ func (c *constCalculator) VisitAssignment(stmt *parser.StmtAssignment) error {
 }
 
 func (c *constCalculator) VisitIf(stmt *parser.StmtIf) error {
+	err := stmt.Condition.Accept(c)
+	if err != nil {
+		return err
+	}
+	stmt.Condition = c.newExpr
+	for _, s := range stmt.Body {
+		err = s.Accept(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *constCalculator) VisitLoop(stmt *parser.StmtLoop) error {
 	if stmt.Condition != nil {
 		err := stmt.Condition.Accept(c)
 		if err != nil {
@@ -395,21 +410,6 @@ func (c *constCalculator) VisitIf(stmt *parser.StmtIf) error {
 	}
 	for _, s := range stmt.Body {
 		err := s.Accept(c)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *constCalculator) VisitLoop(stmt *parser.StmtLoop) error {
-	err := stmt.Condition.Accept(c)
-	if err != nil {
-		return err
-	}
-	stmt.Condition = c.newExpr
-	for _, s := range stmt.Body {
-		err = s.Accept(c)
 		if err != nil {
 			return err
 		}

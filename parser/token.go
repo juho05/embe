@@ -51,6 +51,7 @@ const (
 	TkIdentifier
 	TkLiteral
 	TkType
+	TkPreprocessor
 
 	TkEOF
 )
@@ -76,6 +77,7 @@ type Token struct {
 	Type   TokenType
 	Lexeme string
 	Pos    Position
+	EndPos Position
 	Indent int
 
 	DataType DataType

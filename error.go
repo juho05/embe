@@ -58,10 +58,7 @@ func printError(err error, lines [][]rune) {
 			Column: e.Pos.Column,
 		}, false))
 	case parser.ParseError:
-		fmt.Fprintln(stderr, generateErrorText(e.Message, lines, e.Token.Pos, parser.Position{
-			Line:   e.Token.Pos.Line,
-			Column: e.Token.Pos.Column + len(e.Token.Lexeme) - 1,
-		}, false))
+		fmt.Fprintln(stderr, generateErrorText(e.Message, lines, e.Token.Pos, e.Token.EndPos, false))
 	case analyzer.AnalyzerError:
 		fmt.Fprintln(stderr, generateErrorText(e.Message, lines, e.Start, e.End, e.Warning))
 	case generator.GenerateError:

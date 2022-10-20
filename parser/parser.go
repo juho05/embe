@@ -98,7 +98,7 @@ func (p *parser) varDecl() (Stmt, error) {
 	}
 
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after variable declaration.")
+		return nil, p.newError("Expected '\\n' after variable declaration.")
 	}
 
 	return &StmtVarDecl{
@@ -143,7 +143,7 @@ func (p *parser) constDecl() (Stmt, error) {
 	}
 
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after constant declaration.")
+		return nil, p.newError("Expected '\\n' after constant declaration.")
 	}
 
 	return &StmtConstDecl{
@@ -202,7 +202,7 @@ func (p *parser) funcDecl() (Stmt, error) {
 	}
 
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after ':'.")
+		return nil, p.newError("Expected '\\n' after ':'.")
 	}
 
 	start := name.Pos.Line
@@ -245,7 +245,7 @@ func (p *parser) event() (Stmt, error) {
 			p.errors = append(p.errors, p.newError("Expected ':' after parameter."))
 			p.synchronize()
 		} else if !p.match(TkNewLine) {
-			p.errors = append(p.errors, p.newError("Expected '\n' after ':'."))
+			p.errors = append(p.errors, p.newError("Expected '\\n' after ':'."))
 			p.synchronize()
 		}
 	}
@@ -273,7 +273,7 @@ func (p *parser) eventDecl() (Stmt, error) {
 		return nil, p.newErrorAt("Event names cannot contain a dot.", name)
 	}
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after event declaration.")
+		return nil, p.newError("Expected '\\n' after event declaration.")
 	}
 	return &StmtEventDecl{
 		Keyword: keyword,
@@ -342,7 +342,7 @@ func (p *parser) funcCall() (Stmt, error) {
 	closeParen := p.previous()
 
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after statement.")
+		return nil, p.newError("Expected '\\n' after statement.")
 	}
 
 	return &StmtCall{
@@ -369,7 +369,7 @@ func (p *parser) assignment() (Stmt, error) {
 	}
 
 	if !p.match(TkNewLine) {
-		return nil, p.newError("Expected '\n' after statement.")
+		return nil, p.newError("Expected '\\n' after statement.")
 	}
 
 	if operator.Type == TkMultiplyAssign || operator.Type == TkDivideAssign || operator.Type == TkModulusAssign {
@@ -410,6 +410,7 @@ func (p *parser) assignment() (Stmt, error) {
 						Type:   TkMultiply,
 						Lexeme: operator.Lexeme,
 						Pos:    operator.Pos,
+						EndPos: operator.EndPos,
 						Indent: operator.Indent,
 					},
 					Left: &ExprLiteral{
@@ -417,6 +418,7 @@ func (p *parser) assignment() (Stmt, error) {
 							Type:     TkLiteral,
 							Lexeme:   operator.Lexeme,
 							Pos:      operator.Pos,
+							EndPos:   operator.EndPos,
 							Indent:   operator.Indent,
 							DataType: DTNumber,
 							Literal:  -1,
@@ -532,6 +534,7 @@ func (p *parser) whileLoop() (Stmt, error) {
 						Type:   TkBang,
 						Lexeme: keyword.Lexeme,
 						Pos:    keyword.Pos,
+						EndPos: keyword.EndPos,
 						Indent: keyword.Indent,
 					},
 					Right: condition,
@@ -733,6 +736,7 @@ func (p *parser) comparison() (Expr, error) {
 					Lexeme: operator.Lexeme,
 					Indent: operator.Indent,
 					Pos:    operator.Pos,
+					EndPos: operator.EndPos,
 				},
 				Left: &ExprBinary{
 					Operator: Token{
@@ -740,6 +744,7 @@ func (p *parser) comparison() (Expr, error) {
 						Lexeme: operator.Lexeme,
 						Indent: operator.Indent,
 						Pos:    operator.Pos,
+						EndPos: operator.EndPos,
 					},
 					Left:  expr,
 					Right: right,
@@ -750,6 +755,7 @@ func (p *parser) comparison() (Expr, error) {
 						Lexeme: operator.Lexeme,
 						Indent: operator.Indent,
 						Pos:    operator.Pos,
+						EndPos: operator.EndPos,
 					},
 					Left:  expr,
 					Right: right,
@@ -844,6 +850,7 @@ func (p *parser) unary() (Expr, error) {
 					Type:   TkMultiply,
 					Lexeme: operator.Lexeme,
 					Pos:    operator.Pos,
+					EndPos: operator.EndPos,
 					Indent: operator.Indent,
 				},
 				Left: &ExprLiteral{
@@ -851,6 +858,7 @@ func (p *parser) unary() (Expr, error) {
 						Type:     TkLiteral,
 						Lexeme:   operator.Lexeme,
 						Pos:      operator.Pos,
+						EndPos:   operator.EndPos,
 						Indent:   operator.Indent,
 						DataType: DTNumber,
 						Literal:  -1,

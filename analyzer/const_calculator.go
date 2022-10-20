@@ -41,6 +41,7 @@ func (c *constCalculator) newLiteral(value any, expr parser.Expr) parser.Expr {
 			Type:     parser.TkLiteral,
 			DataType: expr.Type(),
 			Pos:      start,
+			EndPos:   end,
 			Literal:  value,
 		},
 		End:        end,

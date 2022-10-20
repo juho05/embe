@@ -69,9 +69,7 @@ func (e *ExprIdentifier) Type() DataType {
 }
 
 func (e *ExprIdentifier) Position() (start, end Position) {
-	end = e.Name.Pos
-	end.Column += len(e.Name.Lexeme) - 1
-	return e.Name.Pos, end
+	return e.Name.Pos, e.Name.EndPos
 }
 
 type ExprLiteral struct {
@@ -90,8 +88,7 @@ func (e *ExprLiteral) Type() DataType {
 
 func (e *ExprLiteral) Position() (start, end Position) {
 	if e.End.Line == 0 && e.End.Column == 0 {
-		end = e.Token.Pos
-		end.Column += len(e.Token.Lexeme) - 1
+		end = e.Token.EndPos
 	} else {
 		end = e.End
 	}

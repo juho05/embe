@@ -156,6 +156,9 @@ func (s *scanner) scan() {
 
 		case ' ', '\t':
 
+		case '#':
+			s.preprocessor()
+
 		default:
 			if isDigit(c, 10) {
 				s.number()
@@ -290,7 +293,13 @@ func (s *scanner) string() {
 		return
 	}
 	s.addTokenWithValue(TkLiteral, DTString, string(characters))
-	return
+}
+
+func (s *scanner) preprocessor() {
+	for isAlphaNum(s.peek()) {
+		s.nextCharacter()
+	}
+	s.addToken(TkPreprocessor)
 }
 
 func (s *scanner) blockComment() {
@@ -385,6 +394,10 @@ func (s *scanner) addToken(tokenType TokenType) {
 			Line:   s.line,
 			Column: s.tokenStartColumn,
 		},
+		EndPos: Position{
+			Line:   s.line,
+			Column: s.tokenStartColumn + len(lexeme) - 1,
+		},
 		Type:   tokenType,
 		Lexeme: lexeme,
 		Indent: getIndentation(s.lines[s.line]),
@@ -395,13 +408,18 @@ func (s *scanner) addToken(tokenType TokenType) {
 }
 
 func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, value any) {
+	lexeme := string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1])
 	s.tokens = append(s.tokens, Token{
 		Pos: Position{
 			Line:   s.line,
 			Column: s.tokenStartColumn,
 		},
+		EndPos: Position{
+			Line:   s.line,
+			Column: s.tokenStartColumn + len(lexeme) - 1,
+		},
 		Type:     tokenType,
-		Lexeme:   string(s.lines[s.line][s.tokenStartColumn : s.currentColumn+1]),
+		Lexeme:   lexeme,
 		DataType: dataType,
 		Literal:  value,
 		Indent:   getIndentation(s.lines[s.line]),

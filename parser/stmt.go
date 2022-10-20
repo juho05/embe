@@ -35,10 +35,7 @@ func (s *StmtVarDecl) Position() (start, end Position) {
 	} else if s.AssignToken.Pos.Line >= start.Line && s.AssignToken.Pos.Column >= start.Column {
 		end = s.AssignToken.Pos
 	} else {
-		end = Position{
-			Line:   start.Line,
-			Column: start.Column + len(s.Name.Lexeme) - 1,
-		}
+		end = s.Name.EndPos
 	}
 	return start, end
 }
@@ -91,9 +88,7 @@ func (s *StmtEventDecl) Accept(visitor StmtVisitor) error {
 }
 
 func (s *StmtEventDecl) Position() (start, end Position) {
-	end = s.Name.Pos
-	end.Column += len(s.Name.Lexeme) - 1
-	return s.Keyword.Pos, end
+	return s.Keyword.Pos, s.Name.EndPos
 }
 
 type StmtEvent struct {
@@ -108,9 +103,7 @@ func (s *StmtEvent) Accept(visitor StmtVisitor) error {
 }
 
 func (s *StmtEvent) Position() (start, end Position) {
-	end = s.Name.Pos
-	end.Column += len(s.Name.Lexeme) - 1
-	return s.At.Pos, end
+	return s.At.Pos, s.Name.EndPos
 }
 
 type StmtCall struct {
@@ -172,10 +165,7 @@ func (s *StmtLoop) Position() (start, end Position) {
 	if s.Condition != nil {
 		_, end = s.Condition.Position()
 	} else {
-		end = Position{
-			Line:   s.Keyword.Pos.Line,
-			Column: s.Keyword.Pos.Column + len(s.Keyword.Lexeme) - 1,
-		}
+		end = s.Keyword.EndPos
 	}
 	return s.Keyword.Pos, end
 }

@@ -26,6 +26,7 @@ var FuncCalls = map[string]FuncCall{
 	"audio.record.stop":    funcAudioRecordingStop,
 	"audio.record.play":    funcAudioRecordingPlay,
 
+	"lights.deactivate":           funcLEDDeactivateAll,
 	"lights.back.playAnimation":   funcLEDPlayAnimation,
 	"lights.front.setBrightness":  funcLEDSetAmbientBrightness("set"),
 	"lights.front.addBrightness":  funcLEDSetAmbientBrightness("add"),
@@ -310,6 +311,27 @@ func funcAudioRecordingPlay(g *generator, stmt *parser.StmtCall) (*blocks.Block,
 	}
 
 	return block, nil
+}
+
+func funcLEDDeactivateAll(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {
+	block, err := funcLEDDeactivate(g, stmt)
+	if err != nil {
+		return nil, err
+	}
+	g.parent = block.ID
+
+	block, err = funcLEDDeactivateAmbient(g, stmt)
+	if err != nil {
+		return nil, err
+	}
+	g.parent = block.ID
+
+	block, err = funcLEDDeactivateFill(g, stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, err
 }
 
 func funcLEDPlayAnimation(g *generator, stmt *parser.StmtCall) (*blocks.Block, error) {

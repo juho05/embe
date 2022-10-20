@@ -71,6 +71,7 @@ func init() {
 	newFuncCall("audio.record.stop")
 	newFuncCall("audio.record.play", []Param{}, []Param{{Name: "block", Type: parser.DTBool}})
 
+	newFuncCall("lights.deactivate")
 	newFuncCall("lights.back.playAnimation", []Param{{Name: "name", Type: parser.DTString}})
 	newFuncCall("lights.front.setBrightness", []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
 	newFuncCall("lights.front.addBrightness", []Param{{Name: "value", Type: parser.DTNumber}}, []Param{{Name: "light", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})

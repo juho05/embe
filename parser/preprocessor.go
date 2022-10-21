@@ -64,7 +64,7 @@ func (d *Defines) undefine(token Token) {
 		lastDef := def[len(def)-1]
 		if lastDef.IsInScope(token.Pos) {
 			lastDef.End = Position{
-				Line:   token.Pos.Line - 1,
+				Line:   token.Pos.Line,
 				Column: 0,
 			}
 		}

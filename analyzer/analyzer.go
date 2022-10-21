@@ -46,9 +46,10 @@ type Function struct {
 }
 
 type CustomEvent struct {
-	ID   string
-	Name parser.Token
-	used bool
+	ID        string
+	Name      parser.Token
+	triggered bool
+	consumed  bool
 }
 
 type analyzer struct {
@@ -131,8 +132,10 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 		}
 
 		for _, e := range a.events {
-			if !e.used {
+			if !e.triggered {
 				a.newWarningTk("This event is never triggered.", e.Name)
+			} else if !e.consumed {
+				a.newWarningTk("This event is never consumed.", e.Name)
 			}
 		}
 	}
@@ -150,7 +153,8 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 				Name: parser.Token{
 					Lexeme: "$start",
 				},
-				used: true,
+				triggered: true,
+				consumed:  true,
 			}
 			for _, s := range statements {
 				if e, ok := s.(*parser.StmtEvent); ok {
@@ -418,10 +422,11 @@ func (a *analyzer) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 }
 
 func (a *analyzer) VisitEvent(stmt *parser.StmtEvent) error {
-	if _, ok := a.events[stmt.Name.Lexeme]; ok {
+	if e, ok := a.events[stmt.Name.Lexeme]; ok {
 		if stmt.Parameter != nil {
 			a.errors = append(a.errors, a.newErrorExpr("This event does not take a parameter.", stmt.Parameter))
 		}
+		e.consumed = true
 	} else if ev, ok := Events[stmt.Name.Lexeme]; ok {
 		if ev.Param == nil && stmt.Parameter != nil {
 			a.errors = append(a.errors, a.newErrorExpr("This event does not take a parameter.", stmt.Parameter))
@@ -546,7 +551,7 @@ func (a *analyzer) VisitCall(stmt *parser.StmtCall) error {
 			return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
 		}
 	} else if ev, ok := a.events[stmt.Name.Lexeme]; ok {
-		ev.used = true
+		ev.triggered = true
 		if len(stmt.Parameters) > 0 {
 			return a.newErrorStmt("Events don't take any arguments.", stmt)
 		}

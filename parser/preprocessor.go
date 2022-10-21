@@ -11,7 +11,7 @@ type Define struct {
 	Content []Token
 }
 
-func (d *Define) isInScope(at Token) bool {
+func (d *Define) IsInScope(at Token) bool {
 	return at.Pos.Line >= d.Start.Line && (at.Pos.Line != d.Start.Line || at.Pos.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Pos.Line <= d.End.Line && (at.Pos.Line != d.End.Line || at.Pos.Column <= d.End.Column)))
 }
 
@@ -22,14 +22,14 @@ type preprocessor struct {
 	errors  []error
 }
 
-func Preprocess(tokens []Token) ([]Token, []error) {
+func Preprocess(tokens []Token) ([]Token, map[string]*Define, []error) {
 	p := &preprocessor{
 		tokens:  tokens,
 		defines: make(map[string]*Define),
 		errors:  make([]error, 0),
 	}
 	p.preprocess()
-	return p.tokens, p.errors
+	return p.tokens, p.defines, p.errors
 }
 
 func (p *preprocessor) preprocess() {
@@ -77,7 +77,7 @@ func (p *preprocessor) directive(directive string) {
 	case "#ifdef", "#ifndef":
 		if p.peek().Type == TkIdentifier {
 			p.index++
-			if d, ok := p.defines[p.tokens[p.index].Lexeme]; (p.tokens[p.index-1].Lexeme == "#ifdef") != (ok && d.isInScope(p.tokens[p.index])) {
+			if d, ok := p.defines[p.tokens[p.index].Lexeme]; (p.tokens[p.index-1].Lexeme == "#ifdef") != (ok && d.IsInScope(p.tokens[p.index])) {
 				for (p.peek().Type != TkPreprocessor || p.peek().Lexeme != "#endif") && p.peek().Type != TkEOF {
 					p.index++
 				}
@@ -110,7 +110,7 @@ func (p *preprocessor) replace() {
 			continue
 		}
 		if d, ok := p.defines[token.Lexeme]; ok {
-			if !d.isInScope(token) {
+			if !d.IsInScope(token) {
 				continue
 			}
 			if len(d.Content) == 0 {

@@ -73,7 +73,7 @@ func run() {
 			continue
 		}
 
-		tokens, errs = parser.Preprocess(tokens)
+		tokens, _, errs = parser.Preprocess(tokens)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				printError(err, lines)

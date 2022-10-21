@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/slices"
 )
@@ -13,22 +14,72 @@ type Define struct {
 	Content []Token
 }
 
-func (d *Define) IsInScope(at Token) bool {
-	return at.Pos.Line >= d.Start.Line && (at.Pos.Line != d.Start.Line || at.Pos.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Pos.Line <= d.End.Line && (at.Pos.Line != d.End.Line || at.Pos.Column <= d.End.Column)))
+type Defines struct {
+	defines map[string][]*Define
+}
+
+func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
+	if d, ok := d.defines[name]; ok {
+		for _, def := range d {
+			if def.IsInScope(at) {
+				fmt.Println(def.String())
+				return def, true
+			}
+		}
+	}
+	return nil, false
+}
+
+func (d *Defines) addDefine(token Token, content []Token) {
+	d.undefine(token)
+	if _, ok := d.defines[token.Lexeme]; !ok {
+		d.defines[token.Lexeme] = make([]*Define, 0, 1)
+	}
+	d.defines[token.Lexeme] = append(d.defines[token.Lexeme], &Define{
+		Name:    token,
+		Start:   token.Pos,
+		Content: content,
+	})
+}
+
+func (d *Defines) undefine(token Token) {
+	if def, ok := d.defines[token.Lexeme]; ok {
+		lastDef := def[len(def)-1]
+		if lastDef.IsInScope(token.Pos) {
+			lastDef.End = Position{
+				Line:   token.Pos.Line - 1,
+				Column: 0,
+			}
+		}
+	}
+}
+
+func (d *Define) String() string {
+	str := fmt.Sprintf("#define %s ", d.Name.Lexeme)
+	for _, t := range d.Content {
+		str += t.Lexeme
+	}
+	return strings.TrimSpace(str)
+}
+
+func (d *Define) IsInScope(at Position) bool {
+	return at.Line >= d.Start.Line && (at.Line != d.Start.Line || at.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Line <= d.End.Line && (at.Line != d.End.Line || at.Column <= d.End.Column)))
 }
 
 type preprocessor struct {
 	tokens  []Token
-	defines map[string]*Define
+	defines *Defines
 	index   int
 	errors  []error
 }
 
-func Preprocess(tokens []Token) ([]Token, map[string]*Define, []error) {
+func Preprocess(tokens []Token) ([]Token, *Defines, []error) {
 	p := &preprocessor{
-		tokens:  tokens,
-		defines: make(map[string]*Define),
-		errors:  make([]error, 0),
+		tokens: tokens,
+		defines: &Defines{
+			defines: make(map[string][]*Define),
+		},
+		errors: make([]error, 0),
 	}
 	p.preprocess()
 	return p.tokens, p.defines, p.errors
@@ -57,15 +108,7 @@ func (p *preprocessor) directive(directive string) {
 			}
 			replace := make([]Token, p.index-nameIndex)
 			copy(replace, p.tokens[nameIndex+1:p.index+1])
-			if d, ok := p.defines[p.tokens[nameIndex].Lexeme]; ok {
-				p.errors = append(p.errors, p.newErrorAt(fmt.Sprintf("This define is already defined in line %d.", d.Start.Line), p.tokens[nameIndex]))
-				break
-			}
-			p.defines[p.tokens[nameIndex].Lexeme] = &Define{
-				Name:    p.tokens[nameIndex],
-				Start:   p.tokens[nameIndex].Pos,
-				Content: replace,
-			}
+			p.defines.addDefine(p.tokens[nameIndex], replace)
 			p.index++
 		} else {
 			p.errors = append(p.errors, p.newError("Expected name after #define."))
@@ -73,9 +116,7 @@ func (p *preprocessor) directive(directive string) {
 	case "#undef":
 		if p.peek().Type == TkIdentifier {
 			p.index++
-			if d, ok := p.defines[p.tokens[p.index].Lexeme]; ok {
-				d.End = p.tokens[p.index-1].Pos
-			}
+			p.defines.undefine(p.tokens[p.index])
 			p.index++
 		} else {
 			p.errors = append(p.errors, p.newError("Expected name after #undef."))
@@ -83,7 +124,7 @@ func (p *preprocessor) directive(directive string) {
 	case "#ifdef", "#ifndef":
 		if p.peek().Type == TkIdentifier {
 			p.index++
-			if d, ok := p.defines[p.tokens[p.index].Lexeme]; (p.tokens[p.index-1].Lexeme == "#ifdef") != (ok && d.IsInScope(p.tokens[p.index])) {
+			if _, ok := p.defines.GetDefine(p.tokens[p.index].Lexeme, p.tokens[p.index].Pos); (p.tokens[p.index-1].Lexeme == "#ifdef") != ok {
 				for (p.peek().Type != TkPreprocessor || p.peek().Lexeme != "#endif") && p.peek().Type != TkEOF {
 					p.index++
 				}
@@ -115,10 +156,7 @@ func (p *preprocessor) replace() {
 		if token.Type != TkIdentifier {
 			continue
 		}
-		if d, ok := p.defines[token.Lexeme]; ok {
-			if !d.IsInScope(token) {
-				continue
-			}
+		if d, ok := p.defines.GetDefine(token.Lexeme, token.Pos); ok {
 			if len(d.Content) == 0 {
 				size := 1
 				if i < len(p.tokens)-1 && p.tokens[i+1].Type == TkNewLine {

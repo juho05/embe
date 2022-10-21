@@ -18,6 +18,12 @@ type Defines struct {
 	defines map[string][]*Define
 }
 
+func NewDefines() *Defines {
+	return &Defines{
+		defines: make(map[string][]*Define),
+	}
+}
+
 func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
 	if d, ok := d.defines[name]; ok {
 		for _, def := range d {
@@ -74,11 +80,9 @@ type preprocessor struct {
 
 func Preprocess(tokens []Token) ([]Token, *Defines, []error) {
 	p := &preprocessor{
-		tokens: tokens,
-		defines: &Defines{
-			defines: make(map[string][]*Define),
-		},
-		errors: make([]error, 0),
+		tokens:  tokens,
+		defines: NewDefines(),
+		errors:  make([]error, 0),
 	}
 	p.preprocess()
 	return p.tokens, p.defines, p.errors

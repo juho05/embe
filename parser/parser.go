@@ -997,10 +997,16 @@ func (p *parser) previous() Token {
 }
 
 func (p *parser) peek() Token {
+	if p.current >= len(p.tokens) {
+		return p.tokens[len(p.tokens)-1]
+	}
 	return p.tokens[p.current]
 }
 
 func (p *parser) peekNext() Token {
+	if p.current+1 >= len(p.tokens) {
+		return p.tokens[len(p.tokens)-1]
+	}
 	return p.tokens[p.current+1]
 }
 

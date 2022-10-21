@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"golang.org/x/exp/slices"
 )
 
@@ -55,6 +57,10 @@ func (p *preprocessor) directive(directive string) {
 			}
 			replace := make([]Token, p.index-nameIndex)
 			copy(replace, p.tokens[nameIndex+1:p.index+1])
+			if d, ok := p.defines[p.tokens[nameIndex].Lexeme]; ok {
+				p.errors = append(p.errors, p.newErrorAt(fmt.Sprintf("This define is already defined in line %d.", d.Start.Line), p.tokens[nameIndex]))
+				break
+			}
 			p.defines[p.tokens[nameIndex].Lexeme] = &Define{
 				Name:    p.tokens[nameIndex],
 				Start:   p.tokens[nameIndex].Pos,

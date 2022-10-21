@@ -14,9 +14,9 @@ type Event struct {
 
 func (e Event) String() string {
 	if e.Param == nil {
-		return "@" + e.Name
+		return "event " + e.Name
 	}
-	return fmt.Sprintf("@%s %s: %s", e.Name, e.Param.Name, e.Param.Type)
+	return fmt.Sprintf("event %s %s: %s", e.Name, e.Param.Name, e.Param.Type)
 }
 
 var Events = make(map[string]Event)

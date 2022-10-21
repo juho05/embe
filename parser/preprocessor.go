@@ -22,7 +22,6 @@ func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
 	if d, ok := d.defines[name]; ok {
 		for _, def := range d {
 			if def.IsInScope(at) {
-				fmt.Println(def.String())
 				return def, true
 			}
 		}

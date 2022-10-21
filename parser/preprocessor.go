@@ -4,9 +4,20 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+type Define struct {
+	Name    Token
+	Start   Position
+	End     Position
+	Content []Token
+}
+
+func (d *Define) isInScope(at Token) bool {
+	return at.Pos.Line >= d.Start.Line && (at.Pos.Line != d.Start.Line || at.Pos.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Pos.Line <= d.End.Line && (at.Pos.Line != d.End.Line || at.Pos.Column <= d.End.Column)))
+}
+
 type preprocessor struct {
 	tokens  []Token
-	defines map[string][]Token
+	defines map[string]*Define
 	index   int
 	errors  []error
 }
@@ -14,7 +25,7 @@ type preprocessor struct {
 func Preprocess(tokens []Token) ([]Token, []error) {
 	p := &preprocessor{
 		tokens:  tokens,
-		defines: make(map[string][]Token),
+		defines: make(map[string]*Define),
 		errors:  make([]error, 0),
 	}
 	p.preprocess()
@@ -44,15 +55,29 @@ func (p *preprocessor) directive(directive string) {
 			}
 			replace := make([]Token, p.index-nameIndex)
 			copy(replace, p.tokens[nameIndex+1:p.index+1])
-			p.defines[p.tokens[nameIndex].Lexeme] = replace
+			p.defines[p.tokens[nameIndex].Lexeme] = &Define{
+				Name:    p.tokens[nameIndex],
+				Start:   p.tokens[nameIndex].Pos,
+				Content: replace,
+			}
 			p.index++
 		} else {
 			p.errors = append(p.errors, p.newError("Expected name after #define."))
 		}
+	case "#undef":
+		if p.peek().Type == TkIdentifier {
+			p.index++
+			if d, ok := p.defines[p.tokens[p.index].Lexeme]; ok {
+				d.End = p.tokens[p.index-1].Pos
+			}
+			p.index++
+		} else {
+			p.errors = append(p.errors, p.newError("Expected name after #undef."))
+		}
 	case "#ifdef", "#ifndef":
 		if p.peek().Type == TkIdentifier {
 			p.index++
-			if _, ok := p.defines[p.tokens[p.index].Lexeme]; (p.tokens[p.index-1].Lexeme == "#ifdef") != ok {
+			if d, ok := p.defines[p.tokens[p.index].Lexeme]; (p.tokens[p.index-1].Lexeme == "#ifdef") != (ok && d.isInScope(p.tokens[p.index])) {
 				for (p.peek().Type != TkPreprocessor || p.peek().Lexeme != "#endif") && p.peek().Type != TkEOF {
 					p.index++
 				}
@@ -85,7 +110,10 @@ func (p *preprocessor) replace() {
 			continue
 		}
 		if d, ok := p.defines[token.Lexeme]; ok {
-			if len(d) == 0 {
+			if !d.isInScope(token) {
+				continue
+			}
+			if len(d.Content) == 0 {
 				size := 1
 				if i < len(p.tokens)-1 && p.tokens[i+1].Type == TkNewLine {
 					size = 2
@@ -94,16 +122,16 @@ func (p *preprocessor) replace() {
 				i--
 				continue
 			}
-			for i := range d {
-				d[i].Indent = token.Indent
-				d[i].Pos = token.Pos
-				d[i].EndPos = token.EndPos
-			}
-			newTokens := make([]Token, len(p.tokens)+len(d))
+			newTokens := make([]Token, len(p.tokens)+len(d.Content))
 			copy(newTokens, p.tokens[:i])
-			copy(newTokens[i:], d)
+			copy(newTokens[i:], d.Content)
 			if i < len(p.tokens)-1 {
-				copy(newTokens[i+len(d):], p.tokens[i+1:])
+				copy(newTokens[i+len(d.Content):], p.tokens[i+1:])
+			}
+			for j := i; j < len(newTokens) && j < i+len(d.Content); j++ {
+				newTokens[j].Indent = token.Indent
+				newTokens[j].Pos = token.Pos
+				newTokens[j].EndPos = token.EndPos
 			}
 			p.tokens = newTokens
 			i--

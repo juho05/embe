@@ -24,6 +24,18 @@ func NewDefines() *Defines {
 	}
 }
 
+func (d *Defines) GetDefines(at Position) []*Define {
+	defines := make([]*Define, 0, 10)
+	for _, defs := range d.defines {
+		for _, def := range defs {
+			if def.IsInScope(at) {
+				defines = append(defines, def)
+			}
+		}
+	}
+	return defines
+}
+
 func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
 	if d, ok := d.defines[name]; ok {
 		for _, def := range d {

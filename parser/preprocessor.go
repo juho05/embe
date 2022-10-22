@@ -91,12 +91,20 @@ type preprocessor struct {
 }
 
 func Preprocess(tokens []Token) ([]Token, *Defines, []error) {
+	eof := tokens[len(tokens)-1]
+
 	p := &preprocessor{
 		tokens:  tokens,
 		defines: NewDefines(),
 		errors:  make([]error, 0),
 	}
 	p.preprocess()
+
+	// make sure EOF was not removed
+	if p.tokens[len(p.tokens)-1].Type != TkEOF {
+		p.tokens = append(p.tokens, eof)
+	}
+
 	return p.tokens, p.defines, p.errors
 }
 

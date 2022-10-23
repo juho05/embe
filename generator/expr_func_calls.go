@@ -36,7 +36,8 @@ var ExprFuncCalls = map[string]ExprFuncCall{
 	"sensors.angleSpeed":   exprFuncAngleSpeed,
 
 	"sensors.colorStatus":   exprFuncColorStatus,
-	"sensors.getColor":      exprFuncGetColor,
+	"sensors.getColorValue": exprFuncGetColorValue,
+	"sensors.getColorName":  exprFuncGetColorName,
 	"sensors.isColorStatus": exprFuncIsColorStatus,
 	"sensors.detectColor":   exprFuncDetectColor,
 	"motors.rpm":            exprFuncMotorsSpeed("speed"),
@@ -345,7 +346,7 @@ func exprFuncColorStatus(g *generator, expr *parser.ExprFuncCall) (*blocks.Block
 	return block, nil
 }
 
-func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+func exprFuncGetColorValue(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
 	block := g.NewBlock(blocks.SensorColorGetRGBGrayLight, false)
 
 	var err error
@@ -361,10 +362,46 @@ func exprFuncGetColor(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 	}
 
 	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput3, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_3", block.ID, expr.Parameters[1], func(v any, token parser.Token) error {
-		types := []string{"red", "green", "blue", "gray", "light", "color_sta"}
+		types := []string{"red", "green", "blue", "gray", "light"}
 		if !slices.Contains(types, v.(string)) {
 			return g.newErrorTk(fmt.Sprintf("Unknown value type. Available options: %s", strings.Join(types, ", ")), token)
 		}
+		return nil
+	})
+	if err != nil {
+		g.errors = append(g.errors, err)
+	}
+
+	g.noNext = true
+	indexMenu := g.NewBlock(blocks.SensorColorGetRGBGrayLightIndex, true)
+	indexMenu.Fields["MBUILD_QUAD_COLOR_SENSOR_GET_STA_WITH_INPUTMENU_INDEX"] = []any{"1", nil}
+	block.Inputs["index"] = []any{1, indexMenu.ID}
+	return block, nil
+}
+
+func exprFuncGetColorName(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	block := g.NewBlock(blocks.SensorColorGetRGBGrayLight, false)
+
+	var err error
+	block.Inputs["inputMenu_2"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput2, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_2", block.ID, expr.Parameters[0], func(v any, token parser.Token) error {
+		sensors := []string{"L1", "L2", "R1", "R2"}
+		if !slices.Contains(sensors, v.(string)) {
+			return g.newErrorTk(fmt.Sprintf("Unknown sensor. Available options: %s", strings.Join(sensors, ", ")), token)
+		}
+		return nil
+	})
+	if err != nil {
+		g.errors = append(g.errors, err)
+	}
+
+	block.Inputs["inputMenu_3"], err = g.fieldMenu(blocks.SensorColorGetRGBGrayLightInput3, "", "MBUILD_QUAD_COLOR_SENSOR_GET_RGB_GRAY_LIGHT_INPUTMENU_3", block.ID, &parser.ExprLiteral{
+		Token: parser.Token{
+			Literal:  "color_sta",
+			Type:     parser.TkLiteral,
+			DataType: parser.DTString,
+		},
+		ReturnType: parser.DTString,
+	}, func(v any, token parser.Token) error {
 		return nil
 	})
 	if err != nil {

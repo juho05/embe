@@ -67,6 +67,7 @@ jobs:
         ldflags: -X "main.version=${{ steps.tags.outputs.tag }}"
         md5sum: false
         project_path: ./cmd/embe
+        binary_name: embe
     - name: embe-ls
       uses: wangyoucao577/go-release-action@v1.28
       with:
@@ -79,3 +80,4 @@ jobs:
         ldflags: -X "main.version=${{ steps.tags.outputs.tag }}"
         md5sum: false
         project_path: ./cmd/embe-ls
+        binary_name: embe-ls

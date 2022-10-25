@@ -13,10 +13,10 @@ arch=$(uname -m)
 download () {
 	if hash wget 2>/dev/null; then
 		wget -q --show-progress https://github.com/Bananenpro/embe/releases/latest/download/embe-$1-$2.tar.gz -O embe.tar.gz || exit 1
-		wget -q --show-progress https://github.com/Bananenpro/embe-ls/releases/latest/download/embe-ls-$1-$2.tar.gz -O embe-ls.tar.gz || exit 1
+		wget -q --show-progress https://github.com/Bananenpro/embe/releases/latest/download/embe-ls-$1-$2.tar.gz -O embe-ls.tar.gz || exit 1
 	elif hash curl 2>/dev/null; then
 		curl -L https://github.com/Bananenpro/embe/releases/latest/download/embe-$1-$2.tar.gz > embe.tar.gz || exit 1
-		curl -L https://github.com/Bananenpro/embe-ls/releases/latest/download/embe-ls-$1-$2.tar.gz > embe-ls.tar.gz || exit 1
+		curl -L https://github.com/Bananenpro/embe/releases/latest/download/embe-ls-$1-$2.tar.gz > embe-ls.tar.gz || exit 1
 	else
 		echo "Please install either wget or curl."
 		exit 1

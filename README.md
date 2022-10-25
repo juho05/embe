@@ -38,7 +38,7 @@ embe uninstall
 
 ## Editor Support
 
-- LSP: [embe-ls](https://github.com/Bananenpro/embe-ls)
+- LSP: [embe-ls](https://github.com/Bananenpro/embe/blob/main/cmd/embe-ls/README.md)
 - VS Code: [vscode-embe](https://github.com/Bananenpro/vscode-embe)
 - Vim: [vim-embe](https://github.com/Bananenpro/vim-embe)
 
@@ -48,10 +48,11 @@ embe uninstall
 
 - [Go](https://go.dev) 1.19+
 
-```
+```sh
 git clone https://github.com/Bananenpro/embe
 cd embe
-go build
+go build ./cmd/embe
+go build ./cmd/embe-ls
 ```
 
 ## License

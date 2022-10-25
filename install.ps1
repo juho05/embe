@@ -25,7 +25,7 @@ Rename-Item -Path $EmbeDir\LICENSE -NewName LICENSE-embe
 rm embe.zip
 
 Write-Host "Installing embe-ls..."
-Invoke-WebRequest -Uri https://github.com/Bananenpro/embe-ls/releases/latest/download/embe-ls-windows-amd64.zip -OutFile embe-ls.zip
+Invoke-WebRequest -Uri https://github.com/Bananenpro/embe/releases/latest/download/embe-ls-windows-amd64.zip -OutFile embe-ls.zip
 Expand-Archive -LiteralPath .\embe-ls.zip -DestinationPath $EmbeDir
 Rename-Item -Path $EmbeDir\README.md -NewName README-embe-ls.md
 Rename-Item -Path $EmbeDir\LICENSE -NewName LICENSE-embe-ls

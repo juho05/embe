@@ -69,9 +69,9 @@ lspconfig.embe.setup{}
 - [Go](https://go.dev) 1.19+
 
 ```
-git clone https://github.com/Bananenpro/embe-ls
-cd embe-ls
-go build
+git clone https://github.com/Bananenpro/embe
+cd embe
+go build ./cmd/embe-ls
 ```
 
 ## Config

@@ -9,6 +9,21 @@ $EmbeDir = "$HOME\AppData\Local\Programs\embe"
 if (!($EmbeDir | Test-Path)) {
 	New-Item -ItemType "directory" -Path $EmbeDir
 	[System.Environment]::SetEnvironmentVariable("PATH",[System.Environment]::GetEnvironmentVariable("PATH","USER") + ";" + $EmbeDir,"USER")
+
+	Write-Host "Refreshing environment variables..."
+	$HWND_BROADCAST = [intptr]0xffff;
+	$WM_SETTINGCHANGE = 0x1a;
+	$result = [uintptr]::zero
+	if (-not ("win32.nativemethods" -As [type])) {
+		Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @"
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(
+IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam,
+uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+"@
+	}
+	[void]([win32.nativemethods]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [uintptr]::Zero, "Environment", 2, 5000, [ref]$result))
+	$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 } else {
 	rm -r $EmbeDir
 	New-Item -ItemType "directory" -Path $EmbeDir
@@ -38,20 +53,5 @@ if (Get-Command code -ErrorAction SilentlyContinue) {
 	code --install-extension embe.vsix
 	rm embe.vsix
 }
-
-Write-Host "Refreshing environment variables..."
-$HWND_BROADCAST = [intptr]0xffff;
-$WM_SETTINGCHANGE = 0x1a;
-$result = [uintptr]::zero
-if (-not ("win32.nativemethods" -As [type])) {
-	Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @"
-[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-public static extern IntPtr SendMessageTimeout(
-IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam,
-uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
-"@
-}
-[void]([win32.nativemethods]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [uintptr]::Zero, "Environment", 2, 5000, [ref]$result))
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 Write-Host "Done." -ForegroundColor Green

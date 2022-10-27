@@ -24,19 +24,22 @@ func main() {
 		fmt.Fprintf(stderr, "Compile embe source code to .mblock files.\n\n")
 		fmt.Fprintf(stderr, "USAGE:\n  %s <files...>\n\n", os.Args[0])
 		fmt.Fprintln(stderr, "COMMANDS:")
-		fmt.Fprintln(stderr, "  version    print the embe version number")
-		fmt.Fprintln(stderr, "  update     update embe to the latest release version")
+		fmt.Fprintln(stderr, "  docs       open the embe documentation in a browser")
 		fmt.Fprintln(stderr, "  uninstall  uninstall embe")
+		fmt.Fprintln(stderr, "  update     update embe to the latest release version")
+		fmt.Fprintln(stderr, "  version    print the embe version number")
 		os.Exit(1)
 	}
 
 	switch os.Args[1] {
-	case "version":
-		printVersion()
-	case "update":
-		update()
+	case "docs":
+		docs()
 	case "uninstall":
 		uninstall()
+	case "update":
+		update()
+	case "version":
+		printVersion()
 	default:
 		run()
 	}

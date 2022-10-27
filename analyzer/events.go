@@ -32,7 +32,7 @@ func newEvent(name string, param *Param, options ...any) {
 func init() {
 	newEvent("launch", nil)
 	newEvent("button", &Param{Name: "name", Type: parser.DTString}, "a", "b")
-	newEvent("joystick", &Param{Name: "direction", Type: parser.DTString}, "up", "down", "left", "right")
+	newEvent("joystick", &Param{Name: "direction", Type: parser.DTString}, "up", "down", "left", "right", "middle")
 	newEvent("tilt", &Param{Name: "direction", Type: parser.DTString}, "left", "right", "forward", "backward")
 	newEvent("face", &Param{Name: "direction", Type: parser.DTString}, "up", "down")
 	newEvent("wave", &Param{Name: "direction", Type: parser.DTString}, "left", "right")

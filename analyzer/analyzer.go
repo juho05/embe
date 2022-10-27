@@ -512,43 +512,46 @@ func (a *analyzer) VisitCall(stmt *parser.StmtCall) error {
 			}
 		}
 	} else if fn, ok := FuncCalls[stmt.Name.Lexeme]; ok {
-		validSignature := false
-
 		types := make([]string, len(stmt.Parameters))
+		var hadError bool
 		for i, p := range stmt.Parameters {
 			err := p.Accept(a)
 			if err != nil {
 				a.errors = append(a.errors, err)
+				hadError = true
 				continue
 			}
 			types[i] = string(p.Type())
 		}
-	signatures:
-		for _, s := range fn.Signatures {
-			if len(s.Params) != len(stmt.Parameters) {
-				continue
-			}
-			for i, t := range types {
-				if parser.DataType(t) != s.Params[i].Type {
-					continue signatures
+		if !hadError {
+			validSignature := false
+		signatures:
+			for _, s := range fn.Signatures {
+				if len(s.Params) != len(stmt.Parameters) {
+					continue
 				}
-			}
-			validSignature = true
-			break
-		}
-		if !validSignature {
-			signatures := make([]string, len(fn.Signatures))
-			for i, s := range fn.Signatures {
-				sig := strings.Builder{}
-				for j, p := range s.Params {
-					sig.WriteString(string(p.Type))
-					if j < len(s.Params)-1 {
-						sig.WriteString(", ")
+				for i, t := range types {
+					if parser.DataType(t) != s.Params[i].Type {
+						continue signatures
 					}
 				}
-				signatures[i] = "(" + sig.String() + ")"
+				validSignature = true
+				break
 			}
-			return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
+			if !validSignature {
+				signatures := make([]string, len(fn.Signatures))
+				for i, s := range fn.Signatures {
+					sig := strings.Builder{}
+					for j, p := range s.Params {
+						sig.WriteString(string(p.Type))
+						if j < len(s.Params)-1 {
+							sig.WriteString(", ")
+						}
+					}
+					signatures[i] = "(" + sig.String() + ")"
+				}
+				return a.newErrorStmt(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), stmt)
+			}
 		}
 	} else if ev, ok := a.events[stmt.Name.Lexeme]; ok {
 		ev.triggered = true
@@ -705,44 +708,49 @@ func (a *analyzer) VisitExprFuncCall(expr *parser.ExprFuncCall) error {
 		}
 		return a.newErrorTk("Unknown function.", expr.Name)
 	}
-	validSignature := false
-
 	types := make([]string, len(expr.Parameters))
+	var hadError bool
 	for i, p := range expr.Parameters {
 		err := p.Accept(a)
 		if err != nil {
 			a.errors = append(a.errors, err)
+			hadError = true
 			continue
 		}
 		types[i] = string(p.Type())
 	}
-signatures:
-	for _, s := range fn.Signatures {
-		if len(s.Params) != len(expr.Parameters) {
-			continue
-		}
-		for i, t := range types {
-			if parser.DataType(t) != s.Params[i].Type {
-				continue signatures
+	if !hadError {
+		validSignature := false
+	signatures:
+		for _, s := range fn.Signatures {
+			if len(s.Params) != len(expr.Parameters) {
+				continue
 			}
-		}
-		validSignature = true
-		expr.ReturnType = s.ReturnType
-		break
-	}
-	if !validSignature {
-		signatures := make([]string, len(fn.Signatures))
-		for i, s := range fn.Signatures {
-			sig := strings.Builder{}
-			for j, p := range s.Params {
-				sig.WriteString(string(p.Type))
-				if j < len(s.Params)-1 {
-					sig.WriteString(", ")
+			for i, t := range types {
+				if parser.DataType(t) != s.Params[i].Type {
+					continue signatures
 				}
 			}
-			signatures[i] = "(" + sig.String() + ")"
+			validSignature = true
+			expr.ReturnType = s.ReturnType
+			break
 		}
-		return a.newErrorExpr(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), expr)
+		if !validSignature {
+			signatures := make([]string, len(fn.Signatures))
+			for i, s := range fn.Signatures {
+				sig := strings.Builder{}
+				for j, p := range s.Params {
+					sig.WriteString(string(p.Type))
+					if j < len(s.Params)-1 {
+						sig.WriteString(", ")
+					}
+				}
+				signatures[i] = "(" + sig.String() + ")"
+			}
+			return a.newErrorExpr(fmt.Sprintf("Invalid arguments:\n  have: (%s)\n  want: %s", strings.Join(types, ", "), strings.Join(signatures, " or ")), expr)
+		}
+	} else {
+		expr.ReturnType = fn.Signatures[0].ReturnType
 	}
 	return nil
 }

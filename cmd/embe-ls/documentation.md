@@ -122,6 +122,15 @@ The line deviation of the robot.
 net.connected
 Whether the robot is connected to the internet.
 ---
+math.e
+Euler's number = 2.718281
+---
+math.pi
+π = 3.141592
+---
+math.phi
+Golden ratio = 1.618033
+---
 // functions
 audio.stop
 Stop all audio.

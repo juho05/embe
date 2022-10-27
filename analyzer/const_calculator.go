@@ -52,9 +52,21 @@ func (c *constCalculator) newLiteral(value any, expr parser.Expr) parser.Expr {
 func (c *constCalculator) VisitIdentifier(expr *parser.ExprIdentifier) error {
 	if cn, ok := c.definitions.Constants[expr.Name.Lexeme]; ok {
 		c.newExpr = c.newLiteral(cn.Value, expr)
-	} else {
-		c.newExpr = expr
+		return nil
 	}
+	var value any
+	switch expr.Name.Lexeme {
+	case "math.e":
+		value = 2.718281
+	case "math.pi":
+		value = 3.141592
+	case "math.phi":
+		value = 1.618033
+	default:
+		c.newExpr = expr
+		return nil
+	}
+	c.newExpr = c.newLiteral(value, expr)
 	return nil
 }
 

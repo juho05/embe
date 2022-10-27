@@ -51,4 +51,8 @@ func init() {
 	newVar("draw.positionY", parser.DTNumber)
 	newVar("draw.rotation", parser.DTNumber)
 	newVar("draw.thickness", parser.DTNumber)
+
+	newVar("math.e", parser.DTNumber)
+	newVar("math.pi", parser.DTNumber)
+	newVar("math.phi", parser.DTNumber)
 }

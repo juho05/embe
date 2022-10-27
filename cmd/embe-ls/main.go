@@ -21,7 +21,7 @@ var handler protocol.Handler
 func main() {
 	loadConfig()
 	initLog()
-	Info("Starting %s v%s...", name, version)
+	Info("Starting %s %s...", name, version)
 	glspLogLevel := 0
 	if ConfGLSPLogFile != nil {
 		glspLogLevel = 2

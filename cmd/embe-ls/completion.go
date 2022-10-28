@@ -25,6 +25,7 @@ var snippets = map[string]string{
 	"#define NAME VALUE": "#define ${1:NAME} ${2:value}",
 	"#ifdef NAME":        "#ifdef ${1:NAME}\n  $0\n#endif",
 	"#ifndef NAME":       "#ifndef ${1:NAME}\n  $0\n#endif",
+	"println":            "display.println($0)",
 }
 
 var keywords = []string{
@@ -258,7 +259,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	snippetCompletionType := protocol.CompletionItemKindSnippet
 	snippetInsertTextFormat := protocol.InsertTextFormatSnippet
 	for label, s := range snippets {
-		if strings.HasPrefix(s, item) {
+		if strings.HasPrefix(label, item) {
 			snippet := s
 			completions = append(completions, protocol.CompletionItem{
 				Label:            label,

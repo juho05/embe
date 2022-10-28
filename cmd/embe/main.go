@@ -58,7 +58,7 @@ func run() {
 		fmt.Printf("Compiling %s...\n", os.Args[i])
 		file, err := os.Open(os.Args[i])
 		if err != nil {
-			printError(err, nil)
+			printError(err, nil, nil)
 			error = true
 			continue
 		}
@@ -66,20 +66,24 @@ func run() {
 			inFileNameBase = filepath.Base(file.Name())
 		}
 
-		tokens, lines, errs := parser.Scan(file)
+		path, err := filepath.Abs(os.Args[i])
+		if err != nil {
+			panic(err)
+		}
+		tokens, lines, errs := parser.Scan(file, path)
 		file.Close()
 		if len(errs) > 0 {
 			for _, err := range errs {
-				printError(err, lines)
+				printError(err, lines, nil)
 			}
 			error = true
 			continue
 		}
 
-		tokens, _, errs = parser.Preprocess(tokens)
+		tokens, files, _, _, errs := parser.Preprocess(tokens, path, nil, nil)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				printError(err, lines)
+				printError(err, lines, files)
 			}
 			error = true
 			continue
@@ -88,7 +92,7 @@ func run() {
 		statements, errs := parser.Parse(tokens)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				printError(err, lines)
+				printError(err, lines, files)
 			}
 			error = true
 			continue
@@ -96,11 +100,11 @@ func run() {
 
 		statements, analyzerResult := analyzer.Analyze(statements)
 		for _, w := range analyzerResult.Warnings {
-			printError(w, lines)
+			printError(w, lines, files)
 		}
 		if len(analyzerResult.Errors) > 0 {
 			for _, err := range analyzerResult.Errors {
-				printError(err, lines)
+				printError(err, lines, files)
 			}
 			error = true
 			continue
@@ -109,7 +113,7 @@ func run() {
 		blocks, errs := generator.GenerateBlocks(statements, analyzerResult.Definitions)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				printError(err, lines)
+				printError(err, lines, files)
 			}
 			error = true
 			continue
@@ -128,13 +132,13 @@ func run() {
 
 	outFile, err := os.Create(outName)
 	if err != nil {
-		printError(err, nil)
+		printError(err, nil, nil)
 		os.Exit(1)
 	}
 	defer outFile.Close()
 	err = generator.Package(outFile, allBlocks, allDefinitions)
 	if err != nil {
-		printError(err, nil)
+		printError(err, nil, nil)
 		os.Exit(1)
 	}
 }

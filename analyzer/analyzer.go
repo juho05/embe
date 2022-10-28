@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -471,19 +472,19 @@ func (a *analyzer) VisitEventDecl(stmt *parser.StmtEventDecl) error {
 
 func (a *analyzer) assertNotDeclared(name parser.Token) error {
 	if v, ok := a.variables[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, v.Name.Pos.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in `%s` line %d.", name.Lexeme, filepath.Base(v.Name.Pos.Path), v.Name.Pos.Line+1), name)
 	}
 	if l, ok := a.lists[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, l.Name.Pos.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in `%s`, line %d.", name.Lexeme, filepath.Base(l.Name.Pos.Path), l.Name.Pos.Line+1), name)
 	}
 	if c, ok := a.constants[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, c.Name.Pos.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in `%s` line %d.", name.Lexeme, filepath.Base(c.Name.Pos.Path), c.Name.Pos.Line+1), name)
 	}
 	if f, ok := a.functions[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, f.Name.Pos.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in `%s` line %d.", name.Lexeme, filepath.Base(f.Name.Pos.Path), f.Name.Pos.Line+1), name)
 	}
 	if e, ok := a.events[name.Lexeme]; ok {
-		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in line %d.", name.Lexeme, e.Name.Pos.Line+1), name)
+		return a.newErrorTk(fmt.Sprintf("'%s' is already declared in `%s` line %d.", name.Lexeme, filepath.Base(e.Name.Pos.Path), e.Name.Pos.Line+1), name)
 	}
 	return nil
 }

@@ -2,6 +2,8 @@ package parser
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -15,17 +17,17 @@ type Define struct {
 }
 
 type Defines struct {
-	defines map[string][]*Define
+	defines map[string][]Define
 }
 
 func NewDefines() *Defines {
 	return &Defines{
-		defines: make(map[string][]*Define),
+		defines: make(map[string][]Define),
 	}
 }
 
-func (d *Defines) GetDefines(at Position) []*Define {
-	defines := make([]*Define, 0, 10)
+func (d *Defines) GetDefines(at Position) []Define {
+	defines := make([]Define, 0, 10)
 	for _, defs := range d.defines {
 		for _, def := range defs {
 			if def.IsInScope(at) {
@@ -36,7 +38,7 @@ func (d *Defines) GetDefines(at Position) []*Define {
 	return defines
 }
 
-func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
+func (d *Defines) GetDefine(name string, at Position) (Define, bool) {
 	if d, ok := d.defines[name]; ok {
 		for _, def := range d {
 			if def.IsInScope(at) {
@@ -44,19 +46,35 @@ func (d *Defines) GetDefine(name string, at Position) (*Define, bool) {
 			}
 		}
 	}
-	return nil, false
+	return Define{}, false
 }
 
-func (d *Defines) addDefine(token Token, content []Token) {
+func (d *Defines) addDefine(token Token, pos Position, content []Token) {
 	d.undefine(token)
 	if _, ok := d.defines[token.Lexeme]; !ok {
-		d.defines[token.Lexeme] = make([]*Define, 0, 1)
+		d.defines[token.Lexeme] = make([]Define, 0, 1)
 	}
-	d.defines[token.Lexeme] = append(d.defines[token.Lexeme], &Define{
+	d.defines[token.Lexeme] = append(d.defines[token.Lexeme], Define{
 		Name:    token,
-		Start:   token.Pos,
+		Start:   pos,
 		Content: content,
 	})
+}
+
+func (d *Defines) copy() *Defines {
+	if d == nil {
+		return nil
+	}
+
+	defines := make(map[string][]Define, len(d.defines))
+	for k, v := range d.defines {
+		ds := make([]Define, len(v))
+		copy(ds, v)
+		defines[k] = ds
+	}
+	return &Defines{
+		defines: defines,
+	}
 }
 
 func (d *Defines) undefine(token Token) {
@@ -68,6 +86,7 @@ func (d *Defines) undefine(token Token) {
 				Column: 0,
 			}
 		}
+		def[len(def)-1] = lastDef
 	}
 }
 
@@ -80,7 +99,7 @@ func (d *Define) String() string {
 }
 
 func (d *Define) IsInScope(at Position) bool {
-	return at.Line >= d.Start.Line && (at.Line != d.Start.Line || at.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Line <= d.End.Line && (at.Line != d.End.Line || at.Column <= d.End.Column)))
+	return at.Path == d.Start.Path && at.Line >= d.Start.Line && (at.Line != d.Start.Line || at.Column >= d.Start.Column) && (d.End == (Position{}) || (at.Line <= d.End.Line && (at.Line != d.End.Line || at.Column <= d.End.Column)))
 }
 
 type preprocessor struct {
@@ -88,15 +107,40 @@ type preprocessor struct {
 	defines *Defines
 	index   int
 	errors  []error
+	files   map[string][][]rune
+	path    string
+	stack   []string
 }
 
-func Preprocess(tokens []Token) ([]Token, *Defines, []error) {
+func Preprocess(tokens []Token, absPath string, stack []string, defines *Defines) ([]Token, map[string][][]rune, *Defines, []string, []error) {
 	eof := tokens[len(tokens)-1]
+
+	if stack == nil {
+		stack = []string{absPath}
+	}
+
+	defines = defines.copy()
+
+	if defines == nil {
+		defines = NewDefines()
+	}
+
+	for _, ds := range defines.defines {
+		for _, d := range ds {
+			pos := d.Name.Pos
+			pos.Line = 0
+			pos.Path = absPath
+			defines.addDefine(d.Name, pos, d.Content)
+		}
+	}
 
 	p := &preprocessor{
 		tokens:  tokens,
-		defines: NewDefines(),
+		defines: defines,
 		errors:  make([]error, 0),
+		files:   make(map[string][][]rune),
+		stack:   stack,
+		path:    absPath,
 	}
 	p.preprocess()
 
@@ -105,13 +149,17 @@ func Preprocess(tokens []Token) ([]Token, *Defines, []error) {
 		p.tokens = append(p.tokens, eof)
 	}
 
-	return p.tokens, p.defines, p.errors
+	return p.tokens, p.files, p.defines, p.stack, p.errors
 }
 
 func (p *preprocessor) preprocess() {
 	for p.index < len(p.tokens) {
 		if p.tokens[p.index].Type == TkPreprocessor {
-			p.directive(p.tokens[p.index].Lexeme)
+			err := p.directive(p.tokens[p.index].Lexeme)
+			if err != nil {
+				p.errors = append(p.errors, err)
+				return
+			}
 		} else {
 			p.index++
 		}
@@ -119,9 +167,19 @@ func (p *preprocessor) preprocess() {
 	p.replace()
 }
 
-func (p *preprocessor) directive(directive string) {
+func (p *preprocessor) directive(directive string) error {
 	startIndex := p.index
 	switch directive {
+	case "#include":
+		if p.peek().Type == TkLiteral && p.peek().DataType == DTString {
+			p.index++
+			err := p.include(p.index-1, p.tokens[p.index].Literal.(string))
+			if err != nil {
+				return err
+			}
+		} else {
+			p.errors = append(p.errors, p.newError("Expected file name after #include."))
+		}
 	case "#define":
 		if p.peek().Type == TkIdentifier {
 			p.index++
@@ -131,7 +189,7 @@ func (p *preprocessor) directive(directive string) {
 			}
 			replace := make([]Token, p.index-nameIndex)
 			copy(replace, p.tokens[nameIndex+1:p.index+1])
-			p.defines.addDefine(p.tokens[nameIndex], replace)
+			p.defines.addDefine(p.tokens[nameIndex], p.tokens[nameIndex].Pos, replace)
 			p.index++
 		} else {
 			p.errors = append(p.errors, p.newError("Expected name after #define."))
@@ -171,6 +229,74 @@ func (p *preprocessor) directive(directive string) {
 	}
 	p.tokens = slices.Delete(p.tokens, startIndex, p.index+1)
 	p.index = startIndex
+	return nil
+}
+
+func (p *preprocessor) include(keywordIndex int, path string) error {
+	if filepath.Ext(path) != ".mb" {
+		path += ".mb"
+	}
+
+	absPath, err := filepath.Abs(filepath.Join(filepath.Dir(p.path), path))
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Open(absPath)
+	if err != nil {
+		p.errors = append(p.errors, p.newErrorAt(fmt.Sprintf("Unable to open file `%s`: %s", absPath, err), p.tokens[keywordIndex+1]))
+	}
+	defer file.Close()
+	tokens, lines, errs := Scan(file, absPath)
+	if len(errs) > 0 {
+		p.errors = append(p.errors, errs[:len(errs)-1]...)
+		return errs[len(errs)-1]
+	}
+
+	if slices.Contains(p.stack, absPath) {
+		files := make([]string, len(p.stack))
+		for i, f := range p.stack {
+			files[i] = filepath.Base(f)
+		}
+		return p.newErrorAt(fmt.Sprintf("Include cycle detected: %s -> %s", strings.Join(files, " -> "), filepath.Base(absPath)), p.tokens[keywordIndex+1])
+	}
+
+	p.files[absPath] = lines
+
+	p.stack = append(p.stack, absPath)
+	tokens, files, defines, stack, errs := Preprocess(tokens, absPath, p.stack, p.defines)
+	p.stack = stack[:len(stack)-1]
+	for k, v := range files {
+		p.files[k] = v
+	}
+	defines = defines.copy()
+	for _, ds := range defines.defines {
+		for _, d := range ds {
+			pos := d.Name.Pos
+			pos.Line += p.tokens[keywordIndex].Pos.Line
+			pos.Path = p.path
+			p.defines.addDefine(d.Name, pos, d.Content)
+		}
+	}
+	if len(errs) > 0 {
+		p.errors = append(p.errors, errs[:len(errs)-1]...)
+		return errs[len(errs)-1]
+	}
+
+	tokens = tokens[:len(tokens)-1]
+
+	newTokens := make([]Token, len(p.tokens)+len(tokens))
+	copy(newTokens, p.tokens[:keywordIndex])
+	copy(newTokens[keywordIndex:], tokens)
+	if keywordIndex < len(p.tokens)-3 {
+		copy(newTokens[keywordIndex+len(tokens):], p.tokens[keywordIndex+3:])
+	}
+	i := len(newTokens) - 1
+	for ; newTokens[i].Type == 0 && newTokens[i].Lexeme == ""; i-- {
+	}
+	p.tokens = newTokens[:i+1]
+	p.index -= 2
+	return nil
 }
 
 func (p *preprocessor) replace() {
@@ -189,7 +315,7 @@ func (p *preprocessor) replace() {
 				i--
 				continue
 			}
-			newTokens := make([]Token, len(p.tokens)+len(d.Content))
+			newTokens := make([]Token, len(p.tokens)+len(d.Content)-1)
 			copy(newTokens, p.tokens[:i])
 			copy(newTokens[i:], d.Content)
 			if i < len(p.tokens)-1 {

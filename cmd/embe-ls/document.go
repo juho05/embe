@@ -19,7 +19,7 @@ type Document struct {
 	tokens      []parser.Token
 	changed     bool
 	diagnostics []protocol.Diagnostic
-	defines     *parser.Defines
+	defines     parser.Defines
 	variables   map[string]*analyzer.Variable
 	lists       map[string]*analyzer.List
 	constants   map[string]*analyzer.Constant

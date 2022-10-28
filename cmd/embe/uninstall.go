@@ -33,7 +33,7 @@ func uninstall() {
 	case "darwin", "linux":
 		uninstallUnix()
 	default:
-		printError(errors.New("Uninstallation is not supported for your operating system."), nil)
+		printError(errors.New("Uninstallation is not supported for your operating system."), nil, nil)
 		os.Exit(1)
 	}
 
@@ -45,7 +45,7 @@ func uninstall() {
 func uninstallWindows() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		printError(fmt.Errorf("Failed to get the user home directory: %s", err), nil)
+		printError(fmt.Errorf("Failed to get the user home directory: %s", err), nil, nil)
 		os.Exit(1)
 	}
 	homeDir = filepath.Clean(homeDir)
@@ -57,19 +57,19 @@ func uninstallWindows() {
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		printError(fmt.Errorf("Failed to remove %s from PATH: %s", embeDir, err), nil)
+		printError(fmt.Errorf("Failed to remove %s from PATH: %s", embeDir, err), nil, nil)
 	}
 
 	err = os.RemoveAll(embeDir)
 	if err != nil {
-		printError(fmt.Errorf("Failed to uninstall embe: %s", err), nil)
+		printError(fmt.Errorf("Failed to uninstall embe: %s", err), nil, nil)
 	}
 }
 
 func uninstallUnix() {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		printError(fmt.Errorf("Failed to get the user home directory: %s", err), nil)
+		printError(fmt.Errorf("Failed to get the user home directory: %s", err), nil, nil)
 		os.Exit(1)
 	}
 	homeDir = filepath.Clean(homeDir)
@@ -80,13 +80,13 @@ func uninstallUnix() {
 		cmd.Stderr = os.Stderr
 		err := cmd.Run()
 		if err != nil {
-			printError(fmt.Errorf("Failed to remove /usr/local/bin/embe: %s", err), nil)
+			printError(fmt.Errorf("Failed to remove /usr/local/bin/embe: %s", err), nil, nil)
 		}
 	}
 	if _, err := os.Stat(homeDir + "/.local/bin/embe"); !os.IsNotExist(err) {
 		err := os.Remove(homeDir + "/.local/bin/embe")
 		if err != nil {
-			printError(fmt.Errorf("Failed to remove %s: %s", homeDir+"/.local/bin/embe", err), nil)
+			printError(fmt.Errorf("Failed to remove %s: %s", homeDir+"/.local/bin/embe", err), nil, nil)
 		}
 	}
 
@@ -96,13 +96,13 @@ func uninstallUnix() {
 		cmd.Stderr = os.Stderr
 		err := cmd.Run()
 		if err != nil {
-			printError(fmt.Errorf("Failed to remove /usr/local/bin/embe-ls: %s", err), nil)
+			printError(fmt.Errorf("Failed to remove /usr/local/bin/embe-ls: %s", err), nil, nil)
 		}
 	}
 	if _, err := os.Stat(homeDir + "/.local/bin/embe-ls"); !os.IsNotExist(err) {
 		err := os.Remove(homeDir + "/.local/bin/embe-ls")
 		if err != nil {
-			printError(fmt.Errorf("Failed to remove %s: %s", homeDir+"/.local/bin/embe-ls", err), nil)
+			printError(fmt.Errorf("Failed to remove %s: %s", homeDir+"/.local/bin/embe-ls", err), nil, nil)
 		}
 	}
 }
@@ -128,6 +128,6 @@ func uninstallVSCodeExt() {
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		printError(fmt.Errorf("Failed to uninstall vscode-embe: %s.", err), nil)
+		printError(fmt.Errorf("Failed to uninstall vscode-embe: %s.", err), nil, nil)
 	}
 }

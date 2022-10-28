@@ -36,15 +36,17 @@ type scanner struct {
 	tokens            []Token
 	lineContainsToken bool
 	errors            []error
+	path              string
 }
 
-func Scan(source io.Reader) ([]Token, [][]rune, []error) {
+func Scan(source io.Reader, path string) ([]Token, [][]rune, []error) {
 	fileScanner := bufio.NewScanner(source)
 
 	srcScanner := &scanner{
 		inputScanner: fileScanner,
 		line:         -1,
 		errors:       make([]error, 0),
+		path:         path,
 	}
 
 	srcScanner.scan()
@@ -186,6 +188,9 @@ func (s *scanner) scan() {
 
 	eof := Token{
 		Type: TkEOF,
+		Pos: Position{
+			Path: s.path,
+		},
 	}
 	if s.line >= 0 && s.line < len(s.lines) {
 		eof.Pos.Column = len(s.lines[s.line])
@@ -393,10 +398,12 @@ func (s *scanner) addToken(tokenType TokenType) {
 		Pos: Position{
 			Line:   s.line,
 			Column: s.tokenStartColumn,
+			Path:   s.path,
 		},
 		EndPos: Position{
 			Line:   s.line,
 			Column: s.tokenStartColumn + len(lexeme) - 1,
+			Path:   s.path,
 		},
 		Type:   tokenType,
 		Lexeme: lexeme,
@@ -413,10 +420,12 @@ func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, valu
 		Pos: Position{
 			Line:   s.line,
 			Column: s.tokenStartColumn,
+			Path:   s.path,
 		},
 		EndPos: Position{
 			Line:   s.line,
 			Column: s.tokenStartColumn + len(lexeme) - 1,
+			Path:   s.path,
 		},
 		Type:     tokenType,
 		Lexeme:   lexeme,

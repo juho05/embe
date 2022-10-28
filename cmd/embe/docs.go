@@ -22,7 +22,7 @@ func docs() {
 		err = fmt.Errorf("unsupported platform")
 	}
 	if err != nil {
-		printError(err, nil)
+		printError(err, nil, nil)
 		os.Exit(1)
 	}
 }

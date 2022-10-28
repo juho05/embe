@@ -25,7 +25,7 @@ func versionCheck(printWarning, ignoreCache bool) bool {
 
 	latest, err := getLatestVersion(ignoreCache)
 	if err != nil {
-		printError(err, nil)
+		printError(err, nil, nil)
 		os.Exit(1)
 	}
 
@@ -40,7 +40,7 @@ func versionCheck(printWarning, ignoreCache bool) bool {
 
 func update() {
 	if version == "dev" {
-		printError(errors.New("Cannot update dev version."), nil)
+		printError(errors.New("Cannot update dev version."), nil, nil)
 		os.Exit(1)
 	}
 
@@ -55,7 +55,7 @@ func update() {
 	case "darwin", "linux":
 		updateUnix()
 	default:
-		printError(errors.New("Automatic updates are not supported for your operating system."), nil)
+		printError(errors.New("Automatic updates are not supported for your operating system."), nil, nil)
 		os.Exit(1)
 	}
 }
@@ -67,7 +67,7 @@ func updateWindows() {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		printError(errors.New("Failed to update embe."), nil)
+		printError(errors.New("Failed to update embe."), nil, nil)
 		os.Exit(1)
 	}
 }
@@ -81,7 +81,7 @@ func updateUnix() {
 	} else if exec.LookPath("curl"); err == nil {
 		installCmd = "curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash"
 	} else {
-		printError(errors.New("Please install either wget or curl."), nil)
+		printError(errors.New("Please install either wget or curl."), nil, nil)
 		os.Exit(1)
 	}
 
@@ -90,7 +90,7 @@ func updateUnix() {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		printError(errors.New("Failed to update embe."), nil)
+		printError(errors.New("Failed to update embe."), nil, nil)
 		os.Exit(1)
 	}
 }

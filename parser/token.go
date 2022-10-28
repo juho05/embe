@@ -71,6 +71,7 @@ const (
 type Position struct {
 	Line   int
 	Column int
+	Path   string
 }
 
 type Token struct {

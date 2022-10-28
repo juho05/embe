@@ -468,7 +468,11 @@ func (p *parser) ifStmt() (Stmt, error) {
 	}
 
 	elifStmt := stmt
-	for p.match(TkElif) {
+	for p.peek().Type == TkElif {
+		if p.peek().Indent < keyword.Indent {
+			break
+		}
+		p.current++
 		elifKeyword := p.previous()
 		elifCondition, err := p.expression()
 		if err != nil {
@@ -496,7 +500,8 @@ func (p *parser) ifStmt() (Stmt, error) {
 		elifStmt = s
 	}
 
-	if p.match(TkElse) {
+	if p.peek().Type == TkElse && p.peek().Indent == keyword.Indent {
+		p.current++
 		elseKeyword := p.previous()
 		if !p.match(TkColon) {
 			p.errors = append(p.errors, p.newError("Expected ':' after 'else'."))

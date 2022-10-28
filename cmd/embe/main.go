@@ -80,7 +80,7 @@ func run() {
 			continue
 		}
 
-		tokens, files, _, _, errs := parser.Preprocess(tokens, path, nil, nil)
+		tokens, files, _, _, errs := parser.Preprocess(tokens, path, nil, nil, nil)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				printError(err, lines, files)

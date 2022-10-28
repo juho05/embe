@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,9 +111,10 @@ type preprocessor struct {
 	files   map[string][][]rune
 	path    string
 	stack   []string
+	open    func(name string) (io.ReadCloser, error)
 }
 
-func Preprocess(tokens []Token, absPath string, stack []string, defines *Defines) ([]Token, map[string][][]rune, *Defines, []string, []error) {
+func Preprocess(tokens []Token, absPath string, open func(name string) (io.ReadCloser, error), stack []string, defines *Defines) ([]Token, map[string][][]rune, *Defines, []string, []error) {
 	eof := tokens[len(tokens)-1]
 
 	if stack == nil {
@@ -134,6 +136,12 @@ func Preprocess(tokens []Token, absPath string, stack []string, defines *Defines
 		}
 	}
 
+	if open == nil {
+		open = func(name string) (io.ReadCloser, error) {
+			return os.Open(name)
+		}
+	}
+
 	p := &preprocessor{
 		tokens:  tokens,
 		defines: defines,
@@ -141,6 +149,7 @@ func Preprocess(tokens []Token, absPath string, stack []string, defines *Defines
 		files:   make(map[string][][]rune),
 		stack:   stack,
 		path:    absPath,
+		open:    open,
 	}
 	p.preprocess()
 
@@ -242,7 +251,7 @@ func (p *preprocessor) include(keywordIndex int, path string) error {
 		return err
 	}
 
-	file, err := os.Open(absPath)
+	file, err := p.open(absPath)
 	if err != nil {
 		p.errors = append(p.errors, p.newErrorAt(fmt.Sprintf("Unable to open file `%s`: %s", absPath, err), p.tokens[keywordIndex+1]))
 	}
@@ -255,16 +264,20 @@ func (p *preprocessor) include(keywordIndex int, path string) error {
 
 	if slices.Contains(p.stack, absPath) {
 		files := make([]string, len(p.stack))
+		index := 0
 		for i, f := range p.stack {
 			files[i] = filepath.Base(f)
+			if f == absPath {
+				index = i
+			}
 		}
-		return p.newErrorAt(fmt.Sprintf("Include cycle detected: %s -> %s", strings.Join(files, " -> "), filepath.Base(absPath)), p.tokens[keywordIndex+1])
+		return p.newErrorAt(fmt.Sprintf("Include cycle detected: %s -> %s", strings.Join(files[index:], " -> "), filepath.Base(absPath)), p.tokens[keywordIndex+1])
 	}
 
 	p.files[absPath] = lines
 
 	p.stack = append(p.stack, absPath)
-	tokens, files, defines, stack, errs := Preprocess(tokens, absPath, p.stack, p.defines)
+	tokens, files, defines, stack, errs := Preprocess(tokens, absPath, p.open, p.stack, p.defines)
 	p.stack = stack[:len(stack)-1]
 	for k, v := range files {
 		p.files[k] = v

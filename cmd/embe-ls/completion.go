@@ -20,6 +20,7 @@ var snippets = map[string]string{
 	"const declaration":  "const ${1:name} = ${2:value}",
 	"func declaration":   "func ${1:name}($2):\n  $0",
 	"event declaration":  "event ${1:name}",
+	"#include FILE":      "#include \"$0\"",
 	"#define NAME":       "#define ${1:NAME}",
 	"#undef NAME":        "#undef ${1:NAME}",
 	"#define NAME VALUE": "#define ${1:NAME} ${2:value}",
@@ -29,7 +30,7 @@ var snippets = map[string]string{
 }
 
 var keywords = []string{
-	"if", "elif", "else", "while", "for", "var", "event", "#define", "#undef", "#ifdef", "#ifndef", "#endif",
+	"if", "elif", "else", "while", "for", "var", "event", "#include", "#define", "#undef", "#ifdef", "#ifndef", "#endif",
 }
 
 var types = []string{

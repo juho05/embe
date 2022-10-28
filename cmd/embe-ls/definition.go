@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 
@@ -14,12 +17,33 @@ func textDocumentDefinition(context *glsp.Context, params *protocol.DefinitionPa
 	}
 
 	var token parser.Token
-	for _, t := range document.tokens {
+	var tokenIndex int
+	for i, t := range document.tokens {
 		if t.Pos.Line == int(params.Position.Line) && int(params.Position.Character) >= t.Pos.Column-1 && int(params.Position.Character) <= t.Pos.Column+len(t.Lexeme)-1 {
 			token = t
+			tokenIndex = i
 			break
 		}
 	}
+
+	if token.Type == parser.TkLiteral && token.DataType == parser.DTString && tokenIndex > 0 && document.tokens[tokenIndex-1].Type == parser.TkPreprocessor && document.tokens[tokenIndex-1].Lexeme == "#include" {
+		target, err := filepath.Abs(filepath.Join(filepath.Dir(document.path), token.Literal.(string)))
+		if err != nil {
+			return nil, nil
+		}
+		if filepath.Ext(target) != ".mb" {
+			target += ".mb"
+		}
+		if _, ok := getDocument(pathToURI(target)); !ok {
+			if _, err := os.Stat(target); err != nil {
+				return nil, nil
+			}
+		}
+		return &protocol.Location{
+			URI: pathToURI(target),
+		}, nil
+	}
+
 	if token.Type != parser.TkIdentifier {
 		Warn("Goto definition on non identifier at %v.", params.Position)
 		return nil, nil
@@ -29,6 +53,7 @@ func textDocumentDefinition(context *glsp.Context, params *protocol.DefinitionPa
 
 	var start parser.Position
 	var end parser.Position
+	var path string
 
 functions:
 	for _, f := range document.functions {
@@ -37,6 +62,7 @@ functions:
 				if p.Name.Lexeme == identifierName {
 					start = p.Name.Pos
 					end = p.Name.EndPos
+					path = p.Name.Pos.Path
 					break functions
 				}
 			}
@@ -47,28 +73,34 @@ functions:
 		if e, ok := document.events[identifierName]; ok {
 			start = e.Name.Pos
 			end = e.Name.EndPos
+			path = e.Name.Pos.Path
 		} else if f, ok := document.functions[identifierName]; ok {
 			start = f.Name.Pos
 			end = f.Name.EndPos
+			path = f.Name.Pos.Path
 		} else if v, ok := document.variables[identifierName]; ok {
 			start = v.Name.Pos
 			end = v.Name.EndPos
+			path = v.Name.Pos.Path
 		} else if l, ok := document.lists[identifierName]; ok {
 			start = l.Name.Pos
 			end = l.Name.EndPos
+			path = l.Name.Pos.Path
 		} else if c, ok := document.constants[identifierName]; ok {
 			start = c.Name.Pos
 			end = c.Name.EndPos
+			path = c.Name.Pos.Path
 		} else if d, ok := document.defines.GetDefine(identifierName, token.Pos); ok {
 			start = d.Name.Pos
 			end = d.Name.EndPos
+			path = d.Name.Pos.Path
 		} else {
 			return nil, nil
 		}
 	}
 
 	return &protocol.Location{
-		URI: document.uri,
+		URI: pathToURI(path),
 		Range: protocol.Range{
 			Start: protocol.Position{
 				Line:      uint32(start.Line),

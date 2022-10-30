@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/mattn/go-colorable"
@@ -72,6 +73,9 @@ func run() {
 			if err != nil {
 				panic(err)
 			}
+		}
+		if runtime.GOOS == "windows" {
+			path = strings.ToLower(path)
 		}
 
 		tokens, lines, errs := parser.Scan(file, path)

@@ -116,7 +116,6 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 		}
 		return os.Open(name)
 	}, nil, nil)
-	Trace("Files: %v", files)
 	for f := range files {
 		if _, ok := diagnostics[f]; !ok {
 			diagnostics[f] = make([]protocol.Diagnostic, 0, 5)
@@ -257,7 +256,6 @@ diagnostics:
 			f = strings.ToLower(f)
 		}
 		if f != d.path {
-			Trace("add to inner documents: %s", f)
 			innerDocuments[f] = d.path
 		}
 	}
@@ -327,12 +325,8 @@ func textDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 	documents.Store(params.TextDocument.URI, document)
 
 	innerDocumentsLock.RLock()
-	Trace("path: %v", document.path)
 	if outer, ok := innerDocuments[document.path]; ok {
-		Trace("outer: %v", outer)
-		Trace("outer uri: %v", pathToURI(outer))
 		if d, ok := getDocument(pathToURI(outer)); ok {
-			Trace("ok")
 			go d.validate(context.Notify)
 			innerDocumentsLock.RUnlock()
 			return nil
@@ -362,9 +356,7 @@ func textDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 		innerDocumentsLock.RLock()
 		if outer, ok := innerDocuments[document.path]; ok {
 			if d, ok := getDocument(pathToURI(outer)); ok {
-				innerDocumentsLock.RUnlock()
 				go d.validate(context.Notify)
-				return nil
 			} else {
 				Warn("Cannot validate parent document %s: not loaded", outer)
 			}

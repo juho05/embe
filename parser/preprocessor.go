@@ -286,8 +286,6 @@ func (p *preprocessor) include(keywordIndex int, path string) error {
 	for _, ds := range defines.defines {
 		for _, d := range ds {
 			pos := d.Name.Pos
-			pos.Line += p.tokens[keywordIndex].Pos.Line
-			pos.Path = p.path
 			p.defines.addDefine(d.Name, pos, d.Content)
 		}
 	}
@@ -297,6 +295,9 @@ func (p *preprocessor) include(keywordIndex int, path string) error {
 	}
 
 	tokens = tokens[:len(tokens)-1]
+	for i := range tokens {
+		tokens[i].LineAfterInclude = p.tokens[keywordIndex].LineAfterInclude
+	}
 
 	newTokens := make([]Token, len(p.tokens)+len(tokens))
 	copy(newTokens, p.tokens[:keywordIndex])

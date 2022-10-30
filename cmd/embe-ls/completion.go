@@ -79,7 +79,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 		}
 	}
 	for _, e := range d.events {
-		if e.Name.Pos.Line < line && strings.HasPrefix("@"+e.Name.Lexeme, item) {
+		if e.Name.LineAfterInclude < line && strings.HasPrefix("@"+e.Name.Lexeme, item) {
 			detail := fmt.Sprintf("event %s", e.Name.Lexeme)
 			completions = append(completions, protocol.CompletionItem{
 				Label:  e.Name.Lexeme,
@@ -145,7 +145,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	}
 
 	for _, f := range d.functions {
-		if f.Name.Pos.Line < line && strings.HasPrefix(f.Name.Lexeme, item) {
+		if f.Name.LineAfterInclude < line && strings.HasPrefix(f.Name.Lexeme, item) {
 			if _, ok := parameters[f.Name.Lexeme]; ok {
 				continue
 			}
@@ -166,7 +166,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	}
 
 	for _, e := range d.events {
-		if e.Name.Pos.Line < line && strings.HasPrefix(e.Name.Lexeme, item) {
+		if e.Name.LineAfterInclude < line && strings.HasPrefix(e.Name.Lexeme, item) {
 			if _, ok := parameters[e.Name.Lexeme]; ok {
 				continue
 			}
@@ -180,7 +180,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	}
 
 	for _, v := range d.variables {
-		if v.Name.Pos.Line < line && strings.HasPrefix(v.Name.Lexeme, item) {
+		if v.Name.LineAfterInclude < line && strings.HasPrefix(v.Name.Lexeme, item) {
 			if _, ok := parameters[v.Name.Lexeme]; ok {
 				continue
 			}
@@ -194,7 +194,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	}
 
 	for _, l := range d.lists {
-		if l.Name.Pos.Line < line && strings.HasPrefix(l.Name.Lexeme, item) {
+		if l.Name.LineAfterInclude < line && strings.HasPrefix(l.Name.Lexeme, item) {
 			if _, ok := parameters[l.Name.Lexeme]; ok {
 				continue
 			}
@@ -209,7 +209,7 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 
 	constCompletionType := protocol.CompletionItemKindConstant
 	for _, c := range d.constants {
-		if c.Name.Pos.Line < line && strings.HasPrefix(c.Name.Lexeme, item) {
+		if c.Name.LineAfterInclude < line && strings.HasPrefix(c.Name.Lexeme, item) {
 			if _, ok := parameters[c.Name.Lexeme]; ok {
 				continue
 			}

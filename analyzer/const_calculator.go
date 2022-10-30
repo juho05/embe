@@ -38,11 +38,12 @@ func (c *constCalculator) newLiteral(value any, expr parser.Expr) parser.Expr {
 	start, end := expr.Position()
 	return &parser.ExprLiteral{
 		Token: parser.Token{
-			Type:     parser.TkLiteral,
-			DataType: expr.Type(),
-			Pos:      start,
-			EndPos:   end,
-			Literal:  value,
+			Type:             parser.TkLiteral,
+			DataType:         expr.Type(),
+			Pos:              start,
+			EndPos:           end,
+			LineAfterInclude: start.Line,
+			Literal:          value,
 		},
 		End:        end,
 		ReturnType: expr.Type(),

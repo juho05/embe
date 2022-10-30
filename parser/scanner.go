@@ -405,9 +405,10 @@ func (s *scanner) addToken(tokenType TokenType) {
 			Column: s.tokenStartColumn + len(lexeme) - 1,
 			Path:   s.path,
 		},
-		Type:   tokenType,
-		Lexeme: lexeme,
-		Indent: getIndentation(s.lines[s.line]),
+		LineAfterInclude: s.line,
+		Type:             tokenType,
+		Lexeme:           lexeme,
+		Indent:           getIndentation(s.lines[s.line]),
 	})
 	if tokenType != TkNewLine && tokenType != TkEOF {
 		s.lineContainsToken = true
@@ -427,11 +428,12 @@ func (s *scanner) addTokenWithValue(tokenType TokenType, dataType DataType, valu
 			Column: s.tokenStartColumn + len(lexeme) - 1,
 			Path:   s.path,
 		},
-		Type:     tokenType,
-		Lexeme:   lexeme,
-		DataType: dataType,
-		Literal:  value,
-		Indent:   getIndentation(s.lines[s.line]),
+		LineAfterInclude: s.line,
+		Type:             tokenType,
+		Lexeme:           lexeme,
+		DataType:         dataType,
+		Literal:          value,
+		Indent:           getIndentation(s.lines[s.line]),
 	})
 	if tokenType != TkNewLine && tokenType != TkEOF {
 		s.lineContainsToken = true

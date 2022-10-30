@@ -75,11 +75,12 @@ type Position struct {
 }
 
 type Token struct {
-	Type   TokenType
-	Lexeme string
-	Pos    Position
-	EndPos Position
-	Indent int
+	Type             TokenType
+	Lexeme           string
+	Pos              Position
+	EndPos           Position
+	LineAfterInclude int
+	Indent           int
 
 	DataType DataType
 	Literal  any

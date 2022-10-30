@@ -66,10 +66,14 @@ func run() {
 			inFileNameBase = filepath.Base(file.Name())
 		}
 
-		path, err := filepath.Abs(os.Args[i])
-		if err != nil {
-			panic(err)
+		var path string
+		if !filepath.IsAbs(os.Args[i]) {
+			path, err = filepath.Abs(os.Args[i])
+			if err != nil {
+				panic(err)
+			}
 		}
+
 		tokens, lines, errs := parser.Scan(file, path)
 		file.Close()
 		if len(errs) > 0 {

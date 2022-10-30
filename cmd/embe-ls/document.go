@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -69,15 +70,11 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	innerDocumentsLock.RLock()
 	diagnostics := make(map[string][]protocol.Diagnostic, 1+len(innerDocuments))
 	diagnostics[d.path] = make([]protocol.Diagnostic, 0, 5)
-	for inner, outer := range innerDocuments {
-		if outer == d.path {
-			diagnostics[inner] = make([]protocol.Diagnostic, 0, 5)
-		}
-	}
 	innerDocumentsLock.RUnlock()
 
 	var errs []error
 	var defines *parser.Defines
+	var files map[string][][]rune
 	var statements []parser.Stmt
 	var analyzerResult analyzer.AnalyzerResult
 
@@ -111,7 +108,7 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	d.tokens = make([]parser.Token, len(tokens))
 	copy(d.tokens, tokens)
 
-	tokens, _, defines, _, errs = parser.Preprocess(tokens, d.path, func(name string) (io.ReadCloser, error) {
+	tokens, files, defines, _, errs = parser.Preprocess(tokens, d.path, func(name string) (io.ReadCloser, error) {
 		if doc, ok := getDocument(pathToURI(name)); ok {
 			return &reader{
 				content: bytes.NewReader([]byte(doc.content)),
@@ -119,12 +116,15 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 		}
 		return os.Open(name)
 	}, nil, nil)
+	Trace("Files: %v", files)
+	for f := range files {
+		if _, ok := diagnostics[f]; !ok {
+			diagnostics[f] = make([]protocol.Diagnostic, 0, 5)
+		}
+	}
 	if len(errs) > 0 {
 		for _, err := range errs {
 			if e, ok := err.(parser.ParseError); ok {
-				if _, ok := diagnostics[e.Token.Pos.Path]; !ok {
-					diagnostics[e.Token.Pos.Path] = make([]protocol.Diagnostic, 0, 5)
-				}
 				diagnostics[e.Token.Pos.Path] = append(diagnostics[e.Token.Pos.Path], protocol.Diagnostic{
 					Range: protocol.Range{
 						Start: protocol.Position{
@@ -151,9 +151,6 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	if len(errs) > 0 {
 		for _, err := range errs {
 			if e, ok := err.(parser.ParseError); ok {
-				if _, ok := diagnostics[e.Token.Pos.Path]; !ok {
-					diagnostics[e.Token.Pos.Path] = make([]protocol.Diagnostic, 0, 5)
-				}
 				diagnostics[e.Token.Pos.Path] = append(diagnostics[e.Token.Pos.Path], protocol.Diagnostic{
 					Range: protocol.Range{
 						Start: protocol.Position{
@@ -178,9 +175,6 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	statements, analyzerResult = analyzer.Analyze(statements)
 	for _, warning := range analyzerResult.Warnings {
 		if w, ok := warning.(analyzer.AnalyzerError); ok {
-			if _, ok := diagnostics[w.Start.Path]; !ok {
-				diagnostics[w.Start.Path] = make([]protocol.Diagnostic, 0, 5)
-			}
 			diagnostics[w.Start.Path] = append(diagnostics[w.Start.Path], protocol.Diagnostic{
 				Range: protocol.Range{
 					Start: protocol.Position{
@@ -200,9 +194,6 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	if len(analyzerResult.Errors) > 0 {
 		for _, err := range analyzerResult.Errors {
 			if e, ok := err.(analyzer.AnalyzerError); ok {
-				if _, ok := diagnostics[e.Start.Path]; !ok {
-					diagnostics[e.Start.Path] = make([]protocol.Diagnostic, 0, 5)
-				}
 				diagnostics[e.Start.Path] = append(diagnostics[e.Start.Path], protocol.Diagnostic{
 					Range: protocol.Range{
 						Start: protocol.Position{
@@ -233,9 +224,6 @@ func (d *Document) validate(notify glsp.NotifyFunc) {
 	if len(errs) > 0 {
 		for _, err := range errs {
 			if e, ok := err.(generator.GenerateError); ok {
-				if _, ok := diagnostics[e.Start.Path]; !ok {
-					diagnostics[e.Start.Path] = make([]protocol.Diagnostic, 0, 5)
-				}
 				diagnostics[e.Start.Path] = append(diagnostics[e.Start.Path], protocol.Diagnostic{
 					Range: protocol.Range{
 						Start: protocol.Position{
@@ -265,16 +253,20 @@ diagnostics:
 	}
 	for f, ds := range diagnostics {
 		sendDiagnostics(notify, pathToURI(f), ds)
+		if runtime.GOOS == "windows" {
+			f = strings.ToLower(f)
+		}
 		if f != d.path {
+			Trace("add to inner documents: %s", f)
 			innerDocuments[f] = d.path
 		}
 	}
-	for inner := range innerDocuments {
-		if d, ok := diagnostics[inner]; ok {
-			if len(d) == 0 {
+	for inner, outer := range innerDocuments {
+		if outer == d.path {
+			if _, ok := diagnostics[inner]; !ok {
 				delete(innerDocuments, inner)
-				if doc, ok := getDocument(pathToURI(inner)); ok {
-					go doc.validate(notify)
+				if d, ok := getDocument(inner); ok {
+					go d.validate(notify)
 				}
 			}
 		}
@@ -283,12 +275,21 @@ diagnostics:
 }
 
 func pathToURI(path string) string {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		Error(err.Error())
-		return path
+	if !filepath.IsAbs(path) {
+		var err error
+		path, err = filepath.Abs(path)
+		if err != nil {
+			Error(err.Error())
+			return path
+		}
 	}
-	path = filepath.ToSlash(path)
+	path = strings.ReplaceAll(filepath.ToSlash(path), ":", "%3A")
+	if runtime.GOOS == "windows" {
+		path = strings.ToLower(path)
+	}
+	if !strings.HasPrefix(path, "/") {
+		return "file:///" + path
+	}
 	return "file://" + path
 }
 
@@ -302,9 +303,13 @@ func sendDiagnostics(notify glsp.NotifyFunc, uri string, diagnostics []protocol.
 
 func textDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	Trace("Document did open: %s", params.TextDocument.URI)
-	path, err := filepath.Abs(strings.TrimPrefix(params.TextDocument.URI, "file://"))
-	if err != nil {
-		panic(err)
+	path := strings.TrimPrefix(params.TextDocument.URI, "file://")
+	if runtime.GOOS == "windows" {
+		path = strings.ReplaceAll(path, "/", "\\")
+		path = strings.TrimPrefix(path, "\\")
+		path = strings.ReplaceAll(path, "%3A", ":")
+		path = strings.ToLower(path)
+		params.TextDocument.URI = strings.ToLower(params.TextDocument.URI)
 	}
 	document := &Document{
 		uri:        params.TextDocument.URI,
@@ -322,8 +327,12 @@ func textDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 	documents.Store(params.TextDocument.URI, document)
 
 	innerDocumentsLock.RLock()
+	Trace("path: %v", document.path)
 	if outer, ok := innerDocuments[document.path]; ok {
+		Trace("outer: %v", outer)
+		Trace("outer uri: %v", pathToURI(outer))
 		if d, ok := getDocument(pathToURI(outer)); ok {
+			Trace("ok")
 			go d.validate(context.Notify)
 			innerDocumentsLock.RUnlock()
 			return nil
@@ -356,6 +365,8 @@ func textDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 				innerDocumentsLock.RUnlock()
 				go d.validate(context.Notify)
 				return nil
+			} else {
+				Warn("Cannot validate parent document %s: not loaded", outer)
 			}
 		}
 		innerDocumentsLock.RUnlock()
@@ -366,6 +377,9 @@ func textDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 
 func textDocumentDidClose(context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
 	Trace("Document did close: %s", params.TextDocument.URI)
+	if runtime.GOOS == "windows" {
+		params.TextDocument.URI = strings.ToLower(params.TextDocument.URI)
+	}
 	d, ok := documents.LoadAndDelete(params.TextDocument.URI)
 	if ok {
 		innerDocumentsLock.Lock()
@@ -385,6 +399,9 @@ func textDocumentDidClose(context *glsp.Context, params *protocol.DidCloseTextDo
 }
 
 func getDocument(uri protocol.DocumentUri) (*Document, bool) {
+	if runtime.GOOS == "windows" {
+		uri = strings.ToLower(uri)
+	}
 	doc, ok := documents.Load(uri)
 	if !ok {
 		return nil, false

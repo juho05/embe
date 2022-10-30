@@ -27,10 +27,7 @@ func textDocumentDefinition(context *glsp.Context, params *protocol.DefinitionPa
 	}
 
 	if token.Type == parser.TkLiteral && token.DataType == parser.DTString && tokenIndex > 0 && document.tokens[tokenIndex-1].Type == parser.TkPreprocessor && document.tokens[tokenIndex-1].Lexeme == "#include" {
-		target, err := filepath.Abs(filepath.Join(filepath.Dir(document.path), token.Literal.(string)))
-		if err != nil {
-			return nil, nil
-		}
+		target := filepath.Join(filepath.Dir(document.path), token.Literal.(string))
 		if filepath.Ext(target) != ".mb" {
 			target += ".mb"
 		}

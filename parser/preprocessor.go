@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -246,38 +247,37 @@ func (p *preprocessor) include(keywordIndex int, path string) error {
 		path += ".mb"
 	}
 
-	absPath, err := filepath.Abs(filepath.Join(filepath.Dir(p.path), path))
-	if err != nil {
-		return err
+	path = filepath.Join(filepath.Dir(p.path), path)
+	if runtime.GOOS == "windows" {
+		path = strings.ToLower(path)
 	}
 
-	file, err := p.open(absPath)
+	file, err := p.open(path)
 	if err != nil {
-		p.errors = append(p.errors, p.newErrorAt(fmt.Sprintf("Unable to open file `%s`: %s", absPath, err), p.tokens[keywordIndex+1]))
+		return p.newErrorAt(fmt.Sprintf("Unable to open file `%s`: %s", path, err), p.tokens[keywordIndex+1])
 	}
 	defer file.Close()
-	tokens, lines, errs := Scan(file, absPath)
+	tokens, lines, errs := Scan(file, path)
+	p.files[path] = lines
 	if len(errs) > 0 {
 		p.errors = append(p.errors, errs[:len(errs)-1]...)
 		return errs[len(errs)-1]
 	}
 
-	if slices.Contains(p.stack, absPath) {
+	if slices.Contains(p.stack, path) {
 		files := make([]string, len(p.stack))
 		index := 0
 		for i, f := range p.stack {
 			files[i] = filepath.Base(f)
-			if f == absPath {
+			if f == path {
 				index = i
 			}
 		}
-		return p.newErrorAt(fmt.Sprintf("Include cycle detected: %s -> %s", strings.Join(files[index:], " -> "), filepath.Base(absPath)), p.tokens[keywordIndex+1])
+		return p.newErrorAt(fmt.Sprintf("Include cycle detected: %s -> %s", strings.Join(files[index:], " -> "), filepath.Base(path)), p.tokens[keywordIndex+1])
 	}
 
-	p.files[absPath] = lines
-
-	p.stack = append(p.stack, absPath)
-	tokens, files, defines, stack, errs := Preprocess(tokens, absPath, p.open, p.stack, p.defines)
+	p.stack = append(p.stack, path)
+	tokens, files, defines, stack, errs := Preprocess(tokens, path, p.open, p.stack, p.defines)
 	p.stack = stack[:len(stack)-1]
 	for k, v := range files {
 		p.files[k] = v

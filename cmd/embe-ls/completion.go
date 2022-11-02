@@ -13,20 +13,20 @@ import (
 )
 
 var snippets = map[string]string{
-	"if statement":       "if ${1:condition}:\n  $0",
-	"while loop":         "while ${1:condition}:\n  $0",
-	"for loop":           "for ${1:count}:\n  $0",
-	"var declaration":    "var ${1:name} = ${2:value}",
-	"const declaration":  "const ${1:name} = ${2:value}",
-	"func declaration":   "func ${1:name}($2):\n  $0",
-	"event declaration":  "event ${1:name}",
-	"#include FILE":      "#include \"$0\"",
-	"#define NAME":       "#define ${1:NAME}",
-	"#undef NAME":        "#undef ${1:NAME}",
-	"#define NAME VALUE": "#define ${1:NAME} ${2:value}",
-	"#ifdef NAME":        "#ifdef ${1:NAME}\n  $0\n#endif",
-	"#ifndef NAME":       "#ifndef ${1:NAME}\n  $0\n#endif",
-	"println":            "display.println($0)",
+	"if statement":      "if ${1:condition}:\n  $0",
+	"while loop":        "while ${1:condition}:\n  $0",
+	"for loop":          "for ${1:count}:\n  $0",
+	"var declaration":   "var ${1:name} = ${2:value}",
+	"const declaration": "const ${1:name} = ${2:value}",
+	"func declaration":  "func ${1:name}($2):\n  $0",
+	"event declaration": "event ${1:name}",
+	"include":           "#include \"$0\"",
+	"undefine":          "#undef ${1:NAME}",
+	"define NAME":       "#define ${1:NAME}",
+	"define NAME VALUE": "#define ${1:NAME} ${2:value}",
+	"if defined":        "#ifdef ${1:NAME}\n  $0\n#endif",
+	"if not defined":    "#ifndef ${1:NAME}\n  $0\n#endif",
+	"println":           "display.println($0)",
 }
 
 var keywords = []string{
@@ -260,11 +260,12 @@ func (d *Document) getCompletions(item string, line int) []protocol.CompletionIt
 	snippetCompletionType := protocol.CompletionItemKindSnippet
 	snippetInsertTextFormat := protocol.InsertTextFormatSnippet
 	for label, s := range snippets {
-		if strings.HasPrefix(label, item) {
+		if strings.HasPrefix(strings.ReplaceAll(label, " ", ""), item) {
 			snippet := s
+			insert := strings.TrimPrefix(snippet, base)
 			completions = append(completions, protocol.CompletionItem{
 				Label:            label,
-				InsertText:       &snippet,
+				InsertText:       &insert,
 				InsertTextFormat: &snippetInsertTextFormat,
 				Kind:             &snippetCompletionType,
 				Detail:           &snippet,

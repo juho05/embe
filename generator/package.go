@@ -51,7 +51,7 @@ func Package(writer io.Writer, blocks []map[string]*blocks.Block, definitions []
 
 		listMap := make(map[string][]any, len(definitions[i].Lists))
 		for _, l := range definitions[i].Lists {
-			listMap[l.ID] = []any{l.Name.Lexeme, l.InitialValues}
+			listMap[l.ID] = []any{l.Name.Lexeme, []any{}}
 		}
 
 		eventsMap := make(map[string]string, len(definitions[i].Events))

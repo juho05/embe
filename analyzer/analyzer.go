@@ -21,11 +21,10 @@ type Variable struct {
 }
 
 type List struct {
-	ID            string
-	Name          parser.Token
-	DataType      parser.DataType
-	InitialValues []string
-	used          bool
+	ID       string
+	Name     parser.Token
+	DataType parser.DataType
+	used     bool
 }
 
 type Constant struct {
@@ -110,7 +109,7 @@ func Analyze(statements []parser.Stmt) ([]parser.Stmt, AnalyzerResult) {
 			if !v.used {
 				a.newWarningTk("This variable is never used.", v.Name)
 			} else if !v.changed {
-				a.newWarningTk("The value of this variable is never used. Consider using 'const' instead.", v.Name)
+				a.newWarningTk("The value of this variable is never changed. Consider using 'const' instead.", v.Name)
 			}
 		}
 
@@ -272,6 +271,23 @@ func (a *analyzer) VisitVarDecl(stmt *parser.StmtVarDecl) error {
 		}
 
 		a.lists[list.Name.Lexeme] = list
+
+		for _, v := range init.Values {
+			assign := &parser.StmtCall{
+				Name: parser.Token{
+					Type:   parser.TkIdentifier,
+					Lexeme: "lists.append",
+				},
+				Parameters: []parser.Expr{
+					&parser.ExprIdentifier{
+						Name:       list.Name,
+						ReturnType: list.DataType,
+					},
+					v,
+				},
+			}
+			a.variableInitializers = append(a.variableInitializers, assign)
+		}
 	} else {
 		variable := &Variable{
 			ID:       uuid.NewString(),

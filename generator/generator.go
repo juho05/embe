@@ -544,6 +544,11 @@ func (g *generator) valueInRange(parent string, expr parser.Expr, valueIntOverri
 }
 
 func (g *generator) valueWithValidator(parent string, expr parser.Expr, validate func(v any) bool, valueIntOverride int, errorMessage string) ([]any, error) {
+	if validate == nil {
+		validate = func(v any) bool {
+			return true
+		}
+	}
 	var castType parser.Token
 	castValue := expr
 	if cast, ok := expr.(*parser.ExprTypeCast); ok {

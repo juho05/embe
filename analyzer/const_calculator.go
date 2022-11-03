@@ -297,16 +297,6 @@ func (c *constCalculator) VisitGrouping(expr *parser.ExprGrouping) error {
 }
 
 func (c *constCalculator) VisitVarDecl(stmt *parser.StmtVarDecl) error {
-	if init, ok := stmt.Value.(*parser.ExprListInitializer); ok {
-		if l, ok := c.definitions.Lists[stmt.Name.Lexeme]; ok {
-			l.InitialValues = make([]string, len(init.Values))
-			for i, v := range init.Values {
-				if lit, ok := v.(*parser.ExprLiteral); ok {
-					l.InitialValues[i] = fmt.Sprintf("%v", lit.Token.Literal)
-				}
-			}
-		}
-	}
 	return nil
 }
 

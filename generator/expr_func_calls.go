@@ -637,7 +637,7 @@ func exprFuncListsGet(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, e
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.value(block.ID, expr.Parameters[1])
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, expr.Parameters[1], nil, 7, "")
 	if err != nil {
 		return nil, err
 	}

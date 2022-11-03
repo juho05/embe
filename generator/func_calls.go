@@ -1838,7 +1838,7 @@ func funcListsRemove(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Parameters[1])
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -1860,7 +1860,7 @@ func funcListsInsert(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Parameters[1])
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -1877,7 +1877,7 @@ func funcListsReplace(g *generator, stmt *parser.StmtCall) (*blocks.Block, error
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.value(block.ID, stmt.Parameters[1])
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}

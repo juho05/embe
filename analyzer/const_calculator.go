@@ -3,6 +3,8 @@ package analyzer
 import (
 	"fmt"
 	"math"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -153,6 +155,10 @@ func (c *constCalculator) VisitTypeCast(expr *parser.ExprTypeCast) error {
 			path = literal.Token.Literal.(string)
 			if path == "" && literal.Token.Lexeme == "" {
 				loadEmpty = true
+			}
+			path = filepath.Join(filepath.Dir(literal.Token.Pos.Path), path)
+			if runtime.GOOS == "windows" {
+				path = strings.ToLower(path)
 			}
 		} else {
 			return c.newErrorExpr("Expected a constant file path.", expr.Value)

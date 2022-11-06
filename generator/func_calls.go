@@ -717,8 +717,8 @@ func funcDisplayShowLabel(g *generator, stmt *parser.StmtCall) (*blocks.Block, e
 	if err != nil {
 		g.errors = append(g.errors, err)
 	} else {
-		if math.Mod(number.(float64), 1.0) != 0 || number.(float64) < 0 || number.(float64) > 8 {
-			return nil, g.newErrorExpr("The label number must lie between 0 and 8.", stmt.Parameters[0])
+		if math.Mod(number.(float64), 1.0) != 0 || number.(float64) < 1 || number.(float64) > 8 {
+			return nil, g.newErrorExpr("The label number must lie between 1 and 8.", stmt.Parameters[0])
 		}
 		block.Fields["fieldMenu_1"] = []any{fmt.Sprintf("%d", int(number.(float64))-1), nil}
 	}

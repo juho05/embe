@@ -78,7 +78,7 @@ func updateUnix() {
 	var installCmd string
 	if _, err := exec.LookPath("wget"); err == nil {
 		installCmd = "wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash"
-	} else if exec.LookPath("curl"); err == nil {
+	} else if _, err := exec.LookPath("curl"); err == nil {
 		installCmd = "curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash"
 	} else {
 		printError(errors.New("Please install either wget or curl."), nil, nil)

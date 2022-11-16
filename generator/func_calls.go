@@ -1838,7 +1838,9 @@ func funcListsRemove(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], func(v any) bool {
+		return int(v.(float64)) > 0
+	}, 7, "Indices start at 1.")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -1860,7 +1862,9 @@ func funcListsInsert(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], func(v any) bool {
+		return int(v.(float64)) > 0
+	}, 7, "Indices start at 1")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
@@ -1877,7 +1881,9 @@ func funcListsReplace(g *generator, stmt *parser.StmtCall) (*blocks.Block, error
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], nil, 7, "")
+	block.Inputs["INDEX"], err = g.valueWithValidator(block.ID, stmt.Parameters[1], func(v any) bool {
+		return int(v.(float64)) > 0
+	}, 7, "Indices start at 1.")
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}

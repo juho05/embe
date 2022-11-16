@@ -462,15 +462,21 @@ Append an item to the list.
 ---
 lists.remove
 Remove an item from the list.
+
+`index` starts at 1.
 ---
 lists.clear
 Remove all items from the list.
 ---
 lists.insert
 Insert the item at `index`.
+
+`index` starts at 1.
 ---
 lists.replace
 Replace the item at `index` with `value`.
+
+`index` starts at 1.
 ---
 // expression functions
 mbot.isButtonPressed
@@ -651,9 +657,13 @@ Whether the string contains the substring.
 ---
 lists.get
 Get the item at `index` in the list.
+
+`index` starts at 1.
 ---
 lists.indexOf
 Get the index of `value`.
+
+`index` starts at 1.
 ---
 lists.length
 Get the number of items in the list.

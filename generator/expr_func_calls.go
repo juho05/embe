@@ -616,7 +616,9 @@ func exprFuncStringsLetter(g *generator, expr *parser.ExprFuncCall) (*blocks.Blo
 	if err != nil {
 		g.errors = append(g.errors, err)
 	}
-	block.Inputs["LETTER"], err = g.value(block.ID, expr.Parameters[1])
+	block.Inputs["LETTER"], err = g.valueWithValidator(block.ID, expr.Parameters[1], func(v any) bool {
+		return int(v.(float64)) > 0
+	}, -1, "Indices start at 1.")
 	return block, err
 }
 

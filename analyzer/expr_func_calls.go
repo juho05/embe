@@ -97,4 +97,7 @@ func init() {
 	newExprFuncCall("sprite.rotation", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("sprite.scale", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("sprite.anchor", Signature{Params: []Param{{Name: "sprite", Type: parser.DTImage}}, ReturnType: parser.DTString})
+
+	newExprFuncCall("convert.toString", Signature{Params: []Param{{Name: "num", Type: parser.DTNumber}}, ReturnType: parser.DTString})
+	newExprFuncCall("convert.toNumber", Signature{Params: []Param{{Name: "str", Type: parser.DTString}}, ReturnType: parser.DTNumber})
 }

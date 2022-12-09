@@ -292,6 +292,8 @@ const (
 	OpRound  BlockType = "operator_round"
 	OpRandom BlockType = "operator_random"
 	OpMath   BlockType = "operator_mathop"
+
+	OpCast BlockType = "cyberpi.cyberpi_operator_casts"
 )
 
 // Strings

@@ -80,6 +80,9 @@ var ExprFuncCalls = map[string]ExprFuncCall{
 	"sprite.rotation":      exprFuncSpritePosition("get_rotation"),
 	"sprite.scale":         exprFuncSpritePosition("get_size"),
 	"sprite.anchor":        exprFuncSpritePosition("get_align"),
+
+	"convert.toString": exprFuncConvert("str"),
+	"convert.toNumber": exprFuncConvert("float"),
 }
 
 func exprFuncIsButtonPressed(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
@@ -750,6 +753,22 @@ func exprFuncSpritePosition(getter string) func(g *generator, expr *parser.ExprF
 		}
 
 		block.Fields["fieldMenu_2"] = []any{getter, nil}
+
+		return block, nil
+	}
+}
+
+func exprFuncConvert(target string) func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+	return func(g *generator, expr *parser.ExprFuncCall) (*blocks.Block, error) {
+		block := g.NewBlock(blocks.OpCast, false)
+
+		var err error
+		block.Inputs["string_2"], err = g.value(block.ID, expr.Parameters[0])
+		if err != nil {
+			return nil, err
+		}
+
+		block.Fields["fieldMenu_1"] = []any{target, nil}
 
 		return block, nil
 	}

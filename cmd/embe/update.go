@@ -25,8 +25,7 @@ func versionCheck(printWarning, ignoreCache bool) bool {
 
 	latest, err := getLatestVersion(ignoreCache)
 	if err != nil {
-		printError(err, nil, nil)
-		os.Exit(1)
+		return false
 	}
 
 	if version != latest {

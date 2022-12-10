@@ -11,31 +11,22 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - name: Checkout
-          uses: actions/checkout@v2
+          uses: actions/checkout@v3
           with:
             fetch-depth: 0
-        - name: Read info
-          id: tags
-          shell: bash
-          run: |
-            echo ::set-output name=TAG::${GITHUB_REF/refs\/tags\//}
         - name: Create Release
           id: create_release
-          uses: actions/create-release@master
+          uses: elgohr/Github-Release-Action@v4
           env:
             GITHUB_TOKEN: ${{ github.token }}
           with:
-            tag_name: ${{ steps.tags.outputs.tag }}
-            release_name: ${{ steps.tags.outputs.tag }}
-            draft: false
-            prerelease: false
+            title: ${{ github.ref_name }}
         - name: Upload install.bat
           uses: svenstaro/upload-release-action@v2
           with:
             repo_token: ${{ secrets.GITHUB_TOKEN }}
             file: install.bat
             asset_name: install.bat
-            tag: ${{ github.ref }}
             overwrite: true
   publish_binaries:
     name: Release Binaries
@@ -50,11 +41,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Read info
-      id: tags
-      shell: bash
-      run: |
-        echo ::set-output name=TAG::${GITHUB_REF/refs\/tags\//}
     - name: embe
       uses: wangyoucao577/go-release-action@v1.28
       with:
@@ -63,8 +49,7 @@ jobs:
         goarch: ${{ matrix.goarch }}
         asset_name: embe-${{matrix.goos}}-${{matrix.goarch}}
         extra_files: LICENSE README.md
-        release_tag: ${{ steps.tags.outputs.tag }}
-        ldflags: -X "main.version=${{ steps.tags.outputs.tag }}"
+        ldflags: -X "main.version=${{ github.ref_name }}"
         md5sum: false
         project_path: ./cmd/embe
         binary_name: embe
@@ -76,8 +61,7 @@ jobs:
         goarch: ${{ matrix.goarch }}
         asset_name: embe-ls-${{matrix.goos}}-${{matrix.goarch}}
         extra_files: LICENSE cmd/embe-ls/README.md
-        release_tag: ${{ steps.tags.outputs.tag }}
-        ldflags: -X "main.version=${{ steps.tags.outputs.tag }}"
+        ldflags: -X "main.version=${{ github.ref_name }}"
         md5sum: false
         project_path: ./cmd/embe-ls
         binary_name: embe-ls

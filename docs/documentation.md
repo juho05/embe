@@ -38,7 +38,7 @@ To get started write the following text into a file named `hello.mb`:
 
 To execute the code on your robot open a terminal in the current directory and enter `embe hello.mb`.
 This will compile the `hello.mb` file into a `hello.mblock` file. You can now open the file in the [mBlock IDE](https://ide.mblock.cc/) as you would do with any other mBlock project file.
-After the loading is complete you should see these block automatically generated for you:
+After the loading is complete you should see these blocks automatically generated for you:
 
 ![Hello World Blocks](images/helloworld.png)
 
@@ -88,7 +88,7 @@ Function arguments are separated by `,` characters:
   audio.playNote("c", 5, 10) // note name, octave, duration
 ```
 
-Some function can take different arguments and change there behavious depending on which ones are used:
+Some function can take different arguments and change their behavious depending on which ones are used:
 ```csharp
 @launch:
   time.wait(5) // waits 5 seconds
@@ -164,7 +164,7 @@ You can convert between numbers and strings with the `number()` and `string()` f
 
 ### Functions as Expressions
 
-Some functions return a value. They must be used as a expression and cannot stand on there own.
+Some functions return a value. They must be used as a expression and cannot stand on their own.
 They provide more complex behaviour than simple operators:
 
 ```csharp

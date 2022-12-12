@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 
 	"github.com/Bananenpro/embe/analyzer"
@@ -71,13 +70,12 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 
 	argumentNames := make([]string, 0, len(stmt.Params))
 	argumentDefaults := make([]string, 0, len(stmt.Params))
-	for _, p := range stmt.Params {
+	for i, p := range stmt.Params {
 		if slices.Contains(argumentNames, p.Name.Lexeme) {
 			g.errors = append(g.errors, g.newErrorTk("Duplicate parameter name.", p.Name))
 			continue
 		}
 
-		id := uuid.NewString()
 		argumentNames = append(argumentNames, p.Name.Lexeme)
 		argumentDefaults = append(argumentDefaults, "todo")
 
@@ -89,7 +87,7 @@ func (g *generator) VisitFuncDecl(stmt *parser.StmtFuncDecl) error {
 			reporterBlock = g.NewBlock(blocks.ArgumentReporterStringNumber, true)
 		}
 		reporterBlock.Fields["VALUE"] = []any{p.Name.Lexeme, nil}
-		prototype.Inputs[id] = []any{1, reporterBlock.ID}
+		prototype.Inputs[fn.ArgumentIDs[i]] = []any{1, reporterBlock.ID}
 	}
 
 	prototype.Mutation = map[string]any{

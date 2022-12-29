@@ -7,27 +7,21 @@ on:
 
 jobs:
   create_release:
-      name:  Create Release
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 0
-        - name: Create Release
-          id: create_release
-          uses: elgohr/Github-Release-Action@v4
-          env:
-            GITHUB_TOKEN: ${{ github.token }}
-          with:
-            title: ${{ github.ref_name }}
-        - name: Upload install.bat
-          uses: svenstaro/upload-release-action@v2
-          with:
-            repo_token: ${{ secrets.GITHUB_TOKEN }}
-            file: install.bat
-            asset_name: install.bat
-            overwrite: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Create release
+      uses: ncipollo/release-action@v1
+    - name: Upload install.bat
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: install.bat
+        asset_name: install.bat
+        overwrite: true
   publish_binaries:
     name: Release Binaries
     runs-on: ubuntu-latest

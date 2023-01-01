@@ -734,34 +734,22 @@ func (p *parser) comparison() (Expr, error) {
 			p.errors = append(p.errors, err)
 		}
 		if operator.Type == TkLessEqual || operator.Type == TkGreaterEqual {
-			withoutEqual := TkLess
-			if operator.Type == TkGreaterEqual {
-				withoutEqual = TkGreater
+			inverse := TkLess
+			if operator.Type == TkLessEqual {
+				inverse = TkGreater
 			}
-			expr = &ExprBinary{
+			expr = &ExprUnary{
 				Operator: Token{
-					Type:             TkOr,
+					Type:             TkBang,
 					Lexeme:           operator.Lexeme,
 					Indent:           operator.Indent,
 					Pos:              operator.Pos,
 					EndPos:           operator.EndPos,
 					LineAfterInclude: operator.LineAfterInclude,
 				},
-				Left: &ExprBinary{
-					Operator: Token{
-						Type:             withoutEqual,
-						Lexeme:           operator.Lexeme,
-						Indent:           operator.Indent,
-						Pos:              operator.Pos,
-						EndPos:           operator.EndPos,
-						LineAfterInclude: operator.LineAfterInclude,
-					},
-					Left:  expr,
-					Right: right,
-				},
 				Right: &ExprBinary{
 					Operator: Token{
-						Type:             TkEqual,
+						Type:             inverse,
 						Lexeme:           operator.Lexeme,
 						Indent:           operator.Indent,
 						Pos:              operator.Pos,

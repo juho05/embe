@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -281,7 +282,7 @@ func pathToURI(path string) string {
 			return path
 		}
 	}
-	path = strings.ReplaceAll(filepath.ToSlash(path), ":", "%3A")
+	path = url.PathEscape(filepath.ToSlash(path))
 	if runtime.GOOS == "windows" {
 		path = strings.ToLower(path)
 	}
@@ -302,10 +303,13 @@ func sendDiagnostics(notify glsp.NotifyFunc, uri string, diagnostics []protocol.
 func textDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	Trace("Document did open: %s", params.TextDocument.URI)
 	path := strings.TrimPrefix(params.TextDocument.URI, "file://")
+	p, err := url.PathUnescape(path)
+	if err == nil {
+		path = p
+	}
 	if runtime.GOOS == "windows" {
 		path = strings.ReplaceAll(path, "/", "\\")
 		path = strings.TrimPrefix(path, "\\")
-		path = strings.ReplaceAll(path, "%3A", ":")
 		path = strings.ToLower(path)
 		params.TextDocument.URI = strings.ToLower(params.TextDocument.URI)
 	}

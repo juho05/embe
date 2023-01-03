@@ -382,10 +382,10 @@ func (a *analyzer) VisitConstDecl(stmt *parser.StmtConstDecl) error {
 		return err
 	}
 	if stmt.Value.Type() == parser.DTImage {
-		return a.newErrorStmt("Image constants are not suuported.", stmt)
+		return a.newErrorStmt("Image constants are not supported.", stmt)
 	}
 	if stmt.Value.Type() == parser.DTBool {
-		return a.newErrorStmt("Boolean constants are not suuported.", stmt)
+		return a.newErrorStmt("Boolean constants are not supported.", stmt)
 	}
 	a.constants[stmt.Name.Lexeme] = &Constant{
 		Name:  stmt.Name,

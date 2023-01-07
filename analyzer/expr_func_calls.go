@@ -86,7 +86,7 @@ func init() {
 
 	newExprFuncCall("lists.get", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTString}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("lists.indexOf", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTNumber})
-	newExprFuncCall("lists.length", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}}, ReturnType: parser.DTNumber})
+	newExprFuncCall("lists.length", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}}, ReturnType: parser.DTNumber}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}}, ReturnType: parser.DTNumber})
 	newExprFuncCall("lists.contains", Signature{Params: []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, ReturnType: parser.DTBool}, Signature{Params: []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}}, ReturnType: parser.DTBool})
 
 	newExprFuncCall("display.pixelIsColor", Signature{Params: []Param{{Name: "x", Type: parser.DTNumber}, {Name: "y", Type: parser.DTNumber}, {Name: "r", Type: parser.DTNumber}, {Name: "g", Type: parser.DTNumber}, {Name: "b", Type: parser.DTNumber}}, ReturnType: parser.DTBool})

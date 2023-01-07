@@ -165,8 +165,8 @@ func init() {
 	newFuncCall("script.stopOther")
 
 	newFuncCall("lists.append", []Param{{Name: "list", Type: parser.DTStringList}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "value", Type: parser.DTNumber}})
-	newFuncCall("lists.remove", []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}})
-	newFuncCall("lists.clear", []Param{{Name: "list", Type: parser.DTStringList}})
+	newFuncCall("lists.remove", []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}})
+	newFuncCall("lists.clear", []Param{{Name: "list", Type: parser.DTStringList}}, []Param{{Name: "list", Type: parser.DTNumberList}})
 	newFuncCall("lists.insert", []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
 	newFuncCall("lists.replace", []Param{{Name: "list", Type: parser.DTStringList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTString}}, []Param{{Name: "list", Type: parser.DTNumberList}, {Name: "index", Type: parser.DTNumber}, {Name: "value", Type: parser.DTNumber}})
 

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/exp/slices"
 
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/parser"
 )
 
 type Variable struct {

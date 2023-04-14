@@ -6,7 +6,7 @@ import (
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/parser"
 )
 
 var colors = map[string]protocol.Color{

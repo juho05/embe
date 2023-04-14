@@ -12,8 +12,8 @@ import (
 
 	_ "embed"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/blocks"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/blocks"
 )
 
 //go:embed assets/stage.json.tmpl

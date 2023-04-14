@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/Bananenpro/embe/blocks"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/blocks"
+	"github.com/juho05/embe/parser"
 )
 
 type FuncCall func(g *generator, stmt *parser.StmtCall) (*blocks.Block, error)

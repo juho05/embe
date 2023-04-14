@@ -3,8 +3,8 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/Bananenpro/embe/blocks"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/blocks"
+	"github.com/juho05/embe/parser"
 )
 
 type Assignment struct {

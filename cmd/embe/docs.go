@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-const docsURL = "https://github.com/Bananenpro/embe/blob/main/docs/documentation.md"
+const docsURL = "https://github.com/juho05/embe/blob/main/docs/documentation.md"
 
 func docs() {
 	var err error

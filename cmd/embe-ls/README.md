@@ -1,6 +1,6 @@
 # embe-ls
 
-An [LSP](https://microsoft.github.io/language-server-protocol) implementation for [embe](https://github.com/Bananenpro/embe).
+An [LSP](https://microsoft.github.io/language-server-protocol) implementation for [embe](https://github.com/juho05/embe).
 
 ## Features
 
@@ -21,11 +21,11 @@ If not you can [build](#building) the `embe-ls` binary and place it somewhere in
 
 ### VS Code
 
-Install the [vscode-embe](https://github.com/Bananenpro/vscode-embe#installation) extension.
+Install the [vscode-embe](https://github.com/juho05/vscode-embe#installation) extension.
 
 ### Neovim
 
-Install the [vim-embe](https://github.com/Bananenpro/vim-embe#installation) plugin for syntax highlighting and indentation.
+Install the [vim-embe](https://github.com/juho05/vim-embe#installation) plugin for syntax highlighting and indentation.
 
 #### coc
 
@@ -69,7 +69,7 @@ lspconfig.embe.setup{}
 - [Go](https://go.dev) 1.19+
 
 ```
-git clone https://github.com/Bananenpro/embe
+git clone https://github.com/juho05/embe
 cd embe
 go build ./cmd/embe-ls
 ```

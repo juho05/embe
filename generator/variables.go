@@ -1,7 +1,7 @@
 package generator
 
 import (
-	"github.com/Bananenpro/embe/blocks"
+	"github.com/juho05/embe/blocks"
 )
 
 type Var struct {

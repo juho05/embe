@@ -10,7 +10,7 @@ Embe is a programming language that compiles to [mBlock](https://makeblock.com) 
 
 ### Windows
 
-[Download](https://github.com/Bananenpro/embe/releases/latest/download/install.bat) and execute `install.bat`.
+[Download](https://github.com/juho05/embe/releases/latest/download/install.bat) and execute `install.bat`.
 
 ### macOS/Linux
 
@@ -19,13 +19,13 @@ Paste one of the following commands into a terminal window:
 #### curl
 
 ```bash
-curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash
+curl -L https://raw.githubusercontent.com/juho05/embe/main/install.sh | bash
 ```
 
 #### wget (in case curl is not installed)
 
 ```bash
-wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash
+wget -q --show-progress https://raw.githubusercontent.com/juho05/embe/main/install.sh -O- | bash
 ```
 
 ## Uninstallation
@@ -38,9 +38,9 @@ embe uninstall
 
 ## Editor Support
 
-- LSP: [embe-ls](https://github.com/Bananenpro/embe/blob/main/cmd/embe-ls/README.md)
-- VS Code: [vscode-embe](https://github.com/Bananenpro/vscode-embe)
-- Vim: [vim-embe](https://github.com/Bananenpro/vim-embe)
+- LSP: [embe-ls](https://github.com/juho05/embe/blob/main/cmd/embe-ls/README.md)
+- VS Code: [vscode-embe](https://github.com/juho05/vscode-embe)
+- Vim: [vim-embe](https://github.com/juho05/vim-embe)
 
 ## Building
 
@@ -49,7 +49,7 @@ embe uninstall
 - [Go](https://go.dev) 1.19+
 
 ```sh
-git clone https://github.com/Bananenpro/embe
+git clone https://github.com/juho05/embe
 cd embe
 go build ./cmd/embe
 go build ./cmd/embe-ls

@@ -1,4 +1,4 @@
-module github.com/Bananenpro/embe
+module github.com/juho05/embe
 
 go 1.19
 

@@ -13,9 +13,9 @@ import (
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/generator"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/generator"
+	"github.com/juho05/embe/parser"
 )
 
 type Document struct {

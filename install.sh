@@ -12,11 +12,11 @@ arch=$(uname -m)
 
 download () {
 	if hash wget 2>/dev/null; then
-		wget -q --show-progress https://github.com/Bananenpro/embe/releases/latest/download/embe-$1-$2.tar.gz -O embe.tar.gz || exit 1
-		wget -q --show-progress https://github.com/Bananenpro/embe/releases/latest/download/embe-ls-$1-$2.tar.gz -O embe-ls.tar.gz || exit 1
+		wget -q --show-progress https://github.com/juho05/embe/releases/latest/download/embe-$1-$2.tar.gz -O embe.tar.gz || exit 1
+		wget -q --show-progress https://github.com/juho05/embe/releases/latest/download/embe-ls-$1-$2.tar.gz -O embe-ls.tar.gz || exit 1
 	elif hash curl 2>/dev/null; then
-		curl -L https://github.com/Bananenpro/embe/releases/latest/download/embe-$1-$2.tar.gz > embe.tar.gz || exit 1
-		curl -L https://github.com/Bananenpro/embe/releases/latest/download/embe-ls-$1-$2.tar.gz > embe-ls.tar.gz || exit 1
+		curl -L https://github.com/juho05/embe/releases/latest/download/embe-$1-$2.tar.gz > embe.tar.gz || exit 1
+		curl -L https://github.com/juho05/embe/releases/latest/download/embe-ls-$1-$2.tar.gz > embe-ls.tar.gz || exit 1
 	else
 		echo "Please install either wget or curl."
 		exit 1
@@ -90,11 +90,11 @@ rm embe-ls.tar.gz
 if hash code 2>/dev/null; then
 	echo "Installing embe VS Code extension..."
 	if hash wget 2>/dev/null; then
-		wget -q --show-progress https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix -O embe.vsix || exit 1
+		wget -q --show-progress https://github.com/juho05/vscode-embe/releases/latest/download/embe.vsix -O embe.vsix || exit 1
 	else
-		curl -L https://github.com/Bananenpro/vscode-embe/releases/latest/download/embe.vsix > embe.vsix || exit 1
+		curl -L https://github.com/juho05/vscode-embe/releases/latest/download/embe.vsix > embe.vsix || exit 1
 	fi
-	code --uninstall-extension bananenpro.embe &>/dev/null
+	code --uninstall-extension juho05.embe &>/dev/null
 	code --install-extension embe.vsix || exit 1
 	rm embe.vsix
 fi

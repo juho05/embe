@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/generator"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/generator"
+	"github.com/juho05/embe/parser"
 )
 
 func generateErrorText(message string, lines [][]rune, includedFiles map[string][][]rune, start, end parser.Position, warning bool) string {

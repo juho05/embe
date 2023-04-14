@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/blocks"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/blocks"
+	"github.com/juho05/embe/parser"
 )
 
 func GenerateBlocks(statements []parser.Stmt, definitions analyzer.Definitions) (map[string]*blocks.Block, []error) {

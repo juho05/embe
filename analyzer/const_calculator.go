@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/parser"
 )
 
 type constCalculator struct {

@@ -3,7 +3,7 @@ package analyzer
 import (
 	"fmt"
 
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/parser"
 )
 
 type Var struct {

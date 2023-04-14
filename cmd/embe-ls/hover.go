@@ -6,8 +6,8 @@ import (
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/parser"
 )
 
 func textDocumentHover(context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {

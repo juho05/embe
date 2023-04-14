@@ -61,7 +61,7 @@ func update() {
 
 func updateWindows() {
 	fmt.Println("Downloading latest installer...")
-	cmd := exec.Command("Powershell.exe", "-Command", "iwr -useb https://raw.githubusercontent.com/Bananenpro/embe/main/install.ps1 | iex")
+	cmd := exec.Command("Powershell.exe", "-Command", "iwr -useb https://raw.githubusercontent.com/juho05/embe/main/install.ps1 | iex")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -76,9 +76,9 @@ func updateUnix() {
 
 	var installCmd string
 	if _, err := exec.LookPath("wget"); err == nil {
-		installCmd = "wget -q --show-progress https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh -O- | bash"
+		installCmd = "wget -q --show-progress https://raw.githubusercontent.com/juho05/embe/main/install.sh -O- | bash"
 	} else if _, err := exec.LookPath("curl"); err == nil {
-		installCmd = "curl -L https://raw.githubusercontent.com/Bananenpro/embe/main/install.sh | bash"
+		installCmd = "curl -L https://raw.githubusercontent.com/juho05/embe/main/install.sh | bash"
 	} else {
 		printError(errors.New("Please install either wget or curl."), nil, nil)
 		os.Exit(1)
@@ -111,7 +111,7 @@ func getLatestVersion(ignoreCache bool) (string, error) {
 		}
 	}
 
-	return fetchLatestGithubTag("Bananenpro", "embe")
+	return fetchLatestGithubTag("juho05", "embe")
 }
 
 func fetchLatestGithubTag(owner, repo string) (string, error) {

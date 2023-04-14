@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Bananenpro/embe/blocks"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/blocks"
+	"github.com/juho05/embe/parser"
 )
 
 var Events = map[string]func(g *generator, stmt *parser.StmtEvent) (*blocks.Block, error){

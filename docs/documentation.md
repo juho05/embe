@@ -1,8 +1,8 @@
 # Documentation
 
-The following instructions assume that you have successfully [installed](https://github.com/Bananenpro/embe#installation) *embe* on your system.
+The following instructions assume that you have successfully [installed](https://github.com/juho05/embe#installation) *embe* on your system.
 
-The recommended editors for *embe* are [VS Code](https://code.visualstudio.com/) and [Neovim](https://neovim.io/) with the [vscode-embe](https://github.com/Bananenpro/vscode-embe) and the [vim-embe](https://github.com/Bananenpro/vim-embe) plugin, respectively.
+The recommended editors for *embe* are [VS Code](https://code.visualstudio.com/) and [Neovim](https://neovim.io/) with the [vscode-embe](https://github.com/juho05/vscode-embe) and the [vim-embe](https://github.com/juho05/vim-embe) plugin, respectively.
 
 Click [here](stdlib.md) for a list of available events, functions and variables.
 

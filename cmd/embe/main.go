@@ -9,10 +9,10 @@ import (
 
 	"github.com/mattn/go-colorable"
 
-	"github.com/Bananenpro/embe/analyzer"
-	"github.com/Bananenpro/embe/blocks"
-	"github.com/Bananenpro/embe/generator"
-	"github.com/Bananenpro/embe/parser"
+	"github.com/juho05/embe/analyzer"
+	"github.com/juho05/embe/blocks"
+	"github.com/juho05/embe/generator"
+	"github.com/juho05/embe/parser"
 )
 
 var (
